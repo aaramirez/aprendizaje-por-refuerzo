@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="es">
+<head>
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-KX76XF8R');</script>
+<!-- End Google Tag Manager -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Aprendizaje por refuerzo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Agentes que aprenden por prueba y error a partir de una recompensa, de los procesos de decisión de Markov a Q-learning, DQN, PPO y el ajuste de los modelos de lenguaje con retroalimentación humana.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,600&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KX76XF8R"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+<div class="wrap" data-page="index">
+<header class="topbar"><a class="brand" href="index.html">Aprendizaje por <b>refuerzo</b></a><span class="eyebrow">Curso visual e interactivo · Datos e inteligencia artificial</span><a class="al-sitio" href="https://aaramirez.github.io/">← Todos los cursos</a></header>
+<div class="layout">
+<nav class="toc" id="toc" aria-label="Ruta de aprendizaje"></nav>
+<main>
+
+<header class="hero">
+  <span class="eyebrow">Curso visual e interactivo · Datos e inteligencia artificial</span>
+  <h1>Un agente que aprende frente a ti, a fuerza de equivocarse</h1>
+  <p class="lede">Nadie le dice al agente qué hacer: solo recibe una recompensa cuando algo sale bien. Con esa señal aprende a cruzar un laberinto, a equilibrar un péndulo o a jugar mejor que una persona. Este curso explica cómo, algoritmo por algoritmo, y en cada capítulo hay un entorno donde el agente se ve aprender.</p>
+</header>
+
+<section>
+  <h2>Cómo usar este curso</h2>
+  <div class="prose">
+    <p><b>Estado.</b> El curso está en preparación. La <a href="temario.html">tabla de contenido</a> ya tiene los 12 capítulos con sus secciones y sus laboratorios, y está en revisión.</p>
+    <p><b>Para quién es.</b> Para quien conoce la probabilidad básica (valor esperado) y ha visto una red neuronal entrenarse. La probabilidad está en Probabilidad y estadística; las redes neuronales, en Aprendizaje profundo. Los capítulos 1 a 7 no necesitan redes.</p>
+    <p><b>Cómo está hecho.</b> Un mismo mundo recorre el curso: un robot en una cuadrícula con premios, trampas y paredes. Primero se resuelve conociendo las reglas, luego sin conocerlas, y después se cambia por entornos más grandes (un péndulo, un juego de Atari) donde hace falta una red. Cada laboratorio deja cambiar la recompensa, la exploración o la tasa de aprendizaje y mirar cómo cambia lo que el agente aprende.</p>
+  </div>
+</section>
+
+<details class="stage" id="temario" open><summary><h2><span class="pn">Empieza aquí</span> Tabla de contenido</h2></summary>
+  <div class="mods">
+    <a class="mod" href="temario.html"><span class="n">≡</span><b>Tabla de contenido</b><p>Cada capítulo con sus secciones y sus laboratorios.</p></a>
+  </div>
+</details>
+
+<details class="stage" id="parte-1" open><summary><h2><span class="pn">Parte 1</span> El problema</h2><span class="cuenta" data-etapa-cuenta="1"></span></summary>
+  <div class="mods">
+    <div class="mod soon" data-id="aprender-por-recompensa"><span class="n">01</span><b>Aprender por recompensa</b><p>Agente, entorno, acción y recompensa, y el dilema de explorar o explotar con el bandido multibrazo.</p></div>
+    <div class="mod soon" data-id="procesos-de-decision-de-markov"><span class="n">02</span><b>Procesos de decisión de Markov (MDP)</b><p>Estados, acciones, transiciones, recompensas y descuento: el lenguaje común de todo el curso.</p></div>
+    <div class="mod soon" data-id="valor-y-politica"><span class="n">03</span><b>Valor y política: las ecuaciones de Bellman</b><p>Qué tan bueno es un estado, qué tan buena es una acción y cómo se relacionan.</p></div>
+  </div>
+</details>
+
+<details class="stage" id="parte-2" open><summary><h2><span class="pn">Parte 2</span> Con el mapa en la mano</h2><span class="cuenta" data-etapa-cuenta="2"></span></summary>
+  <div class="mods">
+    <div class="mod soon" data-id="programacion-dinamica"><span class="n">04</span><b>Programación dinámica: evaluar y mejorar políticas</b><p>Iteración de política e iteración de valor sobre un mundo conocido.</p></div>
+  </div>
+</details>
+
+<details class="stage" id="parte-3" open><summary><h2><span class="pn">Parte 3</span> Aprender de la experiencia</h2><span class="cuenta" data-etapa-cuenta="3"></span></summary>
+  <div class="mods">
+    <div class="mod soon" data-id="monte-carlo"><span class="n">05</span><b>Métodos de Monte Carlo</b><p>Promediar los retornos de episodios completos para estimar el valor.</p></div>
+    <div class="mod soon" data-id="diferencias-temporales"><span class="n">06</span><b>Diferencias temporales: TD(0) y SARSA</b><p>Aprender en cada paso con una estimación de la siguiente: el corazón del refuerzo moderno.</p></div>
+    <div class="mod soon" data-id="q-learning"><span class="n">07</span><b>Q-learning</b><p>Aprender la mejor política mientras se explora con otra: el algoritmo más usado del refuerzo tabular.</p></div>
+  </div>
+</details>
+
+<details class="stage" id="parte-4" open><summary><h2><span class="pn">Parte 4</span> Refuerzo profundo</h2><span class="cuenta" data-etapa-cuenta="4"></span></summary>
+  <div class="mods">
+    <div class="mod soon" data-id="dqn"><span class="n">08</span><b>Aproximación de funciones y DQN</b><p>Una red que estima Q a partir de la pantalla, con la memoria de repetición y la red objetivo.</p></div>
+    <div class="mod soon" data-id="gradiente-de-politica"><span class="n">09</span><b>Gradiente de política y actor-crítico</b><p>Aprender la política directamente, sin pasar por la tabla de valores.</p></div>
+    <div class="mod soon" data-id="ppo"><span class="n">10</span><b>PPO: pasos de política seguros</b><p>Cómo evitar que una actualización grande destruya una política que ya funcionaba.</p></div>
+  </div>
+</details>
+
+<details class="stage" id="parte-5" open><summary><h2><span class="pn">Parte 5</span> Del laboratorio al mundo</h2><span class="cuenta" data-etapa-cuenta="5"></span></summary>
+  <div class="mods">
+    <div class="mod soon" data-id="puente-con-rlhf"><span class="n">11</span><b>El puente con RLHF: refuerzo con preferencias humanas</b><p>Cómo PPO se usa para ajustar un modelo de lenguaje a lo que las personas prefieren.</p></div>
+    <div class="mod soon" data-id="refuerzo-en-el-mundo"><span class="n">12</span><b>El refuerzo en el mundo: recompensas, simuladores y límites</b><p>Cuándo conviene el aprendizaje por refuerzo, cómo falla y qué hace falta para usarlo de verdad.</p></div>
+  </div>
+</details>
+
+
+
+<nav class="pager" id="pager" aria-label="Capítulo anterior y siguiente"></nav>
+</main>
+</div>
+<footer><span>Curso abierto de aaramirez.github.io.</span><span>Sitio publicado: <a href="https://github.com/aaramirez/aprendizaje-por-refuerzo" target="_blank" rel="noopener">github.com/aaramirez/aprendizaje-por-refuerzo</a></span></footer>
+</div>
+<script src="assets/lab.js"></script>
+</body>
+</html>
