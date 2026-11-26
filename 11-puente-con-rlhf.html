@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="es">
+<head>
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-KX76XF8R');</script>
+<!-- End Google Tag Manager -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>El puente con RLHF · Aprendizaje por refuerzo · Aprendizaje por refuerzo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Agentes que aprenden por prueba y error a partir de una recompensa, de los procesos de decisión de Markov a Q-learning, DQN, PPO y el ajuste de los modelos de lenguaje con retroalimentación humana.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,600&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous" referrerpolicy="no-referrer">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KX76XF8R"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+<div class="wrap" data-page="puente-con-rlhf">
+<header class="topbar"><a class="brand" href="index.html">Aprendizaje por <b>refuerzo</b></a><span class="eyebrow">Curso visual e interactivo · Datos e inteligencia artificial</span><a class="al-sitio" href="https://aaramirez.github.io/">← Todos los cursos</a></header>
+<div class="layout">
+<nav class="toc" id="toc" aria-label="Ruta de aprendizaje"></nav>
+<main>
+<header class="page-head"><span class="num">CAPÍTULO 11 DE 12</span><h1>El puente con RLHF: refuerzo con preferencias humanas</h1><p class="lede">El mismo PPO que equilibra un péndulo ajusta los asistentes de conversación. Este capítulo muestra cómo: un modelo de lenguaje visto como política, una recompensa aprendida de comparaciones humanas, una penalización para no olvidar el lenguaje y, desde 2024, recompensas que un programa puede verificar.</p></header>
+<section><h2>El modelo de lenguaje como política: el texto es la acción</h2><div class="prose"><p>La pregunta de Teodoro Vidal quedó flotando hasta la reunión siguiente. Los supervisores del almacén usan un asistente de texto para consultar el estado de los pedidos y las rutas de los robots, y el folleto del proveedor dice que su modelo «se ajustó con PPO a partir de preferencias humanas». ¿Es el mismo PPO del robot? Noemí Ferrer contestó que sí, línea por línea, y que para verlo había que hacer un solo cambio de mirada: tratar al modelo de lenguaje como una política.</p><p>Un <b>modelo de lenguaje</b> (<i>language model</i>) es una red que, dado un texto, da la probabilidad de cada <b>token</b> (<i>token</i>) siguiente: un pedazo de palabra, una palabra corta o un signo. Para escribir una respuesta, sortea un token con esas probabilidades, lo agrega al texto y repite, hasta un token especial de fin. Cómo se entrenan estas redes con miles de millones de textos está en <a href="https://aaramirez.github.io/modelos-de-ia/temario.html" target="_blank" rel="noopener">Modelos de IA</a>; aquí importa la correspondencia con el refuerzo:</p><ul><li>El <b>estado</b> es la pregunta más lo que el modelo ya escribió.</li><li>La <b>acción</b> es el siguiente token. Hay tantas acciones posibles como tokens tiene el vocabulario: decenas de miles.</li><li>La <b>política</b> es la propia red: <span class="math">\pi_\theta(\text{token} \mid \text{texto})</span>, una salida softmax como la del capítulo 9, solo que mucho más grande.</li><li>El <b>episodio</b> es la respuesta completa.</li><li>La <b>recompensa</b> llega al final, cuando la respuesta está terminada: 0 en cada token y un puntaje para el conjunto.</li></ul></div><div class="analogia"><b>Imagínalo así</b><p>Es como un cocinero que prepara un plato paso a paso, ingrediente por ingrediente, y solo al final un comensal le dice cuánto le gustó. Cada ingrediente es una acción; el plato es el episodio; la nota del comensal, la recompensa. Para mejorar, el cocinero tiene que adivinar cuáles de sus decisiones explican la nota.</p></div><div class="prose"><p>Es el problema de asignación de crédito del capítulo 1 en su forma más pura: un puntaje para una secuencia de cientos de acciones. Y la transición es determinista: el estado siguiente es el texto anterior más el token elegido, sin piso resbaloso ni péndulo que se cae. Todo el azar está en la política.</p></div><figure class="fig fig-esquema" id="11-diagrama-1"><div class="lienzo"><svg viewBox="0 0 800 366" style="min-width:640px" role="img" aria-label="El modelo de lenguaje como política: el estado es la pregunta más lo que ya escribió, la red da la probabilidad de cada token siguiente y sortea uno, que se agrega al estado; la respuesta completa es un episodio con una sola recompensa al final">
+<defs><marker id="c11d1-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker><marker id="c11d1-tra" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-tra)"/></marker><marker id="c11d1-fis" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-fis)"/></marker><marker id="c11d1-apl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-apl)"/></marker></defs><text x="20" y="26" class="t t-xs t-b t-m">EL MODELO DE LENGUAJE COMO POLÍTICA: CADA PALABRA ES UNA ACCIÓN Y LA RESPUESTA ENTERA, UN EPISODIO</text><rect x="20" y="44" width="470" height="66" rx="10" class="d-sis"/><text x="34" y="66" class="t t-s t-b k-sis">Estado sₜ: la pregunta y lo que ya escribió</text><text x="34" y="90" class="t t-s t-mono">«¿Por qué el robot 7 tomó el pasillo de arriba?» → Porque el</text><path d="M490 77H520" class="ln" style="stroke-width:1.6" marker-end="url(#c11d1-muted)"/><rect x="524" y="44" width="256" height="160" rx="10" class="c-tra"/><text x="538" y="66" class="t t-s t-b k-tra">Política π: la red</text><text x="538" y="84" class="t t-xs">probabilidad del siguiente token</text><text x="538" y="109" class="t t-s t-mono">atajo</text><rect x="608" y="98" width="120" height="13" rx="3" class="c-tra"/><text x="733.6" y="109" class="t t-xs t-mono">0,46</text><text x="538" y="129" class="t t-s t-mono">piso</text><rect x="608" y="118" width="81" height="13" rx="3" class="c-tra"/><text x="694.6" y="129" class="t t-xs t-mono">0,31</text><text x="538" y="149" class="t t-s t-mono">pasillo</text><rect x="608" y="138" width="39" height="13" rx="3" class="c-tra"/><text x="653" y="149" class="t t-xs t-mono">0,15</text><text x="538" y="169" class="t t-s t-mono">robot</text><rect x="608" y="158" width="13" height="13" rx="3" class="c-tra"/><text x="627" y="169" class="t t-xs t-mono">0,05</text><text x="538" y="188" class="t t-xs t-m">(y miles de tokens más) sortea:</text><text x="770" y="188" class="t t-xs t-b k-apl" text-anchor="end">«atajo» = aₜ</text><path d="M652 204V232H260V114" style="fill:none;stroke:var(--c-apl);stroke-width:1.6;stroke-dasharray:5 4" marker-end="url(#c11d1-apl)"/><text x="456" y="226" class="t t-xs k-apl" text-anchor="middle">el token se agrega: nuevo estado sₜ₊₁</text><rect x="20" y="250" width="760" height="80" rx="10" class="caja"/><text x="34" y="272" class="t t-s t-b">Episodio: la respuesta completa, token a token, hasta el token de fin</text><rect x="34" y="284" width="63" height="26" rx="5" class="c-tra" style="fill-opacity:.5"/><text x="65.6" y="302" class="t t-s t-mono" text-anchor="middle">Porque</text><rect x="103.19999999999999" y="284" width="30" height="26" rx="5" class="c-tra" style="fill-opacity:.5"/><text x="118.4" y="302" class="t t-s t-mono" text-anchor="middle">el</text><rect x="139.6" y="284" width="55" height="26" rx="5" class="c-tra" style="fill-opacity:.5"/><text x="167.1" y="302" class="t t-s t-mono" text-anchor="middle">atajo</text><rect x="200.6" y="284" width="47" height="26" rx="5" class="c-tra" style="fill-opacity:.5"/><text x="224" y="302" class="t t-s t-mono" text-anchor="middle">pasa</text><rect x="253.39999999999998" y="284" width="55" height="26" rx="5" class="c-tra" style="fill-opacity:.5"/><text x="280.9" y="302" class="t t-s t-mono" text-anchor="middle">junto</text><rect x="314.4" y="284" width="30" height="26" rx="5" class="c-tra" style="fill-opacity:.5"/><text x="329.6" y="302" class="t t-s t-mono" text-anchor="middle">al</text><rect x="350.79999999999995" y="284" width="47" height="26" rx="5" class="c-tra" style="fill-opacity:.5"/><text x="374.2" y="302" class="t t-s t-mono" text-anchor="middle">foso</text><rect x="403.59999999999997" y="284" width="22" height="26" rx="5" class="c-tra" style="fill-opacity:.5"/><text x="414.7" y="302" class="t t-s t-mono" text-anchor="middle">…</text><rect x="431.79999999999995" y="284" width="55" height="26" rx="5" class="c-tra" style="fill-opacity:.5"/><text x="459.3" y="302" class="t t-s t-mono" text-anchor="middle">⟨fin⟩</text><text x="498.8" y="302" class="t t-b">→</text><rect x="518.8" y="280" width="247.2" height="34" rx="10" class="c-fis"/><text x="642.4" y="302" class="t t-s t-b k-fis" text-anchor="middle">recompensa: 1,8</text><text x="34" y="352" class="t t-s t-m">Recompensa 0 en cada token y una sola al final, cuando la respuesta está completa: el problema de asignación de crédito del capítulo 1.</text>
+</svg></div><figcaption><b>El modelo de lenguaje como política.</b> Arriba, el estado (la pregunta más lo ya escrito) entra a la red, que da la probabilidad de cada token siguiente; se sortea uno, «atajo», que se agrega al texto y forma el estado siguiente (flecha rosa). Abajo, el episodio completo, token a token, y una sola recompensa al final.</figcaption></figure><div class="prose"><p>¿Por qué hace falta refuerzo? Un modelo entrenado solo para predecir el siguiente token en textos de internet aprende a continuar textos, no a ayudar: ante una pregunta puede responder con otra pregunta, inventar una cita o seguir escribiendo una lista. Se lo puede ajustar con ejemplos de buenas respuestas, pero escribir la respuesta ideal a cada pregunta es caro, y muchas cualidades de una buena respuesta, como el tono o el nivel de detalle justo, son más fáciles de reconocer que de escribir. El refuerzo permite optimizar lo que la gente <b>reconoce</b> como bueno.</p></div></section>
+<section><h2>Preferencias humanas: comparar dos respuestas</h2><div class="prose"><p>El problema es la recompensa. En CartPole, el entorno daba +1 por cada paso en pie; aquí nadie sabe escribir una fórmula para «buena respuesta». La salida fue preguntarles a las personas, pero no con una nota. Las notas absolutas son ruidosas: un 7 de un evaluador es un 5 de otro, y el mismo evaluador cambia de escala a lo largo del día. En cambio, ante dos respuestas a la misma pregunta, casi todos coinciden más en <b>cuál prefieren</b>.</p><p>La idea de aprender una recompensa a partir de comparaciones la mostraron en 2017 Paul Christiano y sus colegas de OpenAI y DeepMind. Una figura simulada de MuJoCo aprendió a dar una voltereta hacia atrás sin que nadie escribiera la recompensa: personas miraban pares de videos cortos del agente y marcaban cuál se parecía más a una voltereta. Bastaron unas 900 comparaciones, menos de una hora de trabajo humano. A esa familia de métodos se la llama <b>refuerzo con retroalimentación humana</b> (<i>Reinforcement Learning from Human Feedback</i>, RLHF).</p><p>En 2022, OpenAI publicó <b>InstructGPT</b>, el trabajo que llevó la receta a los modelos de lenguaje y que fue la base de ChatGPT. Tiene tres etapas:</p><ol class="steps"><li><span><b>Ajuste supervisado</b> (<i>supervised fine-tuning</i>, SFT): personas escribieron respuestas ideales para unas 13.000 preguntas, y el modelo aprendió a imitarlas. El resultado es la <b>política de referencia</b> <span class="math">\pi_{\text{ref}}</span>.</span></li><li><span><b>Modelo de recompensa</b>: para unas 33.000 preguntas, el modelo dio de 4 a 9 respuestas y las personas las ordenaron de mejor a peor. Con esos órdenes se entrenó una red que puntúa respuestas.</span></li><li><span><b>PPO</b> (<i>Proximal Policy Optimization</i>, el algoritmo del capítulo 10): la política escribe, el modelo de recompensa puntúa y PPO ajusta la política, con una penalización para que no se aleje de <span class="math">\pi_{\text{ref}}</span>.</span></li></ol></div><figure class="fig fig-flujo" id="11-diagrama-2"><div class="lienzo"><svg viewBox="0 0 800 344" style="min-width:640px" role="img" aria-label="Las tres etapas de RLHF de InstructGPT: ajuste supervisado con demostraciones humanas, entrenamiento de un modelo de recompensa con comparaciones ordenadas por personas y ajuste con PPO y penalización KL respecto del modelo de referencia">
+<defs><marker id="c11d2-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker><marker id="c11d2-tra" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-tra)"/></marker><marker id="c11d2-fis" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-fis)"/></marker><marker id="c11d2-sis" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--d-sis)"/></marker><marker id="c11d2-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-red)"/></marker></defs><text x="20" y="26" class="t t-xs t-b t-m">RLHF EN TRES ETAPAS, COMO EN INSTRUCTGPT (2022)</text><rect x="20" y="44" width="232" height="150" rx="10" class="c-red"/><text x="34" y="68" class="t t-b k-red">① Ajuste supervisado</text><text x="34" y="92" class="t t-s">Personas escriben la</text><text x="34" y="110" class="t t-s">respuesta ideal a unas</text><text x="34" y="128" class="t t-s">13.000 preguntas; el</text><text x="34" y="146" class="t t-s">modelo aprende a imitarlas.</text><rect x="34" y="206" width="204" height="34" rx="10" class="caja"/><text x="136" y="228" class="t t-s t-b" text-anchor="middle">modelo de referencia π_ref</text><path d="M136 194V204" class="ln" style="stroke-width:1.4" marker-end="url(#c11d2-muted)"/><rect x="284" y="44" width="232" height="150" rx="10" class="c-fis"/><text x="298" y="68" class="t t-b k-fis">② Modelo de recompensa</text><text x="298" y="92" class="t t-s">Para 33.000 preguntas, el</text><text x="298" y="110" class="t t-s">modelo da de 4 a 9</text><text x="298" y="128" class="t t-s">respuestas y personas las</text><text x="298" y="146" class="t t-s">ordenan de mejor a peor.</text><rect x="298" y="206" width="204" height="34" rx="10" class="caja"/><text x="400" y="228" class="t t-s t-b" text-anchor="middle">modelo de recompensa r(x, y)</text><path d="M400 194V204" class="ln" style="stroke-width:1.4" marker-end="url(#c11d2-muted)"/><rect x="548" y="44" width="232" height="150" rx="10" class="c-tra"/><text x="562" y="68" class="t t-b k-tra">③ PPO con penalización KL</text><text x="562" y="92" class="t t-s">Con 31.000 preguntas, la</text><text x="562" y="110" class="t t-s">política escribe, r la</text><text x="562" y="128" class="t t-s">puntúa y PPO la ajusta</text><text x="562" y="146" class="t t-s">sin alejarla de π_ref.</text><rect x="562" y="206" width="204" height="34" rx="10" class="caja"/><text x="664" y="228" class="t t-s t-b" text-anchor="middle">el asistente final</text><path d="M664 194V204" class="ln" style="stroke-width:1.4" marker-end="url(#c11d2-muted)"/><path d="M252 119H282" class="ln" style="stroke-width:1.8" marker-end="url(#c11d2-muted)"/><path d="M516 119H546" class="ln" style="stroke-width:1.8" marker-end="url(#c11d2-muted)"/><path d="M134 240V268H690V244" style="fill:none;stroke:var(--c-red);stroke-width:1.6;stroke-dasharray:5 4" marker-end="url(#c11d2-red)"/><text x="300" y="284" class="t t-xs k-red" text-anchor="middle">π_ref es el punto de partida de PPO y la referencia de la KL</text><path d="M398 240V254H630V244" style="fill:none;stroke:var(--c-fis);stroke-width:1.6" marker-end="url(#c11d2-fis)"/><text x="520" y="250" class="t t-xs k-fis" text-anchor="middle">r puntúa cada respuesta</text><text x="20" y="310" class="t t-s t-m">Unos 40 evaluadores contratados hicieron las demostraciones y las comparaciones. Resultado: las personas preferían las respuestas</text><text x="20" y="328" class="t t-s t-m">del modelo de 1.300 millones de parámetros ajustado así a las del modelo original de 175.000 millones, cien veces más grande.</text>
+</svg></div><figcaption><b>RLHF en tres etapas.</b> De izquierda a derecha: el ajuste supervisado produce la política de referencia (azul); las comparaciones humanas entrenan el modelo de recompensa (ámbar); PPO con penalización KL produce el asistente final (morado). La línea punteada indica que la referencia es a la vez el punto de partida de PPO y la vara con que se mide cuánto se alejó.</figcaption></figure><div class="prose"><p>Unos 40 evaluadores contratados hicieron las demostraciones y las comparaciones. El resultado sorprendió: las personas preferían las respuestas del modelo de 1.300 millones de parámetros ajustado así a las del GPT-3 original, de 175.000 millones, cien veces más grande. Ajustar con preferencias valía más que crecer.</p></div></section>
+<section><h2>El modelo de recompensa</h2><div class="prose"><p>El <b>modelo de recompensa</b> (<i>reward model</i>) es una red que recibe una pregunta y una respuesta y devuelve un número, <span class="math">r(x, y)</span>. En la práctica es otro modelo de lenguaje, con la última capa cambiada por una que da un solo valor. Lo interesante es cómo se entrena con comparaciones, porque nadie le dice cuánto debería valer cada respuesta: solo cuál ganó.</p><p>Se usa el <b>modelo de Bradley-Terry</b> (<i>Bradley-Terry model</i>), propuesto por Ralph Bradley y Milton Terry en 1952 para comparar productos por pares en catas. Supone que la probabilidad de que se prefiera la respuesta A a la B depende solo de la diferencia de sus puntajes, a través de la <b>sigmoide</b> σ (<i>sigmoid</i>), una curva que convierte cualquier número en una probabilidad entre 0 y 1:</p><div class="math-display">P(A \succ B) = \sigma\left(r(A) - r(B)\right) = \frac{1}{1 + e^{-(r(A) - r(B))}}</div><p>Entrenar es ajustar la red para que esa probabilidad sea alta en las comparaciones reales: si las personas eligieron A, la pérdida es <span class="math">-\log \sigma(r(A) - r(B))</span>. Con números: si el modelo da 2,1 a la respuesta elegida y 0,9 a la otra, la diferencia es 1,2, la probabilidad 0,77 y la pérdida 0,26. Si hubiera dado más puntaje a la perdedora, la pérdida sería grande y la corrección también. Es la misma regresión logística de un clasificador de dos clases, aplicada a la diferencia entre dos puntajes. Y solo importa la diferencia: sumar 10 a todos los puntajes no cambia nada.</p></div><figure class="fig fig-esquema" id="11-diagrama-3"><div class="lienzo"><svg viewBox="0 0 800 352" style="min-width:640px" role="img" aria-label="Modelo de Bradley-Terry: dos respuestas pasan por el modelo de recompensa, que da 2,1 a la elegida y 0,9 a la otra; la sigmoide de la diferencia, 1,2, da una probabilidad de 0,77 de que se prefiera la elegida, y la pérdida es menos su logaritmo">
+<defs><marker id="c11d3-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker><marker id="c11d3-fis" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-fis)"/></marker><marker id="c11d3-sis" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--d-sis)"/></marker></defs><text x="20" y="26" class="t t-xs t-b t-m">EL MODELO DE RECOMPENSA APRENDE DE COMPARACIONES (BRADLEY-TERRY)</text><rect x="20" y="44" width="230" height="70" rx="10" class="c-tra"/><text x="34" y="66" class="t t-s t-b k-tra">Respuesta A (la elegida)</text><text x="34" y="86" class="t t-xs">exacta · con cifra · breve</text><text x="34" y="102" class="t t-xs"></text><rect x="20" y="130" width="230" height="70" rx="10" class="caja"/><text x="34" y="152" class="t t-s t-b">Respuesta B</text><text x="34" y="172" class="t t-xs">exacta · cordial · larga</text><path d="M250 79H300" class="ln" style="stroke-width:1.6" marker-end="url(#c11d3-muted)"/><path d="M250 165H300" class="ln" style="stroke-width:1.6" marker-end="url(#c11d3-muted)"/><rect x="304" y="70" width="150" height="110" rx="10" class="c-fis"/><text x="379" y="104" class="t t-s t-b k-fis" text-anchor="middle">modelo de</text><text x="379" y="122" class="t t-s t-b k-fis" text-anchor="middle">recompensa r</text><text x="379" y="146" class="t t-xs" text-anchor="middle">(una red; aquí,</text><text x="379" y="160" class="t t-xs" text-anchor="middle">cuatro pesos)</text><path d="M454 100H500" class="ln" style="stroke:var(--c-fis);stroke-width:1.6" marker-end="url(#c11d3-fis)"/><path d="M454 150H500" class="ln" style="stroke:var(--c-fis);stroke-width:1.6" marker-end="url(#c11d3-fis)"/><text x="506" y="104" class="t t-s t-mono t-b">r(A) = 2,1</text><text x="506" y="154" class="t t-s t-mono">r(B) = 0,9</text><rect x="600" y="70" width="180" height="110" rx="10" class="caja"/><text x="614" y="94" class="t t-s">P(A preferida) =</text><text x="614" y="114" class="t t-s t-mono">σ(2,1 − 0,9) = σ(1,2)</text><text x="614" y="136" class="t t-s t-mono t-b">= 0,77</text><text x="614" y="162" class="t t-xs t-mono">pérdida: −log 0,77 = 0,26</text><path d="M590 125H598" class="ln" style="stroke-width:1.4" marker-end="url(#c11d3-muted)"/><path d="M70 330H370M220.0 330V232" class="ln"/><path d="M70.0 329.4 L73.0 329.3 L76.0 329.3 L79.0 329.2 L82.0 329.1 L85.0 329.0 L88.0 328.9 L91.0 328.8 L94.0 328.7 L97.0 328.5 L100.0 328.4 L103.0 328.2 L106.0 328.0 L109.0 327.8 L112.0 327.6 L115.0 327.4 L118.0 327.1 L121.0 326.8 L124.0 326.5 L127.0 326.1 L130.0 325.7 L133.0 325.3 L136.0 324.8 L139.0 324.3 L142.0 323.8 L145.0 323.2 L148.0 322.5 L151.0 321.8 L154.0 321.0 L157.0 320.2 L160.0 319.3 L163.0 318.3 L166.0 317.2 L169.0 316.1 L172.0 314.9 L175.0 313.6 L178.0 312.2 L181.0 310.7 L184.0 309.2 L187.0 307.5 L190.0 305.8 L193.0 304.0 L196.0 302.1 L199.0 300.1 L202.0 298.1 L205.0 296.0 L208.0 293.9 L211.0 291.7 L214.0 289.5 L217.0 287.2 L220.0 285.0 L223.0 282.8 L226.0 280.5 L229.0 278.3 L232.0 276.1 L235.0 274.0 L238.0 271.9 L241.0 269.9 L244.0 267.9 L247.0 266.0 L250.0 264.2 L253.0 262.5 L256.0 260.8 L259.0 259.3 L262.0 257.8 L265.0 256.4 L268.0 255.1 L271.0 253.9 L274.0 252.8 L277.0 251.7 L280.0 250.7 L283.0 249.8 L286.0 249.0 L289.0 248.2 L292.0 247.5 L295.0 246.8 L298.0 246.2 L301.0 245.7 L304.0 245.2 L307.0 244.7 L310.0 244.3 L313.0 243.9 L316.0 243.5 L319.0 243.2 L322.0 242.9 L325.0 242.6 L328.0 242.4 L331.0 242.2 L334.0 242.0 L337.0 241.8 L340.0 241.6 L343.0 241.5 L346.0 241.3 L349.0 241.2 L352.0 241.1 L355.0 241.0 L358.0 240.9 L361.0 240.8 L364.0 240.7 L367.0 240.7 L370.0 240.6" style="fill:none;stroke:var(--d-sis);stroke-width:2.2"/><circle cx="256.0" cy="260.8" r="4.5" style="fill:var(--d-sis)"/><text x="70" y="346" class="t t-xs t-mono">r(A) − r(B): −5</text><text x="370" y="346" class="t t-xs t-mono" text-anchor="end">+5</text><text x="226" y="238" class="t t-xs t-mono">1</text><text x="226" y="289" class="t t-xs t-mono">0,5</text><text x="264" y="276.79" class="t t-xs t-b" style="fill:var(--d-sis)">1,2 → 0,77</text><text x="420" y="250" class="t t-s t-m">La sigmoide σ convierte la diferencia de puntajes</text><text x="420" y="268" class="t t-s t-m">en una probabilidad. Entrenar es subir la probabilidad</text><text x="420" y="286" class="t t-s t-m">de lo que las personas eligieron: si el modelo ya</text><text x="420" y="304" class="t t-s t-m">acierta con holgura, aprende poco; si se equivoca,</text><text x="420" y="322" class="t t-s t-m">la pérdida es grande y corrige mucho.</text>
+</svg></div><figcaption><b>Aprender de comparaciones.</b> Arriba, la respuesta elegida y la otra pasan por el mismo modelo de recompensa, que les da 2,1 y 0,9; la sigmoide de la diferencia da 0,77, la probabilidad de que se prefiera la elegida, y la pérdida es su logaritmo con el signo cambiado. Abajo, la sigmoide: convierte cualquier diferencia de puntajes en una probabilidad entre 0 y 1.</figcaption></figure><div class="prose"><p>El modelo de recompensa aprende lo que dicen las comparaciones, incluidos sus defectos. Si los evaluadores tienen prisa y premian las respuestas largas porque «parecen más completas», el modelo aprende que lo largo suma. Si les gusta que les den la razón, aprende a premiar la adulación. Y una política optimizada contra ese modelo va a explotar esos defectos con la misma tenacidad con que el robot del capítulo 2 empujaba una estantería para cobrar por moverse.</p></div><div class="lab" id="11-lab-1"><div class="lab-title"><span class="tag">Laboratorio</span><h3>Un modelo de recompensa de juguete: elige entre pares de respuestas y mira cómo aprende tus preferencias</h3></div><p class="hint">Teodoro hace una pregunta sobre el robot 7 y hay 16 respuestas posibles, que combinan cuatro rasgos: exacta o no, con cifra o sin ella, cordial o seca, breve o larga. Elige la que preferirías en cada par y mira los pesos que aprende el modelo. Después pulsa «Que elija Teodoro 20 veces» y compáralo con «Que elija un evaluador apurado 20 veces».</p><style>
+[id="11-lab-1"] .c11l1-rot{font:700 .7rem var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin:8px 0 4px}
+[id="11-lab-1"] .btns{align-items:center;margin:6px 0}
+[id="11-lab-1"] .c11l1-q{font:600 .95rem var(--f-display);margin:4px 0 8px;padding:8px 12px;border-left:4px solid var(--d-sis);background:var(--card);border-radius:6px}
+[id="11-lab-1"] .c11l1-par{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:10px}
+[id="11-lab-1"] .c11l1-r{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--card);display:flex;flex-direction:column;gap:8px}
+[id="11-lab-1"] .c11l1-r p{margin:0;font-size:.92rem;line-height:1.45}
+[id="11-lab-1"] .c11l1-r small{font:500 .74rem var(--f-mono);color:var(--muted)}
+[id="11-lab-1"] .c11l1-r button{align-self:flex-start}
+[id="11-lab-1"] .c11l1-w{display:grid;grid-template-columns:auto 1fr auto;gap:5px 10px;align-items:center;font:500 .85rem var(--f-display)}
+[id="11-lab-1"] .c11l1-bar{position:relative;height:14px;background:var(--grid);border-radius:3px}
+[id="11-lab-1"] .c11l1-bar b{position:absolute;top:0;bottom:0;border-radius:3px}
+[id="11-lab-1"] .c11l1-bar i{position:absolute;top:-3px;bottom:-3px;left:50%;width:1px;background:var(--muted)}
+[id="11-lab-1"] .c11l1-w span.n{font-family:var(--f-mono);font-variant-numeric:tabular-nums;min-width:3.4em;text-align:right}
+[id="11-lab-1"] ol{margin:4px 0 0;padding-left:1.4em;font-size:.86rem}
+[id="11-lab-1"] ol li span{font-family:var(--f-mono);color:var(--muted)}
+</style>
+<div class="c11l1-q">Teodoro pregunta: <span id="c11l1-preg"></span></div>
+<div class="c11l1-par">
+  <div class="c11l1-r"><small id="c11l1-ea">Respuesta A</small><p id="c11l1-a"></p><button type="button" id="c11l1-pa">Prefiero A</button></div>
+  <div class="c11l1-r"><small id="c11l1-eb">Respuesta B</small><p id="c11l1-b"></p><button type="button" id="c11l1-pb">Prefiero B</button></div>
+</div>
+<div class="btns">
+  <button type="button" id="c11l1-ted">Que elija Teodoro 20 veces</button>
+  <button type="button" id="c11l1-apu">Que elija un evaluador apurado 20 veces</button>
+  <button type="button" id="c11l1-ver">Mostrar los rasgos</button>
+  <button type="button" id="c11l1-cero">Reiniciar</button>
+</div>
+<span class="c11l1-rot">Lo que aprendió el modelo de recompensa: el peso de cada rasgo</span>
+<div class="c11l1-w" id="c11l1-w"></div>
+<span class="c11l1-rot">Las cinco respuestas que el modelo puntúa más alto</span>
+<ol id="c11l1-top"></ol>
+<div class="readout texto" id="c11l1-out" aria-live="polite"></div></div><div class="prose"><p>Si pulsas una vez «Que elija Teodoro», con esas 20 comparaciones el modelo ya descubre lo principal: que la respuesta sea exacta pesa más que todo lo demás, y ordena como él el 83 % de los pares; con dos veces, 40 comparaciones, el 90 %. Si después sumas 20 comparaciones del evaluador apurado, que premia lo largo y lo amable, el peso de «larga» se vuelve positivo y el acierto cae al 73 %; con 40, al 58 %. El modelo empieza a ordenar mal justo los pares que Teodoro decidiría por la brevedad.</p></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Entrena un modelo de recompensa con comparaciones</h3></div><p>Vas a simular evaluadores que comparan pares de respuestas con el modelo de Bradley-Terry y a entrenar un modelo de recompensa lineal con numpy, con datos de Teodoro solo y con una mezcla que incluye evaluadores apurados. Entra a <code>refuerzo</code> y activa el entorno; solo hace falta numpy.</p><ol class="steps"><li><span>Guarda este programa como <code>preferencias.py</code>:</span></li></ol><div class="code-copia code-lineas"><pre tabindex="0"><code><span class="ln">"""Un modelo de recompensa de juguete: aprende, de comparaciones entre pares de respuestas, que respuesta prefieren</span>
+<span class="ln">las personas (modelo de Bradley-Terry, el mismo que usa RLHF, con una recompensa lineal en cuatro rasgos)."""</span>
+<span class="ln">import itertools</span>
+<span class="ln">import numpy as np</span>
+<span class="ln"></span>
+<span class="ln">RASGOS = ["exacta", "con cifra", "cordial", "larga"]</span>
+<span class="ln">RESPUESTAS = np.array(list(itertools.product([0, 1], repeat=4)), dtype=float)   # las 16 combinaciones</span>
+<span class="ln">GUSTO_TEODORO = np.array([2.5, 0.8, 0.1, -1.2])      # lo que de verdad prefiere: exacta, con cifra, breve</span>
+<span class="ln">GUSTO_APURADO = np.array([0.2, 0.2, 0.8, 2.0])       # un evaluador con prisa: premia lo largo y lo amable</span>
+<span class="ln"></span>
+<span class="ln">def comparaciones(gusto, n, rng):</span>
+<span class="ln">    """n pares al azar; la persona elige A con probabilidad sigmoide(r(A) - r(B)) (Bradley-Terry)."""</span>
+<span class="ln">    i, j = rng.integers(0, 16, n), rng.integers(0, 16, n)</span>
+<span class="ln">    i, j = i[i != j], j[i != j]</span>
+<span class="ln">    dif = RESPUESTAS[i] @ gusto - RESPUESTAS[j] @ gusto</span>
+<span class="ln">    gana_a = rng.random(len(i)) &lt; 1 / (1 + np.exp(-dif))</span>
+<span class="ln">    ganadora = np.where(gana_a, i, j)</span>
+<span class="ln">    perdedora = np.where(gana_a, j, i)</span>
+<span class="ln">    return ganadora, perdedora</span>
+<span class="ln"></span>
+<span class="ln">def entrenar(ganadora, perdedora, pasos=2000, tasa=0.5):</span>
+<span class="ln">    """Ajusta los pesos w para que sigmoide(r(ganadora) - r(perdedora)) sea alta: descenso por gradiente."""</span>
+<span class="ln">    w = np.zeros(4)</span>
+<span class="ln">    X = RESPUESTAS[ganadora] - RESPUESTAS[perdedora]</span>
+<span class="ln">    for _ in range(pasos):</span>
+<span class="ln">        p = 1 / (1 + np.exp(-X @ w))                   # probabilidad que el modelo da a lo que eligio la persona</span>
+<span class="ln">        w += tasa * X.T @ (1 - p) / len(X)             # gradiente de la log-verosimilitud</span>
+<span class="ln">    return w</span>
+<span class="ln"></span>
+<span class="ln">def acierto(w, gusto, rng, n=5000):</span>
+<span class="ln">    """En pares nuevos, cuantas veces el modelo ordena igual que la persona (sin ruido)."""</span>
+<span class="ln">    i, j = rng.integers(0, 16, n), rng.integers(0, 16, n)</span>
+<span class="ln">    ri, rj = RESPUESTAS @ w, RESPUESTAS @ gusto</span>
+<span class="ln">    distintas = rj[i] != rj[j]</span>
+<span class="ln">    return np.mean((ri[i] &gt; ri[j])[distintas] == (rj[i] &gt; rj[j])[distintas])</span>
+<span class="ln"></span>
+<span class="ln">def modelo_mixto(rng):</span>
+<span class="ln">    """El modelo de recompensa entrenado con 600 comparaciones de Teodoro y 400 de evaluadores apurados."""</span>
+<span class="ln">    g1, p1 = comparaciones(GUSTO_TEODORO, 600, rng)</span>
+<span class="ln">    g2, p2 = comparaciones(GUSTO_APURADO, 400, rng)</span>
+<span class="ln">    return entrenar(np.concatenate([g1, g2]), np.concatenate([p1, p2]))</span>
+<span class="ln"></span>
+<span class="ln">if __name__ == "__main__":</span>
+<span class="ln">    rng = np.random.default_rng(42)</span>
+<span class="ln">    for n in (20, 100, 1000):</span>
+<span class="ln">        g, p = comparaciones(GUSTO_TEODORO, n, rng)</span>
+<span class="ln">        w = entrenar(g, p)</span>
+<span class="ln">        print(f"{n:5d} comparaciones de Teodoro -&gt; pesos {np.round(w, 2) + 0.0}  acierto {acierto(w, GUSTO_TEODORO, rng):.0%}")</span>
+<span class="ln"></span>
+<span class="ln">    w = modelo_mixto(rng)</span>
+<span class="ln">    print(f"\n600 de Teodoro + 400 apuradas -&gt; pesos {np.round(w, 2) + 0.0}  acierto {acierto(w, GUSTO_TEODORO, rng):.0%}")</span>
+<span class="ln">    print("Orden de los rasgos:", ", ".join(RASGOS))</span>
+<span class="ln">    mejor = RESPUESTAS[np.argmax(RESPUESTAS @ w)]</span>
+<span class="ln">    print("La respuesta que el modelo puntua mas alto:", ", ".join(r for r, x in zip(RASGOS, mejor) if x) or "ninguno")</span></code></pre><button type="button" class="ver-todo" aria-expanded="false">Ver las 54 líneas</button><button type="button" class="copiar copiar-todo">Copiar</button></div><ol class="steps" start="2" style="counter-reset:st 1"><li><span>Córrelo:</span></li></ol><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python preferencias.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 preferencias.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps" start="3" style="counter-reset:st 2"><li><span>Compara los pesos aprendidos con el gusto verdadero de Teodoro, que está en el programa: 2,5 para exacta, 0,8 para con cifra, 0,1 para cordial y −1,2 para larga.</span></li></ol><p><b>Qué observar:</b> con solo 20 comparaciones, los pesos ya tienen el signo correcto ([1,45 0,48 0,04 −1,02]) y el modelo ordena bien el 97 % de los pares nuevos; con 1.000, [2,39 0,55 0,27 −1,40] y el 100 %. Con la mezcla, el peso de «larga» pasa a +0,29, el acierto cae al 78 % y la respuesta que el modelo puntúa más alto es la exacta, con cifra, cordial <b>y larga</b>, justo la que Teodoro no quiere leer. El modelo no se equivocó en las cuentas: aprendió bien lo que le enseñaron, que no era lo que Teodoro quería. Con otra versión de numpy, las cifras exactas pueden variar un poco.</p></div></section>
+<section><h2>PPO con penalización KL: mejorar sin olvidar el lenguaje</h2><div class="prose"><p>Con el modelo de recompensa listo, la tercera etapa es el PPO del capítulo 10: la política escribe respuestas a preguntas de entrenamiento, el modelo de recompensa las puntúa, un <b>crítico</b> (<i>critic</i>) estima el valor de cada texto parcial, la ventaja generalizada (GAE, <i>Generalized Advantage Estimation</i>) reparte el crédito entre los tokens y el objetivo recortado actualiza la red. Pero si solo se maximiza el puntaje, pasan dos cosas malas. La política encuentra las debilidades del modelo de recompensa, que solo vio respuestas razonables y puede dar puntajes absurdos a textos raros. Y, en ese camino, puede degradar el lenguaje que aprendió: repetir frases que el modelo premia o caer en un estilo extraño.</p><p>El remedio es la <b>penalización KL</b> que el artículo de PPO había dejado de lado: un costo proporcional a la <b>divergencia de Kullback-Leibler</b> (<i>Kullback-Leibler divergence</i>, KL), la medida de cuánto difieren dos políticas del capítulo 10. La recompensa que ve PPO es el puntaje menos un costo por alejarse de la política de referencia:</p><div class="math-display">R(x, y) = r(x, y) - \beta \, \log \frac{\pi_\theta(y \mid x)}{\pi_{\text{ref}}(y \mid x)}</div><p>El segundo término, promediado sobre las respuestas, es la KL entre la política y la referencia, y β decide cuánto pesa. En la práctica se cobra token a token: cada token que la política elige con mucha más probabilidad que la referencia paga un poco. InstructGPT usó β = 0,02.</p></div><div class="analogia"><b>Imagínalo así</b><p>Es como pedirle a un traductor experto que adapte un texto al gusto de un cliente. Puede cambiar el tono y el orden de las frases para agradarle, pero si se aleja demasiado del original deja de ser una traducción. La penalización KL es la regla «agrada al cliente sin dejar de traducir».</p></div><div class="prose"><p>Esta forma tiene una solución exacta conocida: la mejor política posible es la referencia reponderada, <span class="math">\pi^*(y) \propto \pi_{\text{ref}}(y)\, e^{r(y)/\beta}</span>. Con β grande, la exponencial casi no cambia nada y la política se queda en la referencia. Con β chico, la exponencial domina y la política se concentra en las respuestas de mayor puntaje, aunque la referencia las considerara rarísimas. PPO llega a esa política por pasos, porque con modelos de miles de millones de parámetros no se puede calcular la fórmula para todas las respuestas posibles.</p></div><div class="lab" id="11-lab-2"><div class="lab-title"><span class="tag">Laboratorio</span><h3>Mueve el peso de la penalización KL y mira cómo la política se aleja o se queda cerca del modelo original</h3></div><p class="hint">La política elige una de las 16 respuestas de juguete. A la izquierda, cómo cambian el puntaje del modelo de recompensa (ámbar) y el gusto verdadero de Teodoro (verde) a medida que la política se aleja de la referencia. A la derecha, las respuestas más probables antes y después del ajuste. Mueve β de 50 a 0,02.</p><style>
+[id="11-lab-2"] .c11l2-rot{font:700 .7rem var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin:8px 0 4px}
+[id="11-lab-2"] canvas{width:100%;display:block;border-radius:8px}
+[id="11-lab-2"] .c11l2-dos{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px;align-items:start}
+[id="11-lab-2"] .c11l2-ley{display:flex;flex-wrap:wrap;gap:4px 14px;font:500 .8rem var(--f-display);color:var(--muted);margin-top:4px}
+[id="11-lab-2"] .c11l2-ley i{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:5px;border-radius:2px}
+[id="11-lab-2"] .c11l2-ley i.c{width:12px;height:12px;border-radius:3px}
+[id="11-lab-2"] .c11l2-l{display:grid;grid-template-columns:minmax(0,1fr) 92px 3.2em;gap:3px 8px;align-items:center;font:500 .8rem var(--f-display)}
+[id="11-lab-2"] .c11l2-l .bb{position:relative;height:16px}
+[id="11-lab-2"] .c11l2-l .bb b{position:absolute;left:0;height:7px;border-radius:2px}
+[id="11-lab-2"] .c11l2-l .n{font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+[id="11-lab-2"] .c11l2-l .t{overflow-wrap:anywhere}
+</style>
+<div class="ctls">
+  <div class="ctl"><label for="c11l2-b">Peso de la penalización KL (β)</label><input type="range" id="c11l2-b" min="0" max="10" step="1" value="5"><output id="c11l2-bo"></output></div>
+</div>
+<p class="hint" style="margin:2px 0 0">La política elige una de las 16 respuestas de juguete a la pregunta de Teodoro. Se ajusta para maximizar el puntaje del modelo de recompensa menos β por cuánto se aleja de la política de referencia, el modelo antes del ajuste. El modelo de recompensa es el que se entrenó con comparaciones de Teodoro y de evaluadores apurados: le gustan un poco las respuestas largas.</p>
+<div class="c11l2-dos">
+  <div><span class="c11l2-rot">Puntaje medio según cuánto se aleja la política (KL)</span>
+    <canvas id="c11l2-g" data-prop="0.7" role="img" aria-label="Puntaje del modelo de recompensa y gusto verdadero de Teodoro en función de la divergencia KL con la política de referencia, con un punto en el β elegido"></canvas>
+    <div class="c11l2-ley"><span><i style="background:var(--c-fis)"></i>Modelo de recompensa (lo que ve el ajuste)</span><span><i style="background:var(--good)"></i>Gusto de Teodoro (lo que importa)</span></div></div>
+  <div><span class="c11l2-rot">Las respuestas más probables</span>
+    <div class="c11l2-l" id="c11l2-l"></div>
+    <div class="c11l2-ley"><span><i class="c" style="background:var(--muted)"></i>Antes del ajuste (referencia)</span><span><i class="c" style="background:var(--c-tra)"></i>Después del ajuste</span></div></div>
+</div>
+<div class="readout texto" id="c11l2-out" aria-live="polite"></div></div><div class="prose"><p>Con β = 50, la política es casi la referencia: KL 0, puntaje del modelo 1,14 y gusto de Teodoro 1,19. Con β = 0,5, se aleja una KL de 0,43 y el gusto de Teodoro sube a 2,06: aprendió que conviene ser exacta y dar la cifra. Hacia β = 0,2 el gusto de Teodoro toca su máximo, 2,25, y de ahí en adelante baja un poco (2,20 con β = 0,02) mientras el puntaje del modelo sigue subiendo: la política se concentra en la respuesta larga que el modelo sobrevalora, lejos de la favorita de Teodoro, que vale 3,4. Ese patrón tiene nombre, <b>sobreoptimización del modelo de recompensa</b> (<i>reward model overoptimization</i>), y en 2022 Leo Gao, John Schulman y Jacob Hilton lo midieron en modelos de lenguaje: más allá de cierta KL, el puntaje del modelo sigue subiendo y la calidad real baja.</p></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Ajusta una política con penalización KL</h3></div><p>Vas a ajustar una política sobre las 16 respuestas con gradiente de política, usando como recompensa el modelo mixto de la práctica anterior menos β por la KL con la referencia, para cinco valores de β. Guarda el programa en la misma carpeta que <code>preferencias.py</code>, porque lo importa.</p><ol class="steps"><li><span>Guarda este programa como <code>kl.py</code>:</span></li></ol><div class="code-copia code-lineas"><pre tabindex="0"><code><span class="ln">"""RLHF de juguete: ajusta una politica sobre las 16 respuestas para maximizar el modelo de recompensa</span>
+<span class="ln">menos beta por la divergencia KL con la politica de referencia (el modelo antes del ajuste).</span>
+<span class="ln">Usa preferencias.py (guardalo en la misma carpeta)."""</span>
+<span class="ln">import numpy as np</span>
+<span class="ln">from preferencias import RESPUESTAS, RASGOS, GUSTO_TEODORO, modelo_mixto</span>
+<span class="ln"></span>
+<span class="ln">rng = np.random.default_rng(42)</span>
+<span class="ln">w = modelo_mixto(rng)                                   # el modelo de recompensa, con su sesgo por lo largo</span>
+<span class="ln">r_modelo = RESPUESTAS @ w                               # lo que el ajuste puede ver</span>
+<span class="ln">r_teodoro = RESPUESTAS @ GUSTO_TEODORO                  # lo que de verdad importa (el ajuste no lo ve)</span>
+<span class="ln">logit_ref = RESPUESTAS @ np.array([0.4, -0.3, 0.5, 0.4])   # la politica de referencia</span>
+<span class="ln">pi_ref = np.exp(logit_ref) / np.exp(logit_ref).sum()</span>
+<span class="ln">print("Modelo de recompensa: pesos", np.round(w, 2) + 0.0, "para", ", ".join(RASGOS))</span>
+<span class="ln"></span>
+<span class="ln">def ajustar(beta, pasos=3000, lote=64, tasa=0.1):</span>
+<span class="ln">    """Gradiente de politica con muestras: la recompensa de cada respuesta es r - beta * log(pi / pi_ref)."""</span>
+<span class="ln">    theta = logit_ref.copy()</span>
+<span class="ln">    for _ in range(pasos):</span>
+<span class="ln">        pi = np.exp(theta - theta.max()); pi /= pi.sum()</span>
+<span class="ln">        a = rng.choice(16, size=lote, p=pi)</span>
+<span class="ln">        R = r_modelo[a] - beta * np.log(pi[a] / pi_ref[a])          # recompensa con la penalizacion KL</span>
+<span class="ln">        ventaja = R - R.mean()                                       # linea base: el promedio del lote</span>
+<span class="ln">        grad = np.zeros(16)</span>
+<span class="ln">        for k, v in zip(a, ventaja):                                 # grad log pi(k) = uno_en_k - pi</span>
+<span class="ln">            grad -= v * pi</span>
+<span class="ln">            grad[k] += v</span>
+<span class="ln">        theta += tasa * grad / lote</span>
+<span class="ln">    pi = np.exp(theta - theta.max())</span>
+<span class="ln">    return pi / pi.sum()</span>
+<span class="ln"></span>
+<span class="ln">print(f"\n{'beta':&gt;6} {'KL':&gt;6} {'r modelo':&gt;9} {'Teodoro':&gt;8}  respuesta mas probable")</span>
+<span class="ln">for beta in (10, 1, 0.5, 0.2, 0.1):</span>
+<span class="ln">    pi = ajustar(beta)</span>
+<span class="ln">    kl = np.sum(pi * np.log(pi / pi_ref))</span>
+<span class="ln">    k = np.argmax(pi)</span>
+<span class="ln">    cerrada = pi_ref * np.exp(r_modelo / beta); cerrada /= cerrada.sum()  # el optimo exacto, para comparar</span>
+<span class="ln">    nombre = ", ".join(r for r, x in zip(RASGOS, RESPUESTAS[k]) if x) or "(ninguno)"</span>
+<span class="ln">    print(f"{beta:6.2f} {kl:6.2f} {pi @ r_modelo:9.2f} {pi @ r_teodoro:8.2f}  {nombre} ({pi[k]:.0%}; "</span>
+<span class="ln">          f"forma cerrada {cerrada[k]:.0%})")</span>
+<span class="ln">print(f"\nReferencia sin ajustar: r modelo {pi_ref @ r_modelo:.2f}, Teodoro {pi_ref @ r_teodoro:.2f}")</span></code></pre><button type="button" class="ver-todo" aria-expanded="false">Ver las 40 líneas</button><button type="button" class="copiar copiar-todo">Copiar</button></div><ol class="steps" start="2" style="counter-reset:st 1"><li><span>Córrelo (tarda unos segundos):</span></li></ol><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python kl.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 kl.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps" start="3" style="counter-reset:st 2"><li><span>En cada fila, compara la probabilidad que logró el gradiente de política con la de la forma cerrada.</span></li></ol><p><b>Qué observar:</b> el modelo de recompensa de esta corrida tiene pesos [1,14 0,41 0,21 0,25]: premia un poco lo largo. Con β = 10, la política casi no se mueve (KL 0,00, Teodoro 1,25). Al bajar β, la KL crece (0,15, 0,41, 1,09, 2,13) y el puntaje del modelo sube sin parar, de 1,17 a 1,98; el gusto de Teodoro sube hasta 2,20 y ahí se detiene, porque la respuesta favorita de la política es la larga. Con β grande, el gradiente de política llega casi exacto a la forma cerrada; con β = 0,1, se pasa (96 % frente a 86 %): con muestras ruidosas y un paso fijo, ronda el óptimo sin clavarlo. Con otra versión de numpy, las cifras cambian un poco.</p></div></section>
+<section><h2>Recompensas verificables: matemática y código, la base de los modelos de razonamiento</h2><div class="prose"><p>El modelo de recompensa es el punto débil de RLHF: es caro de entrenar, hereda los sesgos de quienes comparan y se puede explotar. Pero hay tareas en que la recompensa no necesita opiniones, porque <b>se puede comprobar</b>: un problema de matemática tiene una respuesta final que coincide o no; un programa pasa sus pruebas o no. A esto se le llama refuerzo con <b>recompensas verificables</b> (<i>Reinforcement Learning with Verifiable Rewards</i>, RLVR): la recompensa la da un programa, sin red de por medio y sin sesgo de estilo.</p><p>Desde septiembre de 2024, cuando OpenAI presentó o1, los llamados <b>modelos de razonamiento</b> (<i>reasoning models</i>) se entrenan así, a gran escala. El modelo escribe un razonamiento largo antes de responder, y solo se premia que la respuesta final sea correcta. Nadie le enseña cómo razonar; el refuerzo sube la probabilidad de las cadenas de pensamiento que terminaron bien. En enero de 2025, DeepSeek-R1 publicó los detalles de una receta abierta: con recompensas por acertar y por respetar un formato, el modelo aprendió solo a escribir razonamientos más largos, a verificar sus pasos y a volver atrás cuando algo no cuadraba.</p><p>DeepSeek usó una variante de PPO llamada <b>GRPO</b> (<i>Group Relative Policy Optimization</i>, optimización de políticas relativa al grupo), presentada en 2024. Para cada problema, la política genera un grupo de respuestas, por ejemplo 8; el verificador da 1 a las correctas y 0 a las incorrectas, y la ventaja de cada respuesta es su recompensa menos la media del grupo, dividida por el desvío. Si 3 de 8 acertaron, las correctas reciben una ventaja de +1,29 y las incorrectas, de −0,77. El promedio del grupo hace de <b>línea base</b> (<i>baseline</i>), como en el capítulo 9, y así no hace falta un crítico, que en un modelo de lenguaje es otra red enorme. El resto es PPO: el cociente recortado y, a veces, una penalización KL.</p></div><figure class="fig fig-flujo" id="11-diagrama-4"><div class="lienzo"><svg viewBox="0 0 800 338" style="min-width:640px" role="img" aria-label="Recompensas verificables con GRPO: para un problema se generan ocho respuestas, un verificador da 1 a las tres correctas y 0 a las demás, y la ventaja de cada una es su recompensa menos la media del grupo, dividida por el desvío: +1,29 para las correctas y −0,77 para las incorrectas">
+<defs><marker id="c11d4-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker><marker id="c11d4-tra" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-tra)"/></marker><marker id="c11d4-fis" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-fis)"/></marker><marker id="c11d4-apl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-apl)"/></marker></defs><text x="20" y="26" class="t t-xs t-b t-m">RECOMPENSAS VERIFICABLES: UN PROGRAMA COMPRUEBA LA RESPUESTA Y CADA UNA SE COMPARA CON SU GRUPO (GRPO)</text><rect x="20" y="44" width="200" height="120" rx="10" class="d-sis"/><text x="34" y="68" class="t t-s t-b k-sis">Problema</text><text x="34" y="90" class="t t-s">¿Cuántos pasos hay</text><text x="34" y="108" class="t t-s">de C5 a F1 por el</text><text x="34" y="126" class="t t-s">atajo?</text><text x="34" y="150" class="t t-xs t-m">respuesta correcta: 7</text><path d="M220 104H250" class="ln" style="stroke:var(--c-apl);stroke-width:1.6" marker-end="url(#c11d4-apl)"/><text x="235" y="96" class="t t-xs t-b k-apl" text-anchor="middle">8</text><rect x="254" y="44" width="150" height="24" rx="5" class="c-tra"/><text x="266" y="61" class="t t-xs t-mono">respuesta 1: «7»</text><text x="420" y="61" class="t t-s t-b" style="fill:var(--good)">✓ 1</text><text x="474" y="61" class="t t-s t-mono t-b k-tra">+1,29</text><rect x="254" y="74" width="150" height="24" rx="5" class="caja"/><text x="266" y="91" class="t t-xs t-mono">respuesta 2: «11»</text><text x="420" y="91" class="t t-s t-b k-warm">✗ 0</text><text x="474" y="91" class="t t-s t-mono t-b k-warm">−0,77</text><rect x="254" y="104" width="150" height="24" rx="5" class="c-tra"/><text x="266" y="121" class="t t-xs t-mono">respuesta 3: «7»</text><text x="420" y="121" class="t t-s t-b" style="fill:var(--good)">✓ 1</text><text x="474" y="121" class="t t-s t-mono t-b k-tra">+1,29</text><rect x="254" y="134" width="150" height="24" rx="5" class="caja"/><text x="266" y="151" class="t t-xs t-mono">respuesta 4: «6»</text><text x="420" y="151" class="t t-s t-b k-warm">✗ 0</text><text x="474" y="151" class="t t-s t-mono t-b k-warm">−0,77</text><rect x="254" y="164" width="150" height="24" rx="5" class="caja"/><text x="266" y="181" class="t t-xs t-mono">respuesta 5: «8»</text><text x="420" y="181" class="t t-s t-b k-warm">✗ 0</text><text x="474" y="181" class="t t-s t-mono t-b k-warm">−0,77</text><rect x="254" y="194" width="150" height="24" rx="5" class="c-tra"/><text x="266" y="211" class="t t-xs t-mono">respuesta 6: «7»</text><text x="420" y="211" class="t t-s t-b" style="fill:var(--good)">✓ 1</text><text x="474" y="211" class="t t-s t-mono t-b k-tra">+1,29</text><rect x="254" y="224" width="150" height="24" rx="5" class="caja"/><text x="266" y="241" class="t t-xs t-mono">respuesta 7: «11»</text><text x="420" y="241" class="t t-s t-b k-warm">✗ 0</text><text x="474" y="241" class="t t-s t-mono t-b k-warm">−0,77</text><rect x="254" y="254" width="150" height="24" rx="5" class="caja"/><text x="266" y="271" class="t t-xs t-mono">respuesta 8: «9»</text><text x="420" y="271" class="t t-s t-b k-warm">✗ 0</text><text x="474" y="271" class="t t-s t-mono t-b k-warm">−0,77</text><text x="400" y="300" class="t t-xs t-m" text-anchor="middle">el verificador</text><text x="492" y="300" class="t t-xs t-m" text-anchor="middle">ventaja</text><rect x="560" y="44" width="220" height="250" rx="10" class="caja"/><text x="574" y="68" class="t t-s t-b">Ventaja relativa al grupo</text><text x="574" y="92" class="t t-s t-mono">A = (r − media) / desvío</text><text x="574" y="116" class="t t-xs t-mono">media = 3/8 = 0,375</text><text x="574" y="134" class="t t-xs t-mono">desvío = 0,48</text><text x="574" y="162" class="t t-s">Sube la probabilidad de</text><text x="574" y="180" class="t t-s">las respuestas correctas y</text><text x="574" y="198" class="t t-s">baja la de las incorrectas,</text><text x="574" y="216" class="t t-s">con el recorte de PPO.</text><text x="574" y="244" class="t t-s t-m">Sin crítico: el promedio del</text><text x="574" y="262" class="t t-s t-m">grupo hace de línea base.</text><text x="20" y="322" class="t t-s t-m">No hace falta un modelo de recompensa entrenado con preferencias: la recompensa la da un programa (¿coincide el resultado? ¿pasan las pruebas?).</text>
+</svg></div><figcaption><b>Recompensas verificables con GRPO.</b> A la izquierda, un problema con respuesta comprobable. La política genera 8 respuestas; el verificador marca las 3 correctas con 1 y las demás con 0. La ventaja de cada una se calcula contra su propio grupo: +1,29 para las correctas y −0,77 para las incorrectas. Así se sube la probabilidad de lo que acertó sin un modelo de recompensa ni un crítico.</figcaption></figure><div class="prose"><p>Las recompensas verificables no resuelven todo. Solo sirven donde hay una forma de verificar, y un verificador mal escrito se puede engañar igual que un modelo de recompensa: un programa que pasa las pruebas porque detecta los casos de prueba, no porque resuelva el problema. El capítulo 12 vuelve sobre esos atajos.</p></div><div class="caso"><b>Un caso real</b><p>En marzo de 2022, el trabajo de InstructGPT mostró que el ajuste con preferencias cambiaba lo que la gente sentía al usar el modelo: las personas preferían las respuestas del modelo ajustado a las del original en alrededor del 85 % de las comparaciones, inventaba menos datos en tareas donde se le pedía no hacerlo y seguía mejor las instrucciones. En noviembre de ese año, OpenAI lanzó ChatGPT, entrenado con la misma receta en tres etapas. En dos meses tenía unos 100 millones de usuarios. Lo que separó a un modelo que continúa textos de un asistente fue, en buena parte, PPO con un modelo de recompensa y una penalización KL.</p></div><div class="ml"><b>En la práctica</b><p><b>El robot y el asistente.</b> Noemí le mostró a Teodoro los dos laboratorios. Él eligió respuestas durante un rato y vio cómo el modelo aprendía que prefiere lo breve y exacto. Después Noemí activó al evaluador apurado, y Teodoro vio subir el peso de «larga». «O sea que si el proveedor contrató gente apurada para comparar, el asistente me va a escribir párrafos». Puede pasar, dijo Noemí, y el segundo laboratorio muestra el otro lado: cuanto más se exprime el modelo de recompensa, más se nota su sesgo. Ulises preguntó si el asistente podría aprender con recompensas verificables. Para algunas preguntas sí: «¿cuántos pedidos salieron ayer del muelle 3?» tiene una respuesta que se puede comprobar contra la base de datos. Para «explícame por qué el robot tomó el rodeo», no hay verificador; hace falta preguntarle a una persona. Yolanda dejó la frase del día: «Entonces el robot y el asistente tienen el mismo problema: aprenden lo que se les premia».</p></div></section>
+<section><h2>DPO, el ajuste con instrucciones y el resto del alineamiento están en Modelos de IA</h2><div class="prose"><p>Este capítulo cubrió la parte de refuerzo de RLHF. El resto del ajuste de modelos de lenguaje está en <a href="https://aaramirez.github.io/modelos-de-ia/temario.html" target="_blank" rel="noopener">Modelos de IA</a>: el ajuste con instrucciones (la primera etapa, a fondo), <b>DPO</b> (<i>Direct Preference Optimization</i>, optimización directa de preferencias), que aprovecha la forma cerrada de la política óptima para aprender de las comparaciones sin modelo de recompensa ni PPO, y el alineamiento en general. Los sesgos de quienes evalúan y sus efectos en las personas están en <a href="https://aaramirez.github.io/ia-responsable/temario.html" target="_blank" rel="noopener">IA responsable</a>.</p></div></section>
+<section><h2>La idea clave</h2><div class="prose"><p>Un modelo de lenguaje es una política: el estado es el texto escrito hasta ahora, la acción es el siguiente token y la respuesta completa es un episodio con una sola recompensa al final. Como nadie sabe escribir una fórmula para «buena respuesta», RLHF la aprende de comparaciones humanas con el modelo de Bradley-Terry, y después ajusta la política con PPO. La penalización KL la mantiene cerca del modelo original, para que no olvide el lenguaje ni explote los defectos del modelo de recompensa, que hereda los sesgos de quienes comparan. Donde la respuesta se puede comprobar, como en matemática y código, un programa reemplaza al modelo de recompensa: es la base de los modelos de razonamiento. La preferencia humana convertida en recompensa: la misma maquinaria de PPO, ahora sobre texto.</p></div></section>
+<section><h2>Pruébate</h2><div class="quiz"><h3>Pruébate</h3><details><summary>En un modelo de lenguaje visto como política, ¿qué son el estado, la acción y el episodio?</summary><p>El estado es la pregunta más lo que el modelo ya escribió; la acción, el siguiente token; el episodio, la respuesta completa, hasta el token de fin.</p></details><details><summary>¿Por qué RLHF pide comparaciones entre dos respuestas en lugar de notas del 1 al 10?</summary><p>Porque las notas absolutas son ruidosas y cada evaluador usa su propia escala, mientras que al comparar dos respuestas a la misma pregunta las personas coinciden mucho más.</p></details><details><summary>El modelo de recompensa da 3,0 a la respuesta elegida y 3,0 a la otra. ¿Qué probabilidad asigna Bradley-Terry a la elección y qué pasa con la pérdida?</summary><p>La diferencia es 0, así que σ(0) = 0,5: el modelo no distingue entre las dos. La pérdida, −log 0,5 ≈ 0,69, empuja a subir el puntaje de la elegida y bajar el de la otra.</p></details><details><summary>¿Para qué sirve la penalización KL en la etapa de PPO?</summary><p>Para que la política no se aleje demasiado del modelo de referencia: así no olvida el lenguaje ni explota los defectos del modelo de recompensa, que solo es confiable cerca de las respuestas que vio.</p></details><details><summary>¿Qué cambia en GRPO respecto de PPO?</summary><p>La ventaja se calcula comparando cada respuesta con las demás del grupo generado para la misma pregunta (recompensa menos la media, dividida por el desvío), en lugar de usar un crítico.</p></details><details><summary>Da un ejemplo de tarea con recompensa verificable y uno sin ella.</summary><p>Con recompensa verificable: un problema de matemática con respuesta numérica, o un programa que debe pasar pruebas. Sin ella: explicar por qué el robot tomó el rodeo o escribir un resumen agradable de leer.</p></details></div></section>
+<section><h2>Para investigar</h2><div class="investiga"><h3>Para investigar</h3><p class="hint">Estas preguntas no se responden en el capítulo: búscalas por tu cuenta.</p><ol><li>¿Cómo funciona la tokenización por pares de bytes (BPE), que decide dónde se corta un texto en tokens?<small>Pista: busca «byte pair encoding tokenizer».</small></li><li>¿Qué hizo PPO-ptx en InstructGPT y qué problema resolvía mezclar gradientes del preentrenamiento?<small>Pista: busca «InstructGPT PPO-ptx alignment tax».</small></li><li>¿Qué es la IA constitucional y cómo reemplaza parte de las comparaciones humanas por comparaciones hechas por otro modelo (RLAIF)?<small>Pista: busca «Constitutional AI RLAIF Bai 2022».</small></li><li>¿Qué es el muestreo «el mejor de n» (<i>best-of-n</i>) y cómo se compara con RLHF para mejorar respuestas usando un modelo de recompensa?<small>Pista: busca «best-of-n sampling reward model vs RLHF».</small></li><li>¿Cómo se usan los modelos de recompensa de proceso, que puntúan cada paso de un razonamiento y no solo la respuesta final?<small>Pista: busca «process reward model let's verify step by step».</small></li></ol></div></section>
+<section><h2>Para saber más</h2><div class="vids"><span>Para saber más</span><a class="vid" href="https://arxiv.org/abs/2203.02155" target="_blank" rel="noopener">Training language models to follow instructions with human feedback <small>el artículo de InstructGPT (2022), en inglés</small></a><a class="vid" href="https://arxiv.org/abs/1706.03741" target="_blank" rel="noopener">Deep reinforcement learning from human preferences <small>el artículo de Christiano y otros (2017), en inglés</small></a><a class="vid" href="https://arxiv.org/abs/2210.10760" target="_blank" rel="noopener">Scaling Laws for Reward Model Overoptimization <small>la sobreoptimización medida (2022), en inglés</small></a><a class="vid" href="https://arxiv.org/abs/2501.12948" target="_blank" rel="noopener">DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning <small>recompensas verificables y GRPO (2025), en inglés</small></a><a class="vid" href="https://arxiv.org/abs/2305.18290" target="_blank" rel="noopener">Direct Preference Optimization <small>el artículo de DPO (2023), que Modelos de IA desarrolla, en inglés</small></a></div></section>
+<label class="got"><input type="checkbox" id="got"> Lo tengo claro</label>
+<nav class="pager" id="pager" aria-label="Capítulo anterior y siguiente"></nav>
+</main>
+</div>
+<footer><span>Curso abierto de aaramirez.github.io.</span><span>Sitio publicado: <a href="https://github.com/aaramirez/aprendizaje-por-refuerzo" target="_blank" rel="noopener">github.com/aaramirez/aprendizaje-por-refuerzo</a></span></footer>
+</div>
+<script src="assets/lab.js"></script>
+<script>
+(function(){
+  const raiz=document.querySelector('[id="11-lab-1"]');
+/* MundoRL: biblioteca mínima común de los labs del curso «Aprendizaje por refuerzo» (sin dependencias, con semilla).
+   Plantilla: copia este bloque DENTRO de la IIFE de tu lab (el motor solo admite <script> en línea, sin src).
+   Uso típico:
+     const M=MundoRL, m=M.cuadricula('almacen');            // la cuadrícula de referencia del curso
+     const r=M.rnd(42);
+     const {V,pi}=M.iterarValor(m);                         // valores óptimos y política óptima
+     M.dibujar(canvas,m,{raiz,V,pi,numeros:true});          // mapa de calor de V y flechas de la política
+     const ep=M.episodio(m,s=>M.elegir(pi,s,r),r);          // un episodio: ep.G, ep.Gd, ep.pasos, ep.final
+   Acciones: 0 arriba, 1 derecha, 2 abajo, 3 izquierda (el orden de CliffWalking en Gymnasium).
+   Estados: s = fila*cols + columna (fila 0 arriba), como FrozenLake y CliffWalking. Nombre de casilla: 'A5' =
+   columna A (la primera de la izquierda), fila 5 contada desde arriba. */
+const MundoRL=(function(){
+  /* ---------- Azar con semilla (mulberry32) ---------- */
+  function rnd(s){return function(){s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  function gauss(r){let u=0;while(!u)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r());}
+  const entero=(r,n)=>Math.floor(r()*n);
+  function barajar(n,r){const a=Array.from({length:n},(_,i)=>i);for(let i=n-1;i>0;i--){const j=entero(r,i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+  /* ---------- Números en español: punto de miles, coma decimal ---------- */
+  const nf=(n,d=0)=>{if(!isFinite(n))return '—';const s=Math.abs(n).toFixed(d).split('.');s[0]=s[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');return (n<0&&Number(Math.abs(n).toFixed(d))!==0?'−':'')+s.join(',');};
+  const pct=(x,d=1)=>nf(100*x,d)+' %';
+
+  /* ---------- Cuadrículas ---------- */
+  const ACC=['arriba','derecha','abajo','izquierda'],FLECHA=['↑','→','↓','←'],DF=[-1,0,1,0],DC=[0,1,0,-1];
+  /* Caracteres: '.' piso, '#' pared (estantería), 'S' inicio, 'P' premio (termina), 'T' trampa (termina),
+     'C' acantilado (castigo y vuelta al inicio, no termina: CliffWalking). */
+  const MAPAS={
+    almacen:['.....P',
+             '.###.T',
+             '...T..',
+             '.#....',
+             '..S#..'],
+    acantilado:['............','............','............','SCCCCCCCCCCP'],
+    lago4:['S...','.T.T','...T','T..P']
+  };
+  /* Recompensas y dinámica por defecto de la cuadrícula de referencia. */
+  const DEF={paso:-0.1,premio:10,trampa:-10,acantilado:-100,resbalar:0.2,gamma:0.9,maxPasos:100};
+  const PRESET={
+    almacen:{},
+    acantilado:{paso:-1,premio:-1,resbalar:0,gamma:1,maxPasos:200},          // CliffWalking-v1 de Gymnasium
+    lago4:{paso:0,premio:1,trampa:0,resbalar:2/3,gamma:0.99,maxPasos:100}      // FrozenLake-v1 4x4, resbaloso
+  };
+  function cuadricula(mapa,o){
+    const clave=typeof mapa==='string'?mapa:null;
+    const filas=(clave?MAPAS[clave]:mapa).slice();
+    const op=Object.assign({},DEF,clave?PRESET[clave]:{},o||{});
+    const nF=filas.length,nC=filas[0].length,nS=nF*nC,tipo=[];
+    let inicio=0;
+    for(let f=0;f<nF;f++)for(let c=0;c<nC;c++){const t=filas[f][c]||'.';tipo.push(t);if(t==='S')inicio=f*nC+c;}
+    const m={mapa:filas,filas:nF,cols:nC,nS,nA:4,tipo,inicio,gamma:op.gamma,maxPasos:op.maxPasos,op,
+      esPared:s=>tipo[s]==='#',esTerminal:s=>tipo[s]==='P'||tipo[s]==='T',
+      fila:s=>Math.floor(s/nC),col:s=>s%nC,
+      nombre:s=>String.fromCharCode(65+s%nC)+(Math.floor(s/nC)+1)};
+    m.libres=[];for(let s=0;s<nS;s++)if(!m.esPared(s)&&!m.esTerminal(s))m.libres.push(s);
+    /* Adónde lleva moverse en la dirección d desde s (paredes y bordes: se queda). */
+    function mover(s,d){const f=m.fila(s)+DF[d],c=m.col(s)+DC[d];if(f<0||f>=nF||c<0||c>=nC)return s;const s2=f*nC+c;return tipo[s2]==='#'?s:s2;}
+    function resultado(s2){const t=tipo[s2];
+      if(t==='P')return {s2,r:op.premio,fin:true};
+      if(t==='T')return {s2,r:op.trampa,fin:true};
+      if(t==='C')return {s2:inicio,r:op.acantilado,fin:false,cayo:true};
+      return {s2,r:op.paso,fin:false};}
+    /* P[s][a]: lista de {p,s2,r,fin} (como env.unwrapped.P de Gymnasium). Con probabilidad 1−resbalar va adonde
+       quiere; con resbalar/2 se desvía a cada lado (nunca hacia atrás). */
+    m.reconstruir=function(){
+      m.P=[];
+      for(let s=0;s<nS;s++){const fila=[];
+        for(let a=0;a<4;a++){const lista=[];
+          if(m.esPared(s)||m.esTerminal(s)){fila.push([{p:1,s2:s,r:0,fin:true}]);continue;}
+          const q=op.resbalar,opciones=[[a,1-q],[(a+1)%4,q/2],[(a+3)%4,q/2]];
+          for(const [d,p] of opciones){if(p<=0)continue;const res=resultado(mover(s,d));
+            const ya=lista.find(x=>x.s2===res.s2&&x.r===res.r);if(ya)ya.p+=p;else lista.push(Object.assign({p},res));}
+          fila.push(lista);}
+        m.P.push(fila);}
+    };
+    m.reconstruir();
+    /* Cambia una casilla (para labs donde el lector arma la cuadrícula) o una opción, y recalcula P. */
+    m.poner=function(s,t){tipo[s]=t;if(t==='S'){for(let i=0;i<nS;i++)if(i!==s&&tipo[i]==='S')tipo[i]='.';inicio=s;m.inicio=s;}
+      m.libres=[];for(let i=0;i<nS;i++)if(!m.esPared(i)&&!m.esTerminal(i))m.libres.push(i);m.reconstruir();};
+    m.opcion=function(k,v){op[k]=v;if(k==='gamma')m.gamma=v;if(k==='maxPasos')m.maxPasos=v;m.reconstruir();};
+    /* Un paso con azar: {s2, r, fin, cayo}. */
+    m.paso=function(s,a,r){const L=m.P[s][a];let u=r(),k=0;while(k<L.length-1&&u>=L[k].p){u-=L[k].p;k++;}
+      const x=L[k];return {s2:x.s2,r:x.r,fin:x.fin,cayo:tipo[s]!=='C'&&x.s2===inicio&&x.r===op.acantilado};};
+    return m;
+  }
+
+  /* ---------- Políticas: Float64Array de nS*4 probabilidades (pi[s*4+a]) ---------- */
+  function politicaAlAzar(m){const pi=new Float64Array(m.nS*4).fill(0.25);return pi;}
+  function politicaDe(m,acciones){const pi=new Float64Array(m.nS*4);for(let s=0;s<m.nS;s++)pi[s*4+(acciones[s]??0)]=1;return pi;}
+  function accionDe(pi,s){let k=0;for(let a=1;a<4;a++)if(pi[s*4+a]>pi[s*4+k]+1e-12)k=a;return k;}
+  function elegir(pi,s,r){let u=r();for(let a=0;a<3;a++){u-=pi[s*4+a];if(u<0)return a;}return 3;}
+  /* Política codiciosa respecto de Q (nS*4). empates: 'primero' (determinista) o 'repartir'. */
+  function codiciosa(m,Q,empates){const pi=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++){let mx=-Infinity;for(let a=0;a<4;a++)mx=Math.max(mx,Q[s*4+a]);
+      const mejores=[];for(let a=0;a<4;a++)if(Q[s*4+a]>=mx-1e-9)mejores.push(a);
+      if(empates==='repartir')mejores.forEach(a=>pi[s*4+a]=1/mejores.length);else pi[s*4+mejores[0]]=1;}
+    return pi;}
+  function egreedy(m,Q,eps){const pi=codiciosa(m,Q);for(let i=0;i<pi.length;i++)pi[i]=pi[i]*(1-eps)+eps/4;return pi;}
+
+  /* ---------- Bellman ---------- */
+  function g_(m,o){return o&&o.gamma!==undefined?o.gamma:m.gamma;}
+  /* Q a partir de V: q(s,a) = Σ p·(r + γ·V(s')) */
+  function qDeV(m,V,gamma){const Q=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++)for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));Q[s*4+a]=(m.esPared(s)||m.esTerminal(s))?0:q;}
+    return Q;}
+  /* Un barrido de evaluación (síncrono): V'(s) = Σ_a π(a|s) Σ p·(r + γ·V(s')). Devuelve {V, delta}. */
+  function barridoEval(m,pi,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let v=0;for(let a=0;a<4;a++){const w=pi[s*4+a];if(!w)continue;let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));v+=w*q;}
+      W[s]=v;delta=Math.max(delta,Math.abs(v-V[s]));}
+    return {V:W,delta};}
+  /* Un barrido de optimalidad: V'(s) = max_a Σ p·(r + γ·V(s')). */
+  function barridoValor(m,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let mx=-Infinity;for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));if(q>mx)mx=q;}
+      W[s]=mx;delta=Math.max(delta,Math.abs(mx-V[s]));}
+    return {V:W,delta};}
+  /* Evaluación de política hasta que el cambio máximo baje de tol. */
+  function evaluar(m,pi,o={}){let V=o.V0?Float64Array.from(o.V0):new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoEval(m,pi,V,o);V=x.V;delta=x.delta;b++;}
+    return {V,barridos:b,delta};}
+  function iterarValor(m,o={}){let V=new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoValor(m,V,o);V=x.V;delta=x.delta;b++;}
+    const Q=qDeV(m,V,g_(m,o));return {V,Q,pi:codiciosa(m,Q),barridos:b};}
+  function iterarPolitica(m,o={}){let pi=o.pi0?Float64Array.from(o.pi0):politicaAlAzar(m),vueltas=0,V,historia=[];
+    for(;vueltas<100;vueltas++){V=evaluar(m,pi,o).V;const nuevo=codiciosa(m,qDeV(m,V,g_(m,o)));historia.push({V,pi});
+      let igual=true;for(const s of m.libres)if(accionDe(nuevo,s)!==accionDe(pi,s)||pi[s*4+accionDe(pi,s)]<1){igual=false;break;}
+      pi=nuevo;if(igual)break;}
+    return {V,pi,vueltas:vueltas+1,historia};}
+
+  /* ---------- Experiencia ---------- */
+  /* Un episodio desde el inicio (o desde o.desde). elegir(s) -> acción. Devuelve estados, acciones, recompensas,
+     G (suma), Gd (suma descontada con γ), pasos y final: 'premio', 'trampa' o 'tope'. */
+  function episodio(m,elegirA,r,o={}){const S=[],A=[],R=[];let s=o.desde??m.inicio,fin=false,final='tope',G=0,Gd=0,d=1;const max=o.max??m.maxPasos;
+    for(let t=0;t<max&&!fin;t++){const a=elegirA(s);const x=m.paso(s,a,r);S.push(s);A.push(a);R.push(x.r);G+=x.r;Gd+=d*x.r;d*=m.gamma;s=x.s2;fin=x.fin;
+      if(fin)final=m.tipo[s]==='P'?'premio':'trampa';}
+    S.push(s);return {S,A,R,G,Gd,pasos:A.length,final};}
+  /* Retorno medio de una política (pi) en n episodios. */
+  function retornoMedio(m,pi,r,n=1000){let G=0,Gd=0,P=0,ex=0;for(let i=0;i<n;i++){const e=episodio(m,s=>elegir(pi,s,r),r);G+=e.G;Gd+=e.Gd;P+=e.pasos;if(e.final==='premio')ex++;}
+    return {G:G/n,Gd:Gd/n,pasos:P/n,exito:ex/n};}
+
+  /* ---------- Bandido multibrazo (cap. 01) ---------- */
+  const BANDIDO=[0.25,0.40,0.55,0.50,0.30];   // máquinas A-E: probabilidad de pagar 1 ficha
+  function bandido(probs,r){probs=probs||BANDIDO;let mejor=0;probs.forEach((p,i)=>{if(p>probs[mejor])mejor=i;});
+    return {k:probs.length,probs,mejor,tirar:a=>r()<probs[a]?1:0};}
+  /* Agente de bandido. metodo: 'egreedy' (ε, promedio de la muestra), 'optimista' (codicioso con Q inicial q0 y
+     paso constante alfa) o 'ucb' (cota superior de confianza con c). */
+  function agenteBandido(k,o={}){const met=o.metodo||'egreedy',q0=o.q0??0,r=o.r||rnd(42);
+    const Q=new Float64Array(k).fill(met==='optimista'?q0:0),N=new Float64Array(k);let t=0;
+    function arg(f){let mx=-Infinity,L=[];for(let a=0;a<k;a++){const v=f(a);if(v>mx+1e-12){mx=v;L=[a];}else if(Math.abs(v-mx)<=1e-12)L.push(a);}return L[entero(r,L.length)];}
+    /* epsilon, alfa y c se pueden cambiar en vivo (ag.epsilon = 0.2). exploro: si la última elección fue al azar. */
+    return {Q,N,metodo:met,epsilon:o.epsilon??0.1,alfa:o.alfa??0.1,c:o.c??2,exploro:false,
+      elegir(){t++;this.exploro=false;
+        if(met==='ucb'){for(let a=0;a<k;a++)if(N[a]===0)return a;const c=this.c;return arg(a=>Q[a]+c*Math.sqrt(Math.log(t)/N[a]));}
+        if(met==='egreedy'&&r()<this.epsilon){this.exploro=true;return entero(r,k);}
+        return arg(a=>Q[a]);},
+      aprender(a,R){N[a]++;Q[a]+=(met==='optimista'?this.alfa:1/N[a])*(R-Q[a]);}};}
+
+  /* ---------- CartPole (Barto, Sutton y Anderson, 1983; constantes de Gymnasium CartPole-v1) ---------- */
+  function cartpole(r){const g=9.8,mc=1.0,mp=0.1,mt=mc+mp,l=0.5,pml=mp*l,F=10,tau=0.02,thMax=12*2*Math.PI/360,xMax=2.4;
+    const e={x:0,v:0,th:0,w:0,t:0,fin:false,
+      reiniciar(){this.x=(r()-.5)*.1;this.v=(r()-.5)*.1;this.th=(r()-.5)*.1;this.w=(r()-.5)*.1;this.t=0;this.fin=false;return this.obs();},
+      obs(){return [this.x,this.v,this.th,this.w];},
+      /* a: 0 empuja a la izquierda, 1 a la derecha. Recompensa 1 por paso; termina si |θ|>12° o |x|>2,4; trunca a 500. */
+      paso(a){const f=a===1?F:-F,ct=Math.cos(this.th),st=Math.sin(this.th);
+        const tmp=(f+pml*this.w*this.w*st)/mt,ta=(g*st-ct*tmp)/(l*(4/3-mp*ct*ct/mt)),xa=tmp-pml*ta*ct/mt;
+        this.x+=tau*this.v;this.v+=tau*xa;this.th+=tau*this.w;this.w+=tau*ta;this.t++;
+        const termina=Math.abs(this.x)>xMax||Math.abs(this.th)>thMax,trunca=this.t>=500;this.fin=termina||trunca;
+        return {obs:this.obs(),r:1,termina,trunca};}};
+    e.reiniciar();return e;}
+
+  /* ---------- Dibujo ---------- */
+  function color(raiz,n){return getComputedStyle(raiz).getPropertyValue(n).trim();}
+  function rgb(c){if(!c)return [128,128,128];if(c[0]==='#'){if(c.length===4)c='#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];return [1,3,5].map(i=>parseInt(c.substr(i,2),16));}
+    const m=c.match(/[\d.]+/g);return m?m.slice(0,3).map(Number):[128,128,128];}
+  function mezcla(a,b,t){const A=rgb(a),B=rgb(b);return 'rgb('+A.map((x,i)=>Math.round(x+(B[i]-x)*t)).join(',')+')';}
+  /* Prepara un canvas con devicePixelRatio. Alto = ancho * data-prop (o o.prop). Devuelve {c,w,h}. */
+  function lienzo(cv,prop){const w=Math.max(120,cv.clientWidth||cv.parentNode.clientWidth||300),p=prop??parseFloat(cv.dataset.prop||'0.6'),h=Math.round(w*p),k=window.devicePixelRatio||1;
+    cv.style.height=h+'px';cv.width=Math.round(w*k);cv.height=Math.round(h*k);const c=cv.getContext('2d');c.setTransform(k,0,0,k,0,0);return {c,w,h};}
+  function flecha(c,x,y,a,L,col,ancho){const dx=DC[a],dy=DF[a];c.strokeStyle=col;c.fillStyle=col;c.lineWidth=ancho||2;
+    const x0=x-dx*L*.45,y0=y-dy*L*.45,x1=x+dx*L*.45,y1=y+dy*L*.45;c.beginPath();c.moveTo(x0,y0);c.lineTo(x1-dx*L*.18,y1-dy*L*.18);c.stroke();
+    const px=-dy,py=dx;c.beginPath();c.moveTo(x1,y1);c.lineTo(x1-dx*L*.3+px*L*.2,y1-dy*L*.3+py*L*.2);c.lineTo(x1-dx*L*.3-px*L*.2,y1-dy*L*.3-py*L*.2);c.closePath();c.fill();}
+  /* Dibuja la cuadrícula. o: {raiz, V (mapa de calor), rango (|V| que satura el color), pi (flechas: probabilidades),
+     numeros (escribe V), ruta (lista de estados), agente (estado), resaltar (estado), Q (cuatro triángulos por casilla),
+     visitas (Float64Array: opacidad de exploración), prop}. Devuelve {lado, x0, y0, casilla(px,py) -> s o -1}. */
+  function dibujar(cv,m,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),prop=o.prop??(m.filas/m.cols);
+    const {c,w,h}=lienzo(cv,prop),lado=Math.min((w-2)/m.cols,(h-2)/m.filas),x0=(w-lado*m.cols)/2,y0=(h-lado*m.filas)/2;
+    const card=C('--card'),azul=C('--c-red'),rojo=C('--warm'),ink=C('--ink'),muted=C('--muted'),good=C('--good'),line=C('--line');
+    c.clearRect(0,0,w,h);
+    let rango=o.rango;if(!rango&&(o.V||o.Q)){rango=1e-9;const src=o.V||o.Q;for(let i=0;i<src.length;i++)rango=Math.max(rango,Math.abs(src[i]));}
+    const tinte=v=>v>=0?mezcla(card,azul,Math.min(1,v/rango)*.85):mezcla(card,rojo,Math.min(1,-v/rango)*.85);
+    const fuente=Math.max(9,Math.min(14,lado*.24));
+    for(let s=0;s<m.nS;s++){const x=x0+m.col(s)*lado,y=y0+m.fila(s)*lado,t=m.tipo[s],cx=x+lado/2,cy=y+lado/2;
+      c.fillStyle=card;
+      if(t==='#'){c.fillStyle=mezcla(card,muted,.55);c.fillRect(x,y,lado,lado);
+        c.strokeStyle=mezcla(card,muted,.8);c.lineWidth=1;c.beginPath();for(let k=1;k<4;k++){c.moveTo(x+3,y+lado*k/4);c.lineTo(x+lado-3,y+lado*k/4);}c.stroke();continue;}
+      if(t==='P'){c.fillStyle=mezcla(card,good,.28);c.fillRect(x,y,lado,lado);}
+      else if(t==='T'||t==='C'){c.fillStyle=mezcla(card,rojo,.28);c.fillRect(x,y,lado,lado);}
+      else if(o.Q){const q=k=>o.Q[s*4+k];const P=[[cx,cy],[x,y],[x+lado,y],[x+lado,y+lado],[x,y+lado]];
+        const tri=[[1,2],[2,3],[3,4],[4,1]];for(let a=0;a<4;a++){c.fillStyle=tinte(q(a));c.beginPath();c.moveTo(cx,cy);c.lineTo(...P[tri[a][0]]);c.lineTo(...P[tri[a][1]]);c.closePath();c.fill();}
+        c.strokeStyle=line;c.lineWidth=.6;c.beginPath();c.moveTo(x,y);c.lineTo(x+lado,y+lado);c.moveTo(x+lado,y);c.lineTo(x,y+lado);c.stroke();}
+      else if(o.V){c.fillStyle=tinte(o.V[s]);c.fillRect(x,y,lado,lado);}
+      else c.fillRect(x,y,lado,lado);
+      if(o.visitas&&!m.esTerminal(s)){const vmax=Math.max(1,...o.visitas);c.fillStyle=C('--c-apl');c.globalAlpha=.45*Math.sqrt(o.visitas[s]/vmax);c.fillRect(x,y,lado,lado);c.globalAlpha=1;}
+      c.textAlign='center';c.textBaseline='middle';
+      if(t==='P'||t==='T'||t==='C'){c.fillStyle=t==='P'?good:rojo;c.font='700 '+Math.round(fuente*1.05)+'px '+C('--f-display');
+        const val=t==='P'?m.op.premio:t==='T'?m.op.trampa:m.op.acantilado;
+        c.fillText(t==='P'?'Premio':t==='T'?'Trampa':'',cx,cy-(lado>44?fuente*.55:0));if(lado>44||t==='C'){c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText((val>0?'+':'')+nf(val,Number.isInteger(val)?0:1),cx,t==='C'?cy:cy+fuente*.65);}
+        continue;}
+      if(o.pi&&!o.Q){const ps=[0,1,2,3].map(a=>o.pi[s*4+a]),mx=Math.max(...ps);
+        for(let a=0;a<4;a++)if(ps[a]>0.01){const L=lado*(o.numeros?.42:.6)*(0.45+0.55*ps[a]/mx);flecha(c,cx,cy-(o.numeros?lado*.14:0),a,L,ink,ps[a]>=mx-1e-9?2.2:1.2);}}
+      if(o.numeros&&o.V){c.fillStyle=ink;c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText(nf(o.V[s],1),cx,o.pi?y+lado*.78:cy);}
+      if(t==='S'&&!o.V&&!o.Q){c.fillStyle=muted;c.font='700 '+Math.round(fuente*.85)+'px '+C('--f-display');c.fillText('Inicio',cx,y+lado*.82);}
+    }
+    c.strokeStyle=line;c.lineWidth=1;for(let i=0;i<=m.cols;i++){c.beginPath();c.moveTo(x0+i*lado,y0);c.lineTo(x0+i*lado,y0+m.filas*lado);c.stroke();}
+    for(let j=0;j<=m.filas;j++){c.beginPath();c.moveTo(x0,y0+j*lado);c.lineTo(x0+m.cols*lado,y0+j*lado);c.stroke();}
+    const ini=m.inicio,xi=x0+m.col(ini)*lado,yi=y0+m.fila(ini)*lado;c.strokeStyle=C('--accent');c.setLineDash([4,3]);c.lineWidth=2;c.strokeRect(xi+2,yi+2,lado-4,lado-4);c.setLineDash([]);
+    if(o.resaltar!==undefined&&o.resaltar>=0){const xr=x0+m.col(o.resaltar)*lado,yr=y0+m.fila(o.resaltar)*lado;c.strokeStyle=C('--c-tra');c.lineWidth=3;c.strokeRect(xr+1.5,yr+1.5,lado-3,lado-3);}
+    if(o.ruta&&o.ruta.length>1){c.strokeStyle=C('--c-fis');c.lineWidth=Math.max(2,lado*.07);c.lineJoin='round';c.globalAlpha=.85;c.beginPath();
+      o.ruta.forEach((s,i)=>{const px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado;i?c.lineTo(px,py):c.moveTo(px,py);});c.stroke();c.globalAlpha=1;}
+    if(o.agente!==undefined&&o.agente>=0){const s=o.agente,px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado,R=lado*.26;
+      c.fillStyle=C('--d-casa');c.strokeStyle=card;c.lineWidth=2;c.beginPath();c.arc(px,py,R,0,7);c.fill();c.stroke();
+      c.fillStyle=card;c.beginPath();c.arc(px-R*.38,py-R*.15,R*.16,0,7);c.arc(px+R*.38,py-R*.15,R*.16,0,7);c.fill();}
+    return {lado,x0,y0,casilla(px,py){const cc=Math.floor((px-x0)/lado),ff=Math.floor((py-y0)/lado);return (cc<0||ff<0||cc>=m.cols||ff>=m.filas)?-1:ff*m.cols+cc;}};
+  }
+  /* Curvas. series: [{y:[...], color:'--c-tra', nombre, punteada, tenue, ancho}]. o: {raiz, media (ventana de la
+     media móvil; la serie cruda se dibuja tenue), ymin, ymax, xmax, ejeX, ejeY, lineas:[{y, color, nombre}], prop}. */
+  function media(y,k){const out=new Array(y.length);let s=0;for(let i=0;i<y.length;i++){s+=y[i];if(i>=k)s-=y[i-k];out[i]=s/Math.min(i+1,k);}return out;}
+  function curva(cv,series,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),{c,w,h}=lienzo(cv,o.prop);
+    const iz=46,de=10,ar=10,ab=26,W=w-iz-de,H=h-ar-ab;
+    let n=o.xmax||1,lo=o.ymin,hi=o.ymax;series.forEach(S=>{n=Math.max(n,S.y.length);});
+    if(lo===undefined||hi===undefined){let a=Infinity,b=-Infinity;series.forEach(S=>S.y.forEach(v=>{if(isFinite(v)){a=Math.min(a,v);b=Math.max(b,v);}}));(o.lineas||[]).forEach(L=>{a=Math.min(a,L.y);b=Math.max(b,L.y);});
+      if(!isFinite(a)){a=0;b=1;}if(a===b){a-=1;b+=1;}const pad=(b-a)*.06;if(lo===undefined)lo=a-pad;if(hi===undefined)hi=b+pad;}
+    const X=i=>iz+(n>1?i/(n-1):0)*W,Y=v=>ar+H-(Math.min(hi,Math.max(lo,v))-lo)/(hi-lo)*H;
+    c.clearRect(0,0,w,h);c.fillStyle=C('--card');c.fillRect(0,0,w,h);
+    c.strokeStyle=C('--grid');c.lineWidth=1;c.fillStyle=C('--muted');c.font='10px '+C('--f-mono');c.textAlign='right';c.textBaseline='middle';
+    for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4,y=Y(v);c.beginPath();c.moveTo(iz,y);c.lineTo(iz+W,y);c.stroke();c.fillText(nf(v,o.decimales??(Math.abs(hi-lo)<0.5?2:Math.abs(hi-lo)<5?1:0)),iz-4,y);}
+    c.textAlign='center';c.textBaseline='top';for(let k=0;k<=4;k++){const i=Math.round((n-1)*k/4);if(k&&i===Math.round((n-1)*(k-1)/4))continue;const ul=n>1&&i===n-1;c.textAlign=ul?'right':'center';c.fillText(nf(i+(o.desde1?1:0)),ul?X(i)+de-1:X(i),ar+H+5);}
+    if(o.ejeX){c.textAlign='right';c.fillText(o.ejeX,iz+W,ar+H+15);}
+    if(o.ejeY){c.save();c.translate(10,ar+H/2);c.rotate(-Math.PI/2);c.textAlign='center';c.fillText(o.ejeY,0,0);c.restore();}
+    (o.lineas||[]).forEach(L=>{c.strokeStyle=C(L.color||'--muted');c.setLineDash([5,4]);c.lineWidth=1.4;c.beginPath();c.moveTo(iz,Y(L.y));c.lineTo(iz+W,Y(L.y));c.stroke();c.setLineDash([]);
+      if(L.nombre){c.fillStyle=C(L.color||'--muted');c.textAlign='right';c.textBaseline='bottom';c.fillText(L.nombre,iz+W-4,Y(L.y)-2);}});
+    const traza=(y,col,anch,alfa,punt)=>{if(!y.length)return;c.strokeStyle=col;c.lineWidth=anch;c.globalAlpha=alfa;c.setLineDash(punt?[5,4]:[]);c.beginPath();
+      y.forEach((v,i)=>{i?c.lineTo(X(i),Y(v)):c.moveTo(X(i),Y(v));});c.stroke();c.globalAlpha=1;c.setLineDash([]);};
+    series.forEach(S=>{const col=C(S.color||'--accent');if(o.media&&S.y.length>1){if(o.crudo!==false&&!S.sinCrudo)traza(S.y,col,1,.22,false);traza(media(S.y,o.media),col,S.ancho||2.2,1,S.punteada);}else traza(S.y,col,S.ancho||2,S.tenue?.35:1,S.punteada);});
+    c.strokeStyle=C('--line');c.strokeRect(iz+.5,ar+.5,W,H);
+    return {X,Y};
+  }
+  /* Redibuja al cambiar el tema o el ancho. */
+  function tema(raiz,fn){let t;const re=()=>{clearTimeout(t);t=setTimeout(fn,60);};
+    if(window.ResizeObserver)new ResizeObserver(re).observe(raiz);
+    new MutationObserver(re).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme','class']});
+    if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',re);}
+  const quieto=()=>!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+  /* Entrenar por tramos sin congelar la página: trabajo() hace una unidad (un episodio, un paso) y devuelve false
+     cuando ya no hay más; cada cuadro trabaja o.ms milisegundos (24 por defecto) y llama a o.cuadro(). */
+  function bucle(trabajo,o={}){const ms=o.ms??24;let vivo=false,id=0;
+    function cuadro(){if(!vivo)return;const t0=performance.now();let sigue=true;
+      do{sigue=trabajo()!==false;}while(sigue&&performance.now()-t0<ms&&!o.unoPorCuadro);
+      if(o.cuadro)o.cuadro();if(!sigue){vivo=false;if(o.fin)o.fin();return;}
+      id=o.pausa?setTimeout(cuadro,o.pausa):requestAnimationFrame(cuadro);}
+    return {iniciar(){if(vivo)return;vivo=true;cuadro();},parar(){vivo=false;cancelAnimationFrame(id);clearTimeout(id);},get corriendo(){return vivo;}};}
+
+  return {rnd,gauss,entero,barajar,nf,pct,ACC,FLECHA,MAPAS,DEF,cuadricula,
+    politicaAlAzar,politicaDe,accionDe,elegir,codiciosa,egreedy,qDeV,barridoEval,barridoValor,evaluar,iterarValor,iterarPolitica,
+    episodio,retornoMedio,BANDIDO,bandido,agenteBandido,cartpole,
+    color,rgb,mezcla,lienzo,flecha,dibujar,media,curva,tema,quieto,bucle};
+})();
+  const M=MundoRL,nf=M.nf,pct=M.pct,$=s=>raiz.querySelector(s);
+  /* Las 16 respuestas de juguete a la pregunta de Teodoro: todas las combinaciones de cuatro rasgos
+     (exacta, con cifra, cordial, larga). Rasgo k de la respuesta i: (i >> (3 − k)) & 1, en el mismo orden que
+     itertools.product de la práctica en Python. */
+  const RASGOS=['exacta','con cifra','cordial','larga'];
+  const PREGUNTA='¿Por qué el robot 7 tomó el pasillo de arriba en vez del atajo?';
+  const rasgos=i=>[0,1,2,3].map(k=>(i>>(3-k))&1);
+  function textoRespuesta(i){const [E,N,C,L]=rasgos(i);let t=C?'¡Buena pregunta, Teodoro! ':'';
+    t+=E?'Porque el atajo pasa junto al foso y, con el piso resbaloso de la zona de lavado, el robot puede patinar y caer.'
+        :'Porque el pasillo de arriba es más corto y el robot siempre elige el camino más corto.';
+    if(N)t+=E?' Por arriba llega el 98,5 % de las veces; por el atajo, el 65,9 %.':' Por arriba son 7 pasos y por el atajo, 11.';
+    if(L)t+=' Además, el robot estima el valor de cada casilla con la ecuación de Bellman, compara las cuatro acciones posibles en cada una y elige la de mayor valor esperado, descontando el futuro con γ = 0,9.';
+    return t;}
+  const etiqueta=i=>{const x=rasgos(i);return [x[0]?'exacta':'inexacta',x[1]?'con cifra':'sin cifra',x[2]?'cordial':'seca',x[3]?'larga':'breve'].join(' · ');};
+  const GUSTO_TEODORO=[2.5,0.8,0.1,-1.2],GUSTO_APURADO=[0.2,0.2,0.8,2.0];
+  const puntaje=(w,i)=>{const x=rasgos(i);return w[0]*x[0]+w[1]*x[1]+w[2]*x[2]+w[3]*x[3];};
+  const r=M.rnd(42);let w=[0,0,0,0],datos=[],par=[0,1],quien={tu:0,teodoro:0,apurado:0},ver=false;
+  const sig=z=>1/(1+Math.exp(-z));
+  /* Modelo de Bradley-Terry: P(A preferida a B) = sigmoide(r(A) − r(B)), con r lineal en los cuatro rasgos.
+     Se reajusta con todas las comparaciones (descenso por gradiente de la log-verosimilitud, con una pizca de L2). */
+  function ajustar(){w=[0,0,0,0];if(!datos.length)return;
+    for(let it=0;it<400;it++){const g=[0,0,0,0];for(const [a,b] of datos){const xa=rasgos(a),xb=rasgos(b),d=xa.map((v,k)=>v-xb[k]);
+        const p=sig(d.reduce((s,v,k)=>s+v*w[k],0));for(let k=0;k<4;k++)g[k]+=(1-p)*d[k];}
+      for(let k=0;k<4;k++)w[k]+=0.8*(g[k]/datos.length-0.01*w[k]);}}
+  function nuevoPar(){let a=Math.floor(r()*16),b=Math.floor(r()*16);while(b===a)b=Math.floor(r()*16);par=[a,b];}
+  function elegir(ganadora,origen){const [a,b]=par;datos.push(ganadora===0?[a,b]:[b,a]);quien[origen]++;}
+  function simular(gusto,origen){for(let k=0;k<20;k++){const [a,b]=par,p=sig(puntaje(gusto,a)-puntaje(gusto,b));elegir(r()<p?0:1,origen);nuevoPar();}ajustar();pintar();}
+  /* Qué tan bien ordena el modelo los 120 pares, comparado con el gusto verdadero de Teodoro. */
+  function acierto(){let ok=0,n=0;for(let i=0;i<16;i++)for(let j=i+1;j<16;j++){const t=puntaje(GUSTO_TEODORO,i)-puntaje(GUSTO_TEODORO,j);if(Math.abs(t)<1e-9)continue;n++;
+      const m=puntaje(w,i)-puntaje(w,j);if(m*t>0)ok++;}return ok/n;}
+  function pintar(){const [a,b]=par;$('#c11l1-preg').textContent=PREGUNTA;$('#c11l1-a').textContent=textoRespuesta(a);$('#c11l1-b').textContent=textoRespuesta(b);
+    $('#c11l1-ea').textContent='Respuesta A'+(ver?' · '+etiqueta(a):'');$('#c11l1-eb').textContent='Respuesta B'+(ver?' · '+etiqueta(b):'');
+    const esc=Math.max(1,...w.map(Math.abs));
+    $('#c11l1-w').innerHTML=RASGOS.map((nm,k)=>{const v=w[k],ancho=Math.abs(v)/esc*50,izq=v>=0?50:50-ancho;
+      return '<span>'+nm+'</span><span class="c11l1-bar" aria-hidden="true"><i></i><b style="left:'+izq+'%;width:'+ancho+'%;background:var('+(v>=0?'--c-fis':'--warm')+')"></b></span><span class="n">'+(v>=0?'+':'')+nf(v,2)+'</span>';}).join('');
+    const orden=Array.from({length:16},(_,i)=>i).sort((x,y)=>puntaje(w,y)-puntaje(w,x)).slice(0,5);
+    $('#c11l1-top').innerHTML=orden.map(i=>'<li>'+etiqueta(i)+' <span>r = '+nf(puntaje(w,i),2)+'</span></li>').join('');
+    let t='<span class="big">'+nf(datos.length)+' comparaciones</span>';
+    if(!datos.length)t+='<span>Lee las dos respuestas y elige la que preferirías recibir si fueras Teodoro, que mide en viajes por hora y no tiene tiempo para leer de más. Cada elección es un dato para el modelo de recompensa.</span>';
+    else{const p=sig(puntaje(w,a)-puntaje(w,b));
+      t+='<span>Origen: '+[['tú',quien.tu],['Teodoro',quien.teodoro],['el evaluador apurado',quien.apurado]].filter(x=>x[1]).map(x=>x[0]+' '+x[1]).join(' · ')+'.</span>';
+      t+='<span>Para el par de arriba, el modelo cree que se elegirá la A con probabilidad '+pct(p,0)+'.</span>';
+      t+='<span>El modelo ordena igual que el gusto verdadero de Teodoro el <b>'+pct(acierto(),0)+'</b> de los pares de respuestas.</span>';
+      if(quien.apurado>=20&&w[3]>0)t+='<span class="warn">Con los datos del evaluador apurado, el modelo aprendió que «larga» suma puntos. Una política entrenada con esta recompensa va a escribir respuestas largas, aunque Teodoro las prefiera breves: el modelo de recompensa hereda los sesgos de quien compara.</span>';
+      else if(datos.length>=20&&w[0]>Math.max(w[1],w[2],w[3]))t+='<span class="ok">Con pocas comparaciones el modelo ya descubrió lo principal: que la respuesta sea exacta pesa más que todo lo demás.</span>';}
+    $('#c11l1-out').innerHTML=t;}
+  $('#c11l1-pa').addEventListener('click',()=>{elegir(0,'tu');nuevoPar();ajustar();pintar();});
+  $('#c11l1-pb').addEventListener('click',()=>{elegir(1,'tu');nuevoPar();ajustar();pintar();});
+  $('#c11l1-ted').addEventListener('click',()=>simular(GUSTO_TEODORO,'teodoro'));
+  $('#c11l1-apu').addEventListener('click',()=>simular(GUSTO_APURADO,'apurado'));
+  $('#c11l1-ver').addEventListener('click',e=>{ver=!ver;e.currentTarget.textContent=ver?'Ocultar los rasgos':'Mostrar los rasgos';pintar();});
+  $('#c11l1-cero').addEventListener('click',()=>{datos=[];w=[0,0,0,0];quien={tu:0,teodoro:0,apurado:0};nuevoPar();pintar();});
+  nuevoPar();pintar();
+})();
+</script>
+<script>
+(function(){
+  const raiz=document.querySelector('[id="11-lab-2"]');
+/* MundoRL: biblioteca mínima común de los labs del curso «Aprendizaje por refuerzo» (sin dependencias, con semilla).
+   Plantilla: copia este bloque DENTRO de la IIFE de tu lab (el motor solo admite <script> en línea, sin src).
+   Uso típico:
+     const M=MundoRL, m=M.cuadricula('almacen');            // la cuadrícula de referencia del curso
+     const r=M.rnd(42);
+     const {V,pi}=M.iterarValor(m);                         // valores óptimos y política óptima
+     M.dibujar(canvas,m,{raiz,V,pi,numeros:true});          // mapa de calor de V y flechas de la política
+     const ep=M.episodio(m,s=>M.elegir(pi,s,r),r);          // un episodio: ep.G, ep.Gd, ep.pasos, ep.final
+   Acciones: 0 arriba, 1 derecha, 2 abajo, 3 izquierda (el orden de CliffWalking en Gymnasium).
+   Estados: s = fila*cols + columna (fila 0 arriba), como FrozenLake y CliffWalking. Nombre de casilla: 'A5' =
+   columna A (la primera de la izquierda), fila 5 contada desde arriba. */
+const MundoRL=(function(){
+  /* ---------- Azar con semilla (mulberry32) ---------- */
+  function rnd(s){return function(){s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  function gauss(r){let u=0;while(!u)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r());}
+  const entero=(r,n)=>Math.floor(r()*n);
+  function barajar(n,r){const a=Array.from({length:n},(_,i)=>i);for(let i=n-1;i>0;i--){const j=entero(r,i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+  /* ---------- Números en español: punto de miles, coma decimal ---------- */
+  const nf=(n,d=0)=>{if(!isFinite(n))return '—';const s=Math.abs(n).toFixed(d).split('.');s[0]=s[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');return (n<0&&Number(Math.abs(n).toFixed(d))!==0?'−':'')+s.join(',');};
+  const pct=(x,d=1)=>nf(100*x,d)+' %';
+
+  /* ---------- Cuadrículas ---------- */
+  const ACC=['arriba','derecha','abajo','izquierda'],FLECHA=['↑','→','↓','←'],DF=[-1,0,1,0],DC=[0,1,0,-1];
+  /* Caracteres: '.' piso, '#' pared (estantería), 'S' inicio, 'P' premio (termina), 'T' trampa (termina),
+     'C' acantilado (castigo y vuelta al inicio, no termina: CliffWalking). */
+  const MAPAS={
+    almacen:['.....P',
+             '.###.T',
+             '...T..',
+             '.#....',
+             '..S#..'],
+    acantilado:['............','............','............','SCCCCCCCCCCP'],
+    lago4:['S...','.T.T','...T','T..P']
+  };
+  /* Recompensas y dinámica por defecto de la cuadrícula de referencia. */
+  const DEF={paso:-0.1,premio:10,trampa:-10,acantilado:-100,resbalar:0.2,gamma:0.9,maxPasos:100};
+  const PRESET={
+    almacen:{},
+    acantilado:{paso:-1,premio:-1,resbalar:0,gamma:1,maxPasos:200},          // CliffWalking-v1 de Gymnasium
+    lago4:{paso:0,premio:1,trampa:0,resbalar:2/3,gamma:0.99,maxPasos:100}      // FrozenLake-v1 4x4, resbaloso
+  };
+  function cuadricula(mapa,o){
+    const clave=typeof mapa==='string'?mapa:null;
+    const filas=(clave?MAPAS[clave]:mapa).slice();
+    const op=Object.assign({},DEF,clave?PRESET[clave]:{},o||{});
+    const nF=filas.length,nC=filas[0].length,nS=nF*nC,tipo=[];
+    let inicio=0;
+    for(let f=0;f<nF;f++)for(let c=0;c<nC;c++){const t=filas[f][c]||'.';tipo.push(t);if(t==='S')inicio=f*nC+c;}
+    const m={mapa:filas,filas:nF,cols:nC,nS,nA:4,tipo,inicio,gamma:op.gamma,maxPasos:op.maxPasos,op,
+      esPared:s=>tipo[s]==='#',esTerminal:s=>tipo[s]==='P'||tipo[s]==='T',
+      fila:s=>Math.floor(s/nC),col:s=>s%nC,
+      nombre:s=>String.fromCharCode(65+s%nC)+(Math.floor(s/nC)+1)};
+    m.libres=[];for(let s=0;s<nS;s++)if(!m.esPared(s)&&!m.esTerminal(s))m.libres.push(s);
+    /* Adónde lleva moverse en la dirección d desde s (paredes y bordes: se queda). */
+    function mover(s,d){const f=m.fila(s)+DF[d],c=m.col(s)+DC[d];if(f<0||f>=nF||c<0||c>=nC)return s;const s2=f*nC+c;return tipo[s2]==='#'?s:s2;}
+    function resultado(s2){const t=tipo[s2];
+      if(t==='P')return {s2,r:op.premio,fin:true};
+      if(t==='T')return {s2,r:op.trampa,fin:true};
+      if(t==='C')return {s2:inicio,r:op.acantilado,fin:false,cayo:true};
+      return {s2,r:op.paso,fin:false};}
+    /* P[s][a]: lista de {p,s2,r,fin} (como env.unwrapped.P de Gymnasium). Con probabilidad 1−resbalar va adonde
+       quiere; con resbalar/2 se desvía a cada lado (nunca hacia atrás). */
+    m.reconstruir=function(){
+      m.P=[];
+      for(let s=0;s<nS;s++){const fila=[];
+        for(let a=0;a<4;a++){const lista=[];
+          if(m.esPared(s)||m.esTerminal(s)){fila.push([{p:1,s2:s,r:0,fin:true}]);continue;}
+          const q=op.resbalar,opciones=[[a,1-q],[(a+1)%4,q/2],[(a+3)%4,q/2]];
+          for(const [d,p] of opciones){if(p<=0)continue;const res=resultado(mover(s,d));
+            const ya=lista.find(x=>x.s2===res.s2&&x.r===res.r);if(ya)ya.p+=p;else lista.push(Object.assign({p},res));}
+          fila.push(lista);}
+        m.P.push(fila);}
+    };
+    m.reconstruir();
+    /* Cambia una casilla (para labs donde el lector arma la cuadrícula) o una opción, y recalcula P. */
+    m.poner=function(s,t){tipo[s]=t;if(t==='S'){for(let i=0;i<nS;i++)if(i!==s&&tipo[i]==='S')tipo[i]='.';inicio=s;m.inicio=s;}
+      m.libres=[];for(let i=0;i<nS;i++)if(!m.esPared(i)&&!m.esTerminal(i))m.libres.push(i);m.reconstruir();};
+    m.opcion=function(k,v){op[k]=v;if(k==='gamma')m.gamma=v;if(k==='maxPasos')m.maxPasos=v;m.reconstruir();};
+    /* Un paso con azar: {s2, r, fin, cayo}. */
+    m.paso=function(s,a,r){const L=m.P[s][a];let u=r(),k=0;while(k<L.length-1&&u>=L[k].p){u-=L[k].p;k++;}
+      const x=L[k];return {s2:x.s2,r:x.r,fin:x.fin,cayo:tipo[s]!=='C'&&x.s2===inicio&&x.r===op.acantilado};};
+    return m;
+  }
+
+  /* ---------- Políticas: Float64Array de nS*4 probabilidades (pi[s*4+a]) ---------- */
+  function politicaAlAzar(m){const pi=new Float64Array(m.nS*4).fill(0.25);return pi;}
+  function politicaDe(m,acciones){const pi=new Float64Array(m.nS*4);for(let s=0;s<m.nS;s++)pi[s*4+(acciones[s]??0)]=1;return pi;}
+  function accionDe(pi,s){let k=0;for(let a=1;a<4;a++)if(pi[s*4+a]>pi[s*4+k]+1e-12)k=a;return k;}
+  function elegir(pi,s,r){let u=r();for(let a=0;a<3;a++){u-=pi[s*4+a];if(u<0)return a;}return 3;}
+  /* Política codiciosa respecto de Q (nS*4). empates: 'primero' (determinista) o 'repartir'. */
+  function codiciosa(m,Q,empates){const pi=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++){let mx=-Infinity;for(let a=0;a<4;a++)mx=Math.max(mx,Q[s*4+a]);
+      const mejores=[];for(let a=0;a<4;a++)if(Q[s*4+a]>=mx-1e-9)mejores.push(a);
+      if(empates==='repartir')mejores.forEach(a=>pi[s*4+a]=1/mejores.length);else pi[s*4+mejores[0]]=1;}
+    return pi;}
+  function egreedy(m,Q,eps){const pi=codiciosa(m,Q);for(let i=0;i<pi.length;i++)pi[i]=pi[i]*(1-eps)+eps/4;return pi;}
+
+  /* ---------- Bellman ---------- */
+  function g_(m,o){return o&&o.gamma!==undefined?o.gamma:m.gamma;}
+  /* Q a partir de V: q(s,a) = Σ p·(r + γ·V(s')) */
+  function qDeV(m,V,gamma){const Q=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++)for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));Q[s*4+a]=(m.esPared(s)||m.esTerminal(s))?0:q;}
+    return Q;}
+  /* Un barrido de evaluación (síncrono): V'(s) = Σ_a π(a|s) Σ p·(r + γ·V(s')). Devuelve {V, delta}. */
+  function barridoEval(m,pi,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let v=0;for(let a=0;a<4;a++){const w=pi[s*4+a];if(!w)continue;let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));v+=w*q;}
+      W[s]=v;delta=Math.max(delta,Math.abs(v-V[s]));}
+    return {V:W,delta};}
+  /* Un barrido de optimalidad: V'(s) = max_a Σ p·(r + γ·V(s')). */
+  function barridoValor(m,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let mx=-Infinity;for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));if(q>mx)mx=q;}
+      W[s]=mx;delta=Math.max(delta,Math.abs(mx-V[s]));}
+    return {V:W,delta};}
+  /* Evaluación de política hasta que el cambio máximo baje de tol. */
+  function evaluar(m,pi,o={}){let V=o.V0?Float64Array.from(o.V0):new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoEval(m,pi,V,o);V=x.V;delta=x.delta;b++;}
+    return {V,barridos:b,delta};}
+  function iterarValor(m,o={}){let V=new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoValor(m,V,o);V=x.V;delta=x.delta;b++;}
+    const Q=qDeV(m,V,g_(m,o));return {V,Q,pi:codiciosa(m,Q),barridos:b};}
+  function iterarPolitica(m,o={}){let pi=o.pi0?Float64Array.from(o.pi0):politicaAlAzar(m),vueltas=0,V,historia=[];
+    for(;vueltas<100;vueltas++){V=evaluar(m,pi,o).V;const nuevo=codiciosa(m,qDeV(m,V,g_(m,o)));historia.push({V,pi});
+      let igual=true;for(const s of m.libres)if(accionDe(nuevo,s)!==accionDe(pi,s)||pi[s*4+accionDe(pi,s)]<1){igual=false;break;}
+      pi=nuevo;if(igual)break;}
+    return {V,pi,vueltas:vueltas+1,historia};}
+
+  /* ---------- Experiencia ---------- */
+  /* Un episodio desde el inicio (o desde o.desde). elegir(s) -> acción. Devuelve estados, acciones, recompensas,
+     G (suma), Gd (suma descontada con γ), pasos y final: 'premio', 'trampa' o 'tope'. */
+  function episodio(m,elegirA,r,o={}){const S=[],A=[],R=[];let s=o.desde??m.inicio,fin=false,final='tope',G=0,Gd=0,d=1;const max=o.max??m.maxPasos;
+    for(let t=0;t<max&&!fin;t++){const a=elegirA(s);const x=m.paso(s,a,r);S.push(s);A.push(a);R.push(x.r);G+=x.r;Gd+=d*x.r;d*=m.gamma;s=x.s2;fin=x.fin;
+      if(fin)final=m.tipo[s]==='P'?'premio':'trampa';}
+    S.push(s);return {S,A,R,G,Gd,pasos:A.length,final};}
+  /* Retorno medio de una política (pi) en n episodios. */
+  function retornoMedio(m,pi,r,n=1000){let G=0,Gd=0,P=0,ex=0;for(let i=0;i<n;i++){const e=episodio(m,s=>elegir(pi,s,r),r);G+=e.G;Gd+=e.Gd;P+=e.pasos;if(e.final==='premio')ex++;}
+    return {G:G/n,Gd:Gd/n,pasos:P/n,exito:ex/n};}
+
+  /* ---------- Bandido multibrazo (cap. 01) ---------- */
+  const BANDIDO=[0.25,0.40,0.55,0.50,0.30];   // máquinas A-E: probabilidad de pagar 1 ficha
+  function bandido(probs,r){probs=probs||BANDIDO;let mejor=0;probs.forEach((p,i)=>{if(p>probs[mejor])mejor=i;});
+    return {k:probs.length,probs,mejor,tirar:a=>r()<probs[a]?1:0};}
+  /* Agente de bandido. metodo: 'egreedy' (ε, promedio de la muestra), 'optimista' (codicioso con Q inicial q0 y
+     paso constante alfa) o 'ucb' (cota superior de confianza con c). */
+  function agenteBandido(k,o={}){const met=o.metodo||'egreedy',q0=o.q0??0,r=o.r||rnd(42);
+    const Q=new Float64Array(k).fill(met==='optimista'?q0:0),N=new Float64Array(k);let t=0;
+    function arg(f){let mx=-Infinity,L=[];for(let a=0;a<k;a++){const v=f(a);if(v>mx+1e-12){mx=v;L=[a];}else if(Math.abs(v-mx)<=1e-12)L.push(a);}return L[entero(r,L.length)];}
+    /* epsilon, alfa y c se pueden cambiar en vivo (ag.epsilon = 0.2). exploro: si la última elección fue al azar. */
+    return {Q,N,metodo:met,epsilon:o.epsilon??0.1,alfa:o.alfa??0.1,c:o.c??2,exploro:false,
+      elegir(){t++;this.exploro=false;
+        if(met==='ucb'){for(let a=0;a<k;a++)if(N[a]===0)return a;const c=this.c;return arg(a=>Q[a]+c*Math.sqrt(Math.log(t)/N[a]));}
+        if(met==='egreedy'&&r()<this.epsilon){this.exploro=true;return entero(r,k);}
+        return arg(a=>Q[a]);},
+      aprender(a,R){N[a]++;Q[a]+=(met==='optimista'?this.alfa:1/N[a])*(R-Q[a]);}};}
+
+  /* ---------- CartPole (Barto, Sutton y Anderson, 1983; constantes de Gymnasium CartPole-v1) ---------- */
+  function cartpole(r){const g=9.8,mc=1.0,mp=0.1,mt=mc+mp,l=0.5,pml=mp*l,F=10,tau=0.02,thMax=12*2*Math.PI/360,xMax=2.4;
+    const e={x:0,v:0,th:0,w:0,t:0,fin:false,
+      reiniciar(){this.x=(r()-.5)*.1;this.v=(r()-.5)*.1;this.th=(r()-.5)*.1;this.w=(r()-.5)*.1;this.t=0;this.fin=false;return this.obs();},
+      obs(){return [this.x,this.v,this.th,this.w];},
+      /* a: 0 empuja a la izquierda, 1 a la derecha. Recompensa 1 por paso; termina si |θ|>12° o |x|>2,4; trunca a 500. */
+      paso(a){const f=a===1?F:-F,ct=Math.cos(this.th),st=Math.sin(this.th);
+        const tmp=(f+pml*this.w*this.w*st)/mt,ta=(g*st-ct*tmp)/(l*(4/3-mp*ct*ct/mt)),xa=tmp-pml*ta*ct/mt;
+        this.x+=tau*this.v;this.v+=tau*xa;this.th+=tau*this.w;this.w+=tau*ta;this.t++;
+        const termina=Math.abs(this.x)>xMax||Math.abs(this.th)>thMax,trunca=this.t>=500;this.fin=termina||trunca;
+        return {obs:this.obs(),r:1,termina,trunca};}};
+    e.reiniciar();return e;}
+
+  /* ---------- Dibujo ---------- */
+  function color(raiz,n){return getComputedStyle(raiz).getPropertyValue(n).trim();}
+  function rgb(c){if(!c)return [128,128,128];if(c[0]==='#'){if(c.length===4)c='#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];return [1,3,5].map(i=>parseInt(c.substr(i,2),16));}
+    const m=c.match(/[\d.]+/g);return m?m.slice(0,3).map(Number):[128,128,128];}
+  function mezcla(a,b,t){const A=rgb(a),B=rgb(b);return 'rgb('+A.map((x,i)=>Math.round(x+(B[i]-x)*t)).join(',')+')';}
+  /* Prepara un canvas con devicePixelRatio. Alto = ancho * data-prop (o o.prop). Devuelve {c,w,h}. */
+  function lienzo(cv,prop){const w=Math.max(120,cv.clientWidth||cv.parentNode.clientWidth||300),p=prop??parseFloat(cv.dataset.prop||'0.6'),h=Math.round(w*p),k=window.devicePixelRatio||1;
+    cv.style.height=h+'px';cv.width=Math.round(w*k);cv.height=Math.round(h*k);const c=cv.getContext('2d');c.setTransform(k,0,0,k,0,0);return {c,w,h};}
+  function flecha(c,x,y,a,L,col,ancho){const dx=DC[a],dy=DF[a];c.strokeStyle=col;c.fillStyle=col;c.lineWidth=ancho||2;
+    const x0=x-dx*L*.45,y0=y-dy*L*.45,x1=x+dx*L*.45,y1=y+dy*L*.45;c.beginPath();c.moveTo(x0,y0);c.lineTo(x1-dx*L*.18,y1-dy*L*.18);c.stroke();
+    const px=-dy,py=dx;c.beginPath();c.moveTo(x1,y1);c.lineTo(x1-dx*L*.3+px*L*.2,y1-dy*L*.3+py*L*.2);c.lineTo(x1-dx*L*.3-px*L*.2,y1-dy*L*.3-py*L*.2);c.closePath();c.fill();}
+  /* Dibuja la cuadrícula. o: {raiz, V (mapa de calor), rango (|V| que satura el color), pi (flechas: probabilidades),
+     numeros (escribe V), ruta (lista de estados), agente (estado), resaltar (estado), Q (cuatro triángulos por casilla),
+     visitas (Float64Array: opacidad de exploración), prop}. Devuelve {lado, x0, y0, casilla(px,py) -> s o -1}. */
+  function dibujar(cv,m,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),prop=o.prop??(m.filas/m.cols);
+    const {c,w,h}=lienzo(cv,prop),lado=Math.min((w-2)/m.cols,(h-2)/m.filas),x0=(w-lado*m.cols)/2,y0=(h-lado*m.filas)/2;
+    const card=C('--card'),azul=C('--c-red'),rojo=C('--warm'),ink=C('--ink'),muted=C('--muted'),good=C('--good'),line=C('--line');
+    c.clearRect(0,0,w,h);
+    let rango=o.rango;if(!rango&&(o.V||o.Q)){rango=1e-9;const src=o.V||o.Q;for(let i=0;i<src.length;i++)rango=Math.max(rango,Math.abs(src[i]));}
+    const tinte=v=>v>=0?mezcla(card,azul,Math.min(1,v/rango)*.85):mezcla(card,rojo,Math.min(1,-v/rango)*.85);
+    const fuente=Math.max(9,Math.min(14,lado*.24));
+    for(let s=0;s<m.nS;s++){const x=x0+m.col(s)*lado,y=y0+m.fila(s)*lado,t=m.tipo[s],cx=x+lado/2,cy=y+lado/2;
+      c.fillStyle=card;
+      if(t==='#'){c.fillStyle=mezcla(card,muted,.55);c.fillRect(x,y,lado,lado);
+        c.strokeStyle=mezcla(card,muted,.8);c.lineWidth=1;c.beginPath();for(let k=1;k<4;k++){c.moveTo(x+3,y+lado*k/4);c.lineTo(x+lado-3,y+lado*k/4);}c.stroke();continue;}
+      if(t==='P'){c.fillStyle=mezcla(card,good,.28);c.fillRect(x,y,lado,lado);}
+      else if(t==='T'||t==='C'){c.fillStyle=mezcla(card,rojo,.28);c.fillRect(x,y,lado,lado);}
+      else if(o.Q){const q=k=>o.Q[s*4+k];const P=[[cx,cy],[x,y],[x+lado,y],[x+lado,y+lado],[x,y+lado]];
+        const tri=[[1,2],[2,3],[3,4],[4,1]];for(let a=0;a<4;a++){c.fillStyle=tinte(q(a));c.beginPath();c.moveTo(cx,cy);c.lineTo(...P[tri[a][0]]);c.lineTo(...P[tri[a][1]]);c.closePath();c.fill();}
+        c.strokeStyle=line;c.lineWidth=.6;c.beginPath();c.moveTo(x,y);c.lineTo(x+lado,y+lado);c.moveTo(x+lado,y);c.lineTo(x,y+lado);c.stroke();}
+      else if(o.V){c.fillStyle=tinte(o.V[s]);c.fillRect(x,y,lado,lado);}
+      else c.fillRect(x,y,lado,lado);
+      if(o.visitas&&!m.esTerminal(s)){const vmax=Math.max(1,...o.visitas);c.fillStyle=C('--c-apl');c.globalAlpha=.45*Math.sqrt(o.visitas[s]/vmax);c.fillRect(x,y,lado,lado);c.globalAlpha=1;}
+      c.textAlign='center';c.textBaseline='middle';
+      if(t==='P'||t==='T'||t==='C'){c.fillStyle=t==='P'?good:rojo;c.font='700 '+Math.round(fuente*1.05)+'px '+C('--f-display');
+        const val=t==='P'?m.op.premio:t==='T'?m.op.trampa:m.op.acantilado;
+        c.fillText(t==='P'?'Premio':t==='T'?'Trampa':'',cx,cy-(lado>44?fuente*.55:0));if(lado>44||t==='C'){c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText((val>0?'+':'')+nf(val,Number.isInteger(val)?0:1),cx,t==='C'?cy:cy+fuente*.65);}
+        continue;}
+      if(o.pi&&!o.Q){const ps=[0,1,2,3].map(a=>o.pi[s*4+a]),mx=Math.max(...ps);
+        for(let a=0;a<4;a++)if(ps[a]>0.01){const L=lado*(o.numeros?.42:.6)*(0.45+0.55*ps[a]/mx);flecha(c,cx,cy-(o.numeros?lado*.14:0),a,L,ink,ps[a]>=mx-1e-9?2.2:1.2);}}
+      if(o.numeros&&o.V){c.fillStyle=ink;c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText(nf(o.V[s],1),cx,o.pi?y+lado*.78:cy);}
+      if(t==='S'&&!o.V&&!o.Q){c.fillStyle=muted;c.font='700 '+Math.round(fuente*.85)+'px '+C('--f-display');c.fillText('Inicio',cx,y+lado*.82);}
+    }
+    c.strokeStyle=line;c.lineWidth=1;for(let i=0;i<=m.cols;i++){c.beginPath();c.moveTo(x0+i*lado,y0);c.lineTo(x0+i*lado,y0+m.filas*lado);c.stroke();}
+    for(let j=0;j<=m.filas;j++){c.beginPath();c.moveTo(x0,y0+j*lado);c.lineTo(x0+m.cols*lado,y0+j*lado);c.stroke();}
+    const ini=m.inicio,xi=x0+m.col(ini)*lado,yi=y0+m.fila(ini)*lado;c.strokeStyle=C('--accent');c.setLineDash([4,3]);c.lineWidth=2;c.strokeRect(xi+2,yi+2,lado-4,lado-4);c.setLineDash([]);
+    if(o.resaltar!==undefined&&o.resaltar>=0){const xr=x0+m.col(o.resaltar)*lado,yr=y0+m.fila(o.resaltar)*lado;c.strokeStyle=C('--c-tra');c.lineWidth=3;c.strokeRect(xr+1.5,yr+1.5,lado-3,lado-3);}
+    if(o.ruta&&o.ruta.length>1){c.strokeStyle=C('--c-fis');c.lineWidth=Math.max(2,lado*.07);c.lineJoin='round';c.globalAlpha=.85;c.beginPath();
+      o.ruta.forEach((s,i)=>{const px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado;i?c.lineTo(px,py):c.moveTo(px,py);});c.stroke();c.globalAlpha=1;}
+    if(o.agente!==undefined&&o.agente>=0){const s=o.agente,px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado,R=lado*.26;
+      c.fillStyle=C('--d-casa');c.strokeStyle=card;c.lineWidth=2;c.beginPath();c.arc(px,py,R,0,7);c.fill();c.stroke();
+      c.fillStyle=card;c.beginPath();c.arc(px-R*.38,py-R*.15,R*.16,0,7);c.arc(px+R*.38,py-R*.15,R*.16,0,7);c.fill();}
+    return {lado,x0,y0,casilla(px,py){const cc=Math.floor((px-x0)/lado),ff=Math.floor((py-y0)/lado);return (cc<0||ff<0||cc>=m.cols||ff>=m.filas)?-1:ff*m.cols+cc;}};
+  }
+  /* Curvas. series: [{y:[...], color:'--c-tra', nombre, punteada, tenue, ancho}]. o: {raiz, media (ventana de la
+     media móvil; la serie cruda se dibuja tenue), ymin, ymax, xmax, ejeX, ejeY, lineas:[{y, color, nombre}], prop}. */
+  function media(y,k){const out=new Array(y.length);let s=0;for(let i=0;i<y.length;i++){s+=y[i];if(i>=k)s-=y[i-k];out[i]=s/Math.min(i+1,k);}return out;}
+  function curva(cv,series,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),{c,w,h}=lienzo(cv,o.prop);
+    const iz=46,de=10,ar=10,ab=26,W=w-iz-de,H=h-ar-ab;
+    let n=o.xmax||1,lo=o.ymin,hi=o.ymax;series.forEach(S=>{n=Math.max(n,S.y.length);});
+    if(lo===undefined||hi===undefined){let a=Infinity,b=-Infinity;series.forEach(S=>S.y.forEach(v=>{if(isFinite(v)){a=Math.min(a,v);b=Math.max(b,v);}}));(o.lineas||[]).forEach(L=>{a=Math.min(a,L.y);b=Math.max(b,L.y);});
+      if(!isFinite(a)){a=0;b=1;}if(a===b){a-=1;b+=1;}const pad=(b-a)*.06;if(lo===undefined)lo=a-pad;if(hi===undefined)hi=b+pad;}
+    const X=i=>iz+(n>1?i/(n-1):0)*W,Y=v=>ar+H-(Math.min(hi,Math.max(lo,v))-lo)/(hi-lo)*H;
+    c.clearRect(0,0,w,h);c.fillStyle=C('--card');c.fillRect(0,0,w,h);
+    c.strokeStyle=C('--grid');c.lineWidth=1;c.fillStyle=C('--muted');c.font='10px '+C('--f-mono');c.textAlign='right';c.textBaseline='middle';
+    for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4,y=Y(v);c.beginPath();c.moveTo(iz,y);c.lineTo(iz+W,y);c.stroke();c.fillText(nf(v,o.decimales??(Math.abs(hi-lo)<0.5?2:Math.abs(hi-lo)<5?1:0)),iz-4,y);}
+    c.textAlign='center';c.textBaseline='top';for(let k=0;k<=4;k++){const i=Math.round((n-1)*k/4);if(k&&i===Math.round((n-1)*(k-1)/4))continue;const ul=n>1&&i===n-1;c.textAlign=ul?'right':'center';c.fillText(nf(i+(o.desde1?1:0)),ul?X(i)+de-1:X(i),ar+H+5);}
+    if(o.ejeX){c.textAlign='right';c.fillText(o.ejeX,iz+W,ar+H+15);}
+    if(o.ejeY){c.save();c.translate(10,ar+H/2);c.rotate(-Math.PI/2);c.textAlign='center';c.fillText(o.ejeY,0,0);c.restore();}
+    (o.lineas||[]).forEach(L=>{c.strokeStyle=C(L.color||'--muted');c.setLineDash([5,4]);c.lineWidth=1.4;c.beginPath();c.moveTo(iz,Y(L.y));c.lineTo(iz+W,Y(L.y));c.stroke();c.setLineDash([]);
+      if(L.nombre){c.fillStyle=C(L.color||'--muted');c.textAlign='right';c.textBaseline='bottom';c.fillText(L.nombre,iz+W-4,Y(L.y)-2);}});
+    const traza=(y,col,anch,alfa,punt)=>{if(!y.length)return;c.strokeStyle=col;c.lineWidth=anch;c.globalAlpha=alfa;c.setLineDash(punt?[5,4]:[]);c.beginPath();
+      y.forEach((v,i)=>{i?c.lineTo(X(i),Y(v)):c.moveTo(X(i),Y(v));});c.stroke();c.globalAlpha=1;c.setLineDash([]);};
+    series.forEach(S=>{const col=C(S.color||'--accent');if(o.media&&S.y.length>1){if(o.crudo!==false&&!S.sinCrudo)traza(S.y,col,1,.22,false);traza(media(S.y,o.media),col,S.ancho||2.2,1,S.punteada);}else traza(S.y,col,S.ancho||2,S.tenue?.35:1,S.punteada);});
+    c.strokeStyle=C('--line');c.strokeRect(iz+.5,ar+.5,W,H);
+    return {X,Y};
+  }
+  /* Redibuja al cambiar el tema o el ancho. */
+  function tema(raiz,fn){let t;const re=()=>{clearTimeout(t);t=setTimeout(fn,60);};
+    if(window.ResizeObserver)new ResizeObserver(re).observe(raiz);
+    new MutationObserver(re).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme','class']});
+    if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',re);}
+  const quieto=()=>!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+  /* Entrenar por tramos sin congelar la página: trabajo() hace una unidad (un episodio, un paso) y devuelve false
+     cuando ya no hay más; cada cuadro trabaja o.ms milisegundos (24 por defecto) y llama a o.cuadro(). */
+  function bucle(trabajo,o={}){const ms=o.ms??24;let vivo=false,id=0;
+    function cuadro(){if(!vivo)return;const t0=performance.now();let sigue=true;
+      do{sigue=trabajo()!==false;}while(sigue&&performance.now()-t0<ms&&!o.unoPorCuadro);
+      if(o.cuadro)o.cuadro();if(!sigue){vivo=false;if(o.fin)o.fin();return;}
+      id=o.pausa?setTimeout(cuadro,o.pausa):requestAnimationFrame(cuadro);}
+    return {iniciar(){if(vivo)return;vivo=true;cuadro();},parar(){vivo=false;cancelAnimationFrame(id);clearTimeout(id);},get corriendo(){return vivo;}};}
+
+  return {rnd,gauss,entero,barajar,nf,pct,ACC,FLECHA,MAPAS,DEF,cuadricula,
+    politicaAlAzar,politicaDe,accionDe,elegir,codiciosa,egreedy,qDeV,barridoEval,barridoValor,evaluar,iterarValor,iterarPolitica,
+    episodio,retornoMedio,BANDIDO,bandido,agenteBandido,cartpole,
+    color,rgb,mezcla,lienzo,flecha,dibujar,media,curva,tema,quieto,bucle};
+})();
+  const M=MundoRL,nf=M.nf,pct=M.pct,$=s=>raiz.querySelector(s);
+  /* Las 16 respuestas de juguete a la pregunta de Teodoro: todas las combinaciones de cuatro rasgos
+     (exacta, con cifra, cordial, larga). Rasgo k de la respuesta i: (i >> (3 − k)) & 1, en el mismo orden que
+     itertools.product de la práctica en Python. */
+  const RASGOS=['exacta','con cifra','cordial','larga'];
+  const PREGUNTA='¿Por qué el robot 7 tomó el pasillo de arriba en vez del atajo?';
+  const rasgos=i=>[0,1,2,3].map(k=>(i>>(3-k))&1);
+  function textoRespuesta(i){const [E,N,C,L]=rasgos(i);let t=C?'¡Buena pregunta, Teodoro! ':'';
+    t+=E?'Porque el atajo pasa junto al foso y, con el piso resbaloso de la zona de lavado, el robot puede patinar y caer.'
+        :'Porque el pasillo de arriba es más corto y el robot siempre elige el camino más corto.';
+    if(N)t+=E?' Por arriba llega el 98,5 % de las veces; por el atajo, el 65,9 %.':' Por arriba son 7 pasos y por el atajo, 11.';
+    if(L)t+=' Además, el robot estima el valor de cada casilla con la ecuación de Bellman, compara las cuatro acciones posibles en cada una y elige la de mayor valor esperado, descontando el futuro con γ = 0,9.';
+    return t;}
+  const etiqueta=i=>{const x=rasgos(i);return [x[0]?'exacta':'inexacta',x[1]?'con cifra':'sin cifra',x[2]?'cordial':'seca',x[3]?'larga':'breve'].join(' · ');};
+  const GUSTO_TEODORO=[2.5,0.8,0.1,-1.2],GUSTO_APURADO=[0.2,0.2,0.8,2.0];
+  const puntaje=(w,i)=>{const x=rasgos(i);return w[0]*x[0]+w[1]*x[1]+w[2]*x[2]+w[3]*x[3];};
+  const W_MODELO=[1.14,0.41,0.21,0.25],W_REF=[0.4,-0.3,0.5,0.4],BETAS=[0.02,0.05,0.1,0.2,0.3,0.5,1,2,5,10,50];
+  const rm=Array.from({length:16},(_,i)=>puntaje(W_MODELO,i)),rt=Array.from({length:16},(_,i)=>puntaje(GUSTO_TEODORO,i));
+  const lr=Array.from({length:16},(_,i)=>puntaje(W_REF,i)),zr=lr.reduce((s,v)=>s+Math.exp(v),0),ref=lr.map(v=>Math.exp(v)/zr);
+  /* El óptimo exacto de «recompensa − β·KL» es π(y) ∝ π_ref(y)·exp(r(y)/β): PPO con penalización KL busca esa política por pasos. */
+  function politica(beta){const l=ref.map((p,i)=>Math.log(p)+rm[i]/beta),mx=Math.max(...l),e=l.map(v=>Math.exp(v-mx)),z=e.reduce((s,v)=>s+v,0);return e.map(v=>v/z);}
+  const kl=p=>p.reduce((s,v,i)=>s+(v>0?v*Math.log(v/ref[i]):0),0),media=(p,x)=>p.reduce((s,v,i)=>s+v*x[i],0);
+  /* La curva completa, de β muy grande (la referencia) a β muy chico (solo importa el modelo de recompensa). */
+  const curva=[];for(let k=0;k<=120;k++){const beta=Math.pow(10,2-k*4/120),p=politica(beta);curva.push({kl:kl(p),m:media(p,rm),t:media(p,rt),beta});}
+  const mejorT=Math.max(...rt),iMejor=rt.indexOf(mejorT);
+  function pintar(){const beta=BETAS[+$('#c11l2-b').value],p=politica(beta),K=kl(p),Rm=media(p,rm),Rt=media(p,rt);
+    $('#c11l2-bo').textContent='β = '+nf(beta,beta<0.1?2:beta<1?1:0);
+    const cv=$('#c11l2-g'),{c,w,h}=M.lienzo(cv),C=k=>M.color(raiz,k);c.clearRect(0,0,w,h);c.fillStyle=C('--card');c.fillRect(0,0,w,h);
+    const iz=40,de=10,ar=12,ab=28,Wd=w-iz-de,Hd=h-ar-ab,kmax=Math.max(...curva.map(q=>q.kl))*1.03,ymin=0.5,ymax=3.6;
+    const X=v=>iz+v/kmax*Wd,Y=v=>ar+Hd-(v-ymin)/(ymax-ymin)*Hd;
+    c.strokeStyle=C('--grid');c.fillStyle=C('--muted');c.font='10px '+C('--f-mono');c.lineWidth=1;c.textAlign='right';c.textBaseline='middle';
+    for(let v=1;v<=3.5;v+=0.5){c.beginPath();c.moveTo(iz,Y(v));c.lineTo(iz+Wd,Y(v));c.stroke();c.fillText(nf(v,1),iz-4,Y(v));}
+    c.textAlign='center';c.textBaseline='top';for(let v=0;v<=kmax;v+=0.5)c.fillText(nf(v,1),X(v),ar+Hd+4);c.textAlign='right';c.fillText('KL con la referencia',iz+Wd,ar+Hd+15);
+    c.strokeStyle=C('--good');c.setLineDash([4,4]);c.beginPath();c.moveTo(iz,Y(mejorT));c.lineTo(iz+Wd,Y(mejorT));c.stroke();c.setLineDash([]);
+    c.fillStyle=C('--good');c.textAlign='left';c.textBaseline='bottom';c.fillText('la mejor respuesta para Teodoro: '+nf(mejorT,2),iz+4,Y(mejorT)-2);
+    [['m','--c-fis'],['t','--good']].forEach(([k,col])=>{c.strokeStyle=C(col);c.lineWidth=2.4;c.beginPath();curva.forEach((q,i)=>{i?c.lineTo(X(q.kl),Y(q[k])):c.moveTo(X(q.kl),Y(q[k]));});c.stroke();});
+    [[Rm,'--c-fis'],[Rt,'--good']].forEach(([v,col])=>{c.fillStyle=C(col);c.strokeStyle=C('--card');c.lineWidth=2;c.beginPath();c.arc(X(K),Y(v),5.5,0,7);c.fill();c.stroke();});
+    c.strokeStyle=C('--c-tra');c.lineWidth=1;c.setLineDash([2,3]);c.beginPath();c.moveTo(X(K),ar);c.lineTo(X(K),ar+Hd);c.stroke();c.setLineDash([]);
+    c.strokeStyle=C('--line');c.strokeRect(iz+.5,ar+.5,Wd,Hd);
+    const orden=Array.from({length:16},(_,i)=>i).sort((a,b)=>p[b]-p[a]).slice(0,6),mx=Math.max(p[orden[0]],...ref);
+    $('#c11l2-l').innerHTML=orden.map(i=>'<span class="t">'+etiqueta(i)+'</span><span class="bb" aria-hidden="true"><b style="top:0;width:'+(ref[i]/mx*100)+'%;background:var(--muted)"></b><b style="top:8px;width:'+(p[i]/mx*100)+'%;background:var(--c-tra)"></b></span><span class="n">'+pct(p[i],0)+'</span>').join('');
+    const top=orden[0];let t='<span class="big">KL = '+nf(K,2)+'</span>';
+    t+='<span>Puntaje medio del modelo de recompensa: <b>'+nf(Rm,2)+'</b> (antes del ajuste, '+nf(media(ref,rm),2)+'). Gusto medio de Teodoro: <b>'+nf(Rt,2)+'</b> (antes, '+nf(media(ref,rt),2)+'; su respuesta favorita vale '+nf(mejorT,2)+').</span>';
+    t+='<span>La respuesta más probable: «'+etiqueta(top)+'», con '+pct(p[top],0)+'.</span>';
+    if(beta>=5)t+='<span>Con β grande, la penalización manda: la política casi no se mueve de la referencia y no aprovecha lo que sabe el modelo de recompensa.</span>';
+    else if(beta<=0.1)t+='<span class="warn">Con β chico, la política se va adonde puntúa más el modelo de recompensa: respuestas largas, porque los evaluadores apurados las premiaron. El modelo sube, pero el gusto de Teodoro se estanca o baja. Es la sobreoptimización: exprimir una recompensa aprendida más allá de donde es confiable.</span>';
+    else t+='<span class="ok">En el medio, la política mejora mucho con poca distancia: sube la probabilidad de las respuestas exactas y con cifra, sin irse del todo hacia lo que el modelo de recompensa sobrevalora.</span>';
+    $('#c11l2-out').innerHTML=t;}
+  $('#c11l2-b').addEventListener('input',pintar);M.tema(raiz,pintar);pintar();
+})();
+</script>
+</body>
+</html>

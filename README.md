@@ -4,7 +4,7 @@ Agentes que aprenden por prueba y error a partir de una recompensa, de los proce
 
 **Ver en línea:** https://aaramirez.github.io/aprendizaje-por-refuerzo/
 
-Este repositorio solo tiene el sitio generado. El curso está en preparación: la tabla de contenido ya está publicada para revisión.
+Este repositorio solo tiene el sitio generado. Curso completo: 12 capítulos con laboratorios interactivos (agentes que aprenden en el navegador: bandidos, la cuadrícula del robot, Q-learning, DQN, REINFORCE y PPO en CartPole), diagramas y prácticas con Gymnasium y Stable-Baselines3.
 
 | # | Capítulo |
 |---|---|

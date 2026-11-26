@@ -1,0 +1,1029 @@
+<!doctype html>
+<html lang="es">
+<head>
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-KX76XF8R');</script>
+<!-- End Google Tag Manager -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PPO · Aprendizaje por refuerzo · Aprendizaje por refuerzo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Agentes que aprenden por prueba y error a partir de una recompensa, de los procesos de decisión de Markov a Q-learning, DQN, PPO y el ajuste de los modelos de lenguaje con retroalimentación humana.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,600&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous" referrerpolicy="no-referrer">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KX76XF8R"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+<div class="wrap" data-page="ppo">
+<header class="topbar"><a class="brand" href="index.html">Aprendizaje por <b>refuerzo</b></a><span class="eyebrow">Curso visual e interactivo · Datos e inteligencia artificial</span><a class="al-sitio" href="https://aaramirez.github.io/">← Todos los cursos</a></header>
+<div class="layout">
+<nav class="toc" id="toc" aria-label="Ruta de aprendizaje"></nav>
+<main>
+<header class="page-head"><span class="num">CAPÍTULO 10 DE 12</span><h1>PPO: pasos de política seguros</h1><p class="lede">Un gradiente de política puede arruinar en una sola actualización una política que ya funcionaba, y en refuerzo eso puede no tener vuelta. Este capítulo cuenta cómo TRPO y después PPO le pusieron un freno a cada paso, por qué PPO se volvió el algoritmo por defecto y qué otros métodos conviene conocer.</p></header>
+<section><h2>El problema: un paso demasiado grande y la política colapsa</h2><div class="prose"><p>Yolanda Pinto había dejado una pregunta pendiente al final de la reunión anterior: qué pasa si una actualización mala arruina un robot que ya funcionaba. Ulises Robles llegó con la respuesta en una gráfica. En el simulador había entrenado un <b>actor-crítico</b> (<i>actor-critic</i>) en CartPole con actualizaciones grandes, para que aprendiera rápido. La curva subía hasta el tope de 500 pasos y de pronto se desplomaba: en pocas iteraciones el péndulo caía a los 10 pasos, peor que un agente que empuja al azar, y tardaba mucho en volver a levantarse. «Si eso pasa con un robot en el piso», dijo Teodoro Vidal, «lo quiero saber antes».</p><p>Noemí Ferrer reconoció el problema. Todos los métodos de <b>gradiente de política</b> (<i>policy gradient</i>) del capítulo 9 dan un paso en la dirección que mejora la política, pero no dicen <b>cuánto</b> caminar. El gradiente es una aproximación local: dice hacia dónde sube el terreno justo donde estás parado, no qué hay diez metros más allá. Con un paso chico, la aproximación vale; con uno grande, puedes terminar en cualquier parte.</p></div><div class="analogia"><b>Imagínalo así</b><p>Imagina que bajas un cerro en la niebla y solo ves el suelo bajo tus pies. Si das pasos cortos, cada paso corrige al anterior. Si das un salto largo porque «parece que baja», puedes caer por un barranco que no veías. Y en refuerzo hay algo peor: una vez abajo, solo ves el fondo del barranco, porque la niebla te muestra únicamente el lugar donde estás.</p></div><div class="prose"><p>Ese «algo peor» es lo que distingue al refuerzo del aprendizaje supervisado. En un problema supervisado, los datos son fijos: si un paso se pasa de largo, la pérdida sube, y el paso siguiente, calculado sobre los mismos datos, la vuelve a bajar. En refuerzo, <b>la política genera sus propios datos</b>. Si una actualización empeora la política, los episodios siguientes los juega la política peor: el péndulo cae en 10 pasos y el agente solo ve estados de un péndulo cayendo. Si además la política se volvió casi determinista hacia la acción equivocada, deja de explorar, y no hay ningún episodio bueno del que aprender a volver.</p></div><figure class="fig fig-comparacion" id="10-diagrama-1"><div class="lienzo"><svg viewBox="0 0 800 360" style="min-width:640px" role="img" aria-label="Comparación: en el aprendizaje supervisado los datos son fijos y un paso que se pasa se corrige con el siguiente; en refuerzo la política genera sus propios datos, y un paso malo puede hundirla: la curva de un agente sin recorte llega a 500 pasos y cae a 10">
+<defs><marker id="c10d1-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker><marker id="c10d1-tra" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-tra)"/></marker><marker id="c10d1-fis" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-fis)"/></marker><marker id="c10d1-apl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-apl)"/></marker><marker id="c10d1-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--warm)"/></marker><marker id="c10d1-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-red)"/></marker></defs><text x="20" y="26" class="t t-xs t-b t-m">UN PASO DEMASIADO GRANDE: EN EL APRENDIZAJE SUPERVISADO SE CORRIGE; EN REFUERZO PUEDE NO TENER VUELTA</text><rect x="20" y="44" width="370" height="300" rx="10" class="caja"/><text x="36" y="68" class="t t-s t-b k-red">① Aprendizaje supervisado</text><rect x="36" y="84" width="120" height="70" rx="10" class="d-sis"/><text x="96" y="110" class="t t-s t-b" text-anchor="middle">datos fijos</text><text x="96" y="128" class="t t-xs" text-anchor="middle">(un archivo que</text><text x="96" y="142" class="t t-xs" text-anchor="middle">no cambia)</text><path d="M156 119H196" class="ln" style="stroke-width:1.6" marker-end="url(#c10d1-muted)"/><rect x="200" y="84" width="170" height="70" rx="10" class="c-red"/><text x="285" y="112" class="t t-s t-b k-red" text-anchor="middle">modelo</text><text x="285" y="132" class="t t-xs" text-anchor="middle">ajusta sus pesos</text><path d="M70.0 200.0 L72.6 203.6 L75.2 207.1 L77.8 210.5 L80.4 213.8 L83.0 217.1 L85.6 220.3 L88.2 223.4 L90.8 226.5 L93.4 229.5 L96.0 232.4 L98.6 235.2 L101.2 238.0 L103.8 240.7 L106.4 243.3 L109.0 245.9 L111.6 248.4 L114.2 250.8 L116.8 253.1 L119.4 255.4 L122.0 257.6 L124.6 259.7 L127.2 261.8 L129.8 263.8 L132.4 265.7 L135.0 267.5 L137.6 269.3 L140.2 271.0 L142.8 272.6 L145.4 274.1 L148.0 275.6 L150.6 277.0 L153.2 278.3 L155.8 279.6 L158.4 280.8 L161.0 281.9 L163.6 282.9 L166.2 283.9 L168.8 284.8 L171.4 285.6 L174.0 286.4 L176.6 287.1 L179.2 287.7 L181.8 288.2 L184.4 288.7 L187.0 289.1 L189.6 289.4 L192.2 289.7 L194.8 289.9 L197.4 290.0 L200.0 290.0 L202.6 290.0 L205.2 289.9 L207.8 289.7 L210.4 289.4 L213.0 289.1 L215.6 288.7 L218.2 288.2 L220.8 287.7 L223.4 287.1 L226.0 286.4 L228.6 285.6 L231.2 284.8 L233.8 283.9 L236.4 282.9 L239.0 281.9 L241.6 280.8 L244.2 279.6 L246.8 278.3 L249.4 277.0 L252.0 275.6 L254.6 274.1 L257.2 272.6 L259.8 271.0 L262.4 269.3 L265.0 267.5 L267.6 265.7 L270.2 263.8 L272.8 261.8 L275.4 259.7 L278.0 257.6 L280.6 255.4 L283.2 253.1 L285.8 250.8 L288.4 248.4 L291.0 245.9 L293.6 243.3 L296.2 240.7 L298.8 238.0 L301.4 235.2 L304.0 232.4 L306.6 229.5 L309.2 226.5 L311.8 223.4 L314.4 220.3 L317.0 217.1 L319.6 213.8 L322.2 210.5 L324.8 207.1 L327.4 203.6 L330.0 200.0" style="fill:none;stroke:var(--c-red);stroke-width:2.2"/><path d="M92 221.9Q196.0 187.9 300 230.7" style="fill:none;stroke:var(--warm);stroke-width:1.8;stroke-dasharray:5 4" marker-end="url(#c10d1-warm)"/><path d="M300 230.7Q225.0 196.7 150 270.7" style="fill:none;stroke:var(--c-tra);stroke-width:1.8;stroke-dasharray:5 4" marker-end="url(#c10d1-tra)"/><path d="M150 270.7Q180.0 236.7 210 283.5" style="fill:none;stroke:var(--c-tra);stroke-width:1.8;stroke-dasharray:5 4" marker-end="url(#c10d1-tra)"/><text x="36" y="182" class="t t-xs t-m">pérdida</text><text x="232" y="182" class="t t-xs t-b k-warm">paso grande: se pasa…</text><text x="232" y="196" class="t t-xs t-b k-tra">…y los siguientes vuelven</text><text x="36" y="322" class="t t-s t-m">La pérdida se mide siempre sobre los mismos datos:</text><text x="36" y="338" class="t t-s t-m">si un paso se pasa, el siguiente lo corrige.</text><rect x="410" y="44" width="370" height="300" rx="10" class="caja"/><text x="426" y="68" class="t t-s t-b k-tra">② Aprendizaje por refuerzo</text><rect x="426" y="84" width="120" height="56" rx="10" class="c-tra"/><text x="486" y="108" class="t t-s t-b k-tra" text-anchor="middle">política π</text><text x="486" y="126" class="t t-xs" text-anchor="middle">actúa</text><rect x="640" y="84" width="124" height="56" rx="10" class="c-fis"/><text x="702" y="108" class="t t-s t-b k-fis" text-anchor="middle">datos nuevos</text><text x="702" y="126" class="t t-xs" text-anchor="middle">los genera π</text><path d="M546 104H636" class="ln" style="stroke:var(--c-tra);stroke-width:1.8" marker-end="url(#c10d1-tra)"/><text x="591" y="98" class="t t-xs k-tra" text-anchor="middle">juega</text><path d="M702 140V168H486V144" style="fill:none;stroke:var(--c-fis);stroke-width:1.8" marker-end="url(#c10d1-fis)"/><text x="594" y="162" class="t t-xs k-fis" text-anchor="middle">aprende de lo que jugó</text><path d="M450 302H740M450 302V238" class="ln"/><path d="M450 244.0H740" style="stroke:var(--good);stroke-width:1;stroke-dasharray:4 3"/><text x="740" y="240" class="t t-xs" text-anchor="end" style="fill:var(--good)">tope: 500 pasos</text><path d="M450.0 299.7 L463.8 300.3 L477.6 283.6 L491.4 285.5 L505.2 279.0 L519.0 257.1 L532.9 244.0 L546.7 272.1 L560.5 284.3 L574.3 280.8 L588.1 285.4 L601.9 290.6 L615.7 292.7 L629.5 296.1 L643.3 298.8 L657.1 299.7 L671.0 300.3 L684.8 300.8 L698.6 300.8 L712.4 300.6 L726.2 300.5 L740.0 298.5" style="fill:none;stroke:var(--c-apl);stroke-width:2.4"/><text x="684.762" y="294" class="t t-xs t-b k-warm" text-anchor="middle">10 pasos</text><text x="532.857" y="238" class="t t-xs t-b k-apl" text-anchor="middle">500</text><text x="450" y="316" class="t t-xs t-m">pasos que aguanta, iteraciones 1 a 22 (lab 10-1, sin recorte)</text><text x="426" y="192" class="t t-s t-m">Un paso malo empeora la política, la política</text><text x="426" y="210" class="t t-s t-m">mala genera datos malos, y con datos malos</text><text x="426" y="226" class="t t-s t-m">no hay de dónde aprender a volver.</text><text x="426" y="338" class="t t-s t-b k-warm">Llegó a 500 y cayó a 10: peor que empujar al azar.</text>
+</svg></div><figcaption><b>Por qué un paso grande es más peligroso en refuerzo.</b> A la izquierda, el aprendizaje supervisado: los datos no cambian, y si un paso se pasa del fondo de la pérdida (flecha roja), los siguientes vuelven (flechas moradas). A la derecha, el refuerzo: la política juega, genera datos nuevos y aprende de ellos. La curva es la del agente sin freno del primer laboratorio: llega al tope de 500 pasos y cae a 9.</figcaption></figure><div class="prose"><p>Hay una razón más, técnica. El tamaño del paso se mide en los <b>parámetros</b> de la red, pero lo que importa es cuánto cambia el <b>comportamiento</b>. Un mismo cambio de pesos puede mover casi nada la probabilidad de una acción en un estado y mucho en otro. Para controlar el riesgo hay que medir la distancia entre la política vieja y la nueva en el lugar correcto: en lo que hacen.</p></div></section>
+<section><h2>Regiones de confianza: TRPO</h2><div class="prose"><p>La forma natural de medir cuánto cambió una política es comparar sus probabilidades. Para eso se usa la <b>divergencia de Kullback-Leibler</b> (<i>Kullback-Leibler divergence</i>, KL), una medida de cuánto difieren dos distribuciones de probabilidad: vale 0 si son iguales y crece a medida que se separan. Si en un estado la política vieja empujaba a la derecha con probabilidad 0,70 y la nueva lo hace con 0,80, la KL entre las dos es 0,028: un cambio chico. Si la nueva salta a 0,95, la KL es 0,32, más de diez veces mayor.</p><p>En 2015, John Schulman y sus colegas de la Universidad de California en Berkeley publicaron <b>TRPO</b> (<i>Trust Region Policy Optimization</i>, optimización de políticas por región de confianza). La idea es un viejo recurso de la optimización numérica, la <b>región de confianza</b> (<i>trust region</i>): no confíes en tu aproximación del terreno más allá de cierto radio alrededor de donde estás, y busca la mejor mejora <b>dentro</b> de ese radio. En TRPO, el radio se mide con la KL: se busca la política que más mejora el objetivo con la condición de que la KL media con la política vieja no pase de un límite δ, típicamente 0,01.</p></div><div class="analogia"><b>Imagínalo así</b><p>Es como pasear a un perro con correa. El perro puede ir hacia donde huele algo bueno, pero la correa no lo deja alejarse más de dos metros de ti. Paso a paso igual llega lejos, y nunca termina en medio de la calle.</p></div><div class="prose"><p>TRPO trajo otra pieza que PPO heredó: el <b>objetivo sustituto</b> (<i>surrogate objective</i>). Para saber si una política nueva es mejor, lo ideal sería jugar episodios con ella, pero eso es caro. El truco es reutilizar los episodios que jugó la política vieja, pesando cada acción por el <b>cociente de probabilidades</b> (<i>probability ratio</i>):</p><div class="math-display">\rho(\theta) = \frac{\pi_\theta(a \mid s)}{\pi_{\text{vieja}}(a \mid s)}</div><p>Si la política nueva elige esa acción con más probabilidad que la vieja, ρ es mayor que 1; si con menos, menor. El objetivo sustituto es el promedio de <span class="math">\rho \cdot A</span> sobre los pasos jugados, con <span class="math">A</span> la <b>ventaja</b> (<i>advantage</i>) del capítulo 9: subirlo es volver más probables las acciones con ventaja positiva y menos las de ventaja negativa. A este recurso de corregir con un cociente las muestras de una distribución para estimar otra se le llama <b>muestreo por importancia</b> (<i>importance sampling</i>). Solo es confiable si las dos políticas se parecen; por eso necesita la correa.</p><p>TRPO funcionó muy bien, sobre todo en robots simulados que caminan. Pero es complicado: para respetar el límite de KL usa una aproximación de segundo orden, el método del gradiente conjugado y una búsqueda en línea que achica el paso hasta cumplir la condición. Es difícil de programar, más lento por iteración y no se lleva bien con redes que comparten capas entre el actor y el crítico.</p></div></section>
+<section><h2>PPO (2017): recortar el cociente de probabilidades</h2><div class="prose"><p>En julio de 2017, el mismo Schulman, ya en OpenAI, publicó con Filip Wolski, Prafulla Dhariwal, Alec Radford y Oleg Klimov <b>PPO</b> (<i>Proximal Policy Optimization</i>, optimización proximal de políticas). La pregunta era si se podía obtener la estabilidad de TRPO con un método de primer orden, el mismo descenso por gradiente de siempre. La respuesta fue un cambio de una línea en el objetivo: en lugar de imponer un límite de KL, <b>recortar el cociente</b>.</p><div class="math-display">L^{\text{CLIP}}(\theta) = \mathbb{E}\left[\min\left(\rho \, A,\ \operatorname{recorte}(\rho,\ 1-\varepsilon,\ 1+\varepsilon)\, A\right)\right]</div><p>Se lee por casos, con el <b>rango de recorte</b> ε (<i>clip range</i>) en su valor habitual de 0,2:</p><ul><li><b>Ventaja positiva.</b> La acción salió mejor de lo esperado y conviene volverla más probable. El objetivo crece con ρ, pero solo hasta 1,2. Si la acción ya es un 20 % más probable que en la política vieja, subirla más no suma nada: el término recortado manda, su gradiente es cero y esa muestra deja de empujar.</li><li><b>Ventaja negativa.</b> La acción salió peor de lo esperado y conviene volverla menos probable. El objetivo mejora al bajar ρ, pero solo hasta 0,8.</li><li><b>El mínimo.</b> Si un cambio va en la dirección mala (una acción con ventaja negativa que se volvió <b>más</b> probable), el mínimo elige el término sin recortar y el castigo es completo. PPO frena las mejoras, nunca los errores: es pesimista a propósito.</li></ul><p>Con números: una acción tenía probabilidad 0,50 y ventaja +1. Si la nueva política la sube a 0,55, ρ = 1,1 y la muestra aporta 1,1. Si la sube a 0,70, ρ = 1,4, pero el recorte lo deja en 1,2: lo que pasa de 0,60 no se premia, y el optimizador no tiene motivo para seguir empujando esa acción con esos datos.</p></div><figure class="fig fig-comparacion" id="10-diagrama-2"><div class="lienzo"><svg viewBox="0 0 800 360" style="min-width:640px" role="img" aria-label="Dos gráficas del objetivo recortado de PPO en función del cociente rho entre la probabilidad nueva y la vieja de una acción: con ventaja positiva la ganancia crece hasta rho 1,2 y luego queda plana; con ventaja negativa baja hasta rho 0,8 y queda plana, pero si rho crece el castigo es completo">
+<defs><marker id="c10d2-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker></defs><text x="20" y="26" class="t t-xs t-b t-m">EL OBJETIVO RECORTADO DE PPO: LO QUE GANA UNA MUESTRA SEGÚN CUÁNTO CAMBIÓ SU PROBABILIDAD (ε = 0,2)</text><rect x="20" y="44" width="370" height="300" rx="10" class="caja"/><text x="36" y="68" class="t t-s t-b k-tra">① Ventaja positiva (A = +1): conviene subir π</text><rect x="180.0" y="122.9" width="60.0" height="135.1" style="fill:var(--c-tra);fill-opacity:.08"/><path d="M60 250H366M60 122.9V258.0" class="ln"/><path d="M60.0 247V253" class="ln"/><text x="60" y="266" class="t t-xs t-mono" text-anchor="middle">0</text><path d="M180.0 247V253" class="ln"/><text x="180" y="266" class="t t-xs t-mono" text-anchor="middle">0,8</text><path d="M210.0 247V253" class="ln"/><text x="210" y="266" class="t t-xs t-mono" text-anchor="middle">1,0</text><path d="M240.0 247V253" class="ln"/><text x="240" y="266" class="t t-xs t-mono" text-anchor="middle">1,2</text><path d="M360.0 247V253" class="ln"/><text x="360" y="266" class="t t-xs t-mono" text-anchor="middle">2</text><text x="360" y="280" class="t t-xs t-m" text-anchor="end">ρ = π nueva / π vieja</text><path d="M60.0 250.0L360.0 126.0" style="fill:none;stroke:var(--muted);stroke-width:1.4;stroke-dasharray:5 4"/><path d="M60.0 250.0 L240.0 175.6 L360.0 175.6" style="fill:none;stroke:var(--c-tra);stroke-width:3"/><text x="303" y="193.6" class="t t-xs t-b k-tra" text-anchor="middle">tope: ya no empuja</text><text x="255" y="128.2" class="t t-xs t-m" text-anchor="end">sin recorte: sigue subiendo</text><text x="36" y="300" class="t t-s t-m">Si la acción ya es un 20 % más probable que antes,</text><text x="36" y="316" class="t t-s t-m">subirla más no suma: el gradiente de esa muestra</text><text x="36" y="332" class="t t-s t-m">es cero y la política deja de moverse por ella.</text><rect x="410" y="44" width="370" height="300" rx="10" class="caja"/><text x="426" y="68" class="t t-s t-b k-tra">② Ventaja negativa (A = −1): conviene bajar π</text><rect x="570.0" y="98.0" width="60.0" height="141.1" style="fill:var(--c-tra);fill-opacity:.08"/><path d="M450 112H756M450 98.0V239.1" class="ln"/><path d="M450.0 109V115" class="ln"/><text x="450" y="104" class="t t-xs t-mono" text-anchor="middle">0</text><path d="M570.0 109V115" class="ln"/><text x="570" y="104" class="t t-xs t-mono" text-anchor="middle">0,8</text><path d="M600.0 109V115" class="ln"/><text x="600" y="104" class="t t-xs t-mono" text-anchor="middle">1,0</text><path d="M630.0 109V115" class="ln"/><text x="630" y="104" class="t t-xs t-mono" text-anchor="middle">1,2</text><path d="M750.0 109V115" class="ln"/><text x="750" y="104" class="t t-xs t-mono" text-anchor="middle">2</text><text x="750" y="90" class="t t-xs t-m" text-anchor="end">ρ = π nueva / π vieja</text><path d="M450.0 112.0L750.0 236.0" style="fill:none;stroke:var(--muted);stroke-width:1.4;stroke-dasharray:5 4"/><path d="M450.0 161.6 L570.0 161.6 L750.0 236.0" style="fill:none;stroke:var(--c-tra);stroke-width:3"/><text x="510" y="179.6" class="t t-xs t-b k-tra" text-anchor="middle">piso: ya no empuja</text><text x="667.5" y="224.5" class="t t-xs t-b k-warm" text-anchor="end">si sube: castigo entero</text><text x="426" y="300" class="t t-s t-m">Si la acción mala ya bajó un 20 %, bajarla más no</text><text x="426" y="316" class="t t-s t-m">suma. Pero si por error subió, el mínimo no recorta</text><text x="426" y="332" class="t t-s t-m">nada: PPO es pesimista con los cambios malos.</text>
+</svg></div><figcaption><b>El objetivo recortado.</b> Cada gráfica muestra lo que aporta una muestra según el cociente ρ entre su probabilidad nueva y la vieja, con ε = 0,2 (la franja morada va de 0,8 a 1,2). A la izquierda, con ventaja positiva: la línea sube hasta ρ = 1,2 y después queda plana; sin recorte (punteada) seguiría subiendo. A la derecha, con ventaja negativa: la línea queda plana por debajo de 0,8, pero si la acción mala se vuelve más probable, el castigo no se recorta.</figcaption></figure><div class="prose"><p>El recorte permite algo que REINFORCE y A2C no se atreven a hacer: <b>usar los mismos datos varias veces</b>. Una iteración de PPO juega un lote de pasos, calcula las ventajas y después hace varias <b>épocas</b> (<i>epochs</i>) de descenso por gradiente sobre ese lote, en <b>minilotes</b> (<i>minibatches</i>). Sin freno, repetir los mismos datos empuja la política cada vez más lejos en la misma dirección; con el recorte, las muestras que ya cambiaron lo suficiente dejan de empujar solas. El objetivo completo suma además el error del crítico, como en A2C, y un pequeño <b>bono de entropía</b> (<i>entropy bonus</i>) para que la política no deje de explorar demasiado pronto.</p></div><figure class="fig fig-flujo" id="10-diagrama-3"><div class="lienzo"><svg viewBox="0 0 800 390" style="min-width:640px" role="img" aria-label="El ciclo de PPO en cuatro pasos: jugar N pasos, puntuar con GAE, actualizar K épocas con el objetivo recortado y avanzar; abajo, los pesos con que GAE mezcla los retornos de 1 a 7 pasos para lambda 0, 0,5 y 0,95">
+<defs><marker id="c10d3-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker><marker id="c10d3-tra" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-tra)"/></marker><marker id="c10d3-fis" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-fis)"/></marker><marker id="c10d3-apl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-apl)"/></marker><marker id="c10d3-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-red)"/></marker></defs><text x="20" y="26" class="t t-xs t-b t-m">UNA ITERACIÓN DE PPO: JUNTAR, PUNTUAR CON GAE, ACTUALIZAR VARIAS VECES CON FRENO, REPETIR</text><rect x="20" y="44" width="172" height="100" rx="10" class="c-apl"/><text x="32" y="68" class="t t-b k-apl">① Juega</text><text x="32" y="90" class="t t-s">N pasos con la política</text><text x="32" y="107" class="t t-s">actual en varias copias</text><text x="32" y="124" class="t t-s">del entorno (8 × 32)</text><rect x="216" y="44" width="172" height="100" rx="10" class="c-fis"/><text x="228" y="68" class="t t-b k-fis">② Puntúa</text><text x="228" y="90" class="t t-s">el crítico estima V(s);</text><text x="228" y="107" class="t t-s">GAE convierte los errores</text><text x="228" y="124" class="t t-s">TD en ventajas Â</text><rect x="412" y="44" width="172" height="100" rx="10" class="c-tra"/><text x="424" y="68" class="t t-b k-tra">③ Actualiza</text><text x="424" y="90" class="t t-s">K épocas de minilotes</text><text x="424" y="107" class="t t-s">con el objetivo recortado</text><text x="424" y="124" class="t t-s">+ error del crítico</text><rect x="608" y="44" width="172" height="100" rx="10" class="c-red"/><text x="620" y="68" class="t t-b k-red">④ Avanza</text><text x="620" y="90" class="t t-s">la política nueva pasa</text><text x="620" y="107" class="t t-s">a ser la vieja y los</text><text x="620" y="124" class="t t-s">datos se descartan</text><path d="M192 94H212" class="ln" style="stroke-width:1.8" marker-end="url(#c10d3-muted)"/><path d="M388 94H408" class="ln" style="stroke-width:1.8" marker-end="url(#c10d3-muted)"/><path d="M584 94H604" class="ln" style="stroke-width:1.8" marker-end="url(#c10d3-muted)"/><path d="M694 144V168H106V150" style="fill:none;stroke:var(--muted);stroke-width:1.6;stroke-dasharray:5 4" marker-end="url(#c10d3-muted)"/><text x="410" y="162" class="t t-s t-m" text-anchor="middle">otra iteración</text><rect x="20" y="186" width="760" height="190" rx="10" class="caja"/><text x="36" y="208" class="t t-xs t-b t-m">② EN DETALLE: GAE MEZCLA LOS RETORNOS DE 1, 2, 3… PASOS CON PESOS (1 − λ)·λⁿ⁻¹</text><rect x="60" y="230.0" width="22" height="110.0" rx="2" style="fill:var(--c-red)"/><rect x="560" y="226" width="14" height="14" rx="3" style="fill:var(--c-red)"/><text x="580" y="237" class="t t-s">λ = 0: solo un paso (TD)</text><rect x="84" y="285.0" width="22" height="55.0" rx="2" style="fill:var(--c-apl)"/><rect x="154" y="312.5" width="22" height="27.5" rx="2" style="fill:var(--c-apl)"/><rect x="224" y="326.2" width="22" height="13.8" rx="2" style="fill:var(--c-apl)"/><rect x="294" y="333.1" width="22" height="6.9" rx="2" style="fill:var(--c-apl)"/><rect x="364" y="336.6" width="22" height="3.4" rx="2" style="fill:var(--c-apl)"/><rect x="434" y="338.3" width="22" height="1.7" rx="2" style="fill:var(--c-apl)"/><rect x="504" y="339.1" width="22" height="0.9" rx="2" style="fill:var(--c-apl)"/><rect x="560" y="248" width="14" height="14" rx="3" style="fill:var(--c-apl)"/><text x="580" y="259" class="t t-s">λ = 0,5</text><rect x="108" y="334.5" width="22" height="5.5" rx="2" style="fill:var(--c-tra)"/><rect x="178" y="334.8" width="22" height="5.2" rx="2" style="fill:var(--c-tra)"/><rect x="248" y="335.0" width="22" height="5.0" rx="2" style="fill:var(--c-tra)"/><rect x="318" y="335.3" width="22" height="4.7" rx="2" style="fill:var(--c-tra)"/><rect x="388" y="335.5" width="22" height="4.5" rx="2" style="fill:var(--c-tra)"/><rect x="458" y="335.7" width="22" height="4.3" rx="2" style="fill:var(--c-tra)"/><rect x="528" y="336.0" width="22" height="4.0" rx="2" style="fill:var(--c-tra)"/><rect x="560" y="270" width="14" height="14" rx="3" style="fill:var(--c-tra)"/><text x="580" y="281" class="t t-s">λ = 0,95 (lo usual)</text><text x="560" y="300" class="t t-s t-m">λ = 0,95: 0,05 a cada uno, pero</text><text x="560" y="316" class="t t-s t-m">durante decenas de pasos.</text><text x="560" y="340" class="t t-s t-m">λ = 1: el retorno completo</text><text x="560" y="356" class="t t-s t-m">(como Monte Carlo).</text><path d="M54 340H546" class="ln"/><text x="94" y="356" class="t t-xs t-m" text-anchor="middle">1 paso</text><text x="164" y="356" class="t t-xs t-m" text-anchor="middle">2 pasos</text><text x="234" y="356" class="t t-xs t-m" text-anchor="middle">3 pasos</text><text x="304" y="356" class="t t-xs t-m" text-anchor="middle">4 pasos</text><text x="374" y="356" class="t t-xs t-m" text-anchor="middle">5 pasos</text><text x="444" y="356" class="t t-xs t-m" text-anchor="middle">6 pasos</text><text x="514" y="356" class="t t-xs t-m" text-anchor="middle">7 pasos</text>
+</svg></div><figcaption><b>Una iteración de PPO.</b> Arriba, los cuatro pasos: jugar N pasos con la política actual, en varias copias del entorno (rosa); puntuar cada paso con una ventaja (ámbar); hacer K épocas de minilotes con el objetivo recortado (morado), y avanzar: la política nueva pasa a ser la vieja y los datos se descartan (azul). Abajo, el detalle del paso ②, que explica la sección siguiente.</figcaption></figure><div class="prose"><p>El artículo propone también una segunda versión, que en lugar de recortar resta del objetivo una <b>penalización KL</b> con un peso que se ajusta solo: si la política se alejó demasiado, el peso sube; si se movió poco, baja. En sus experimentos rindió algo peor que el recorte y casi nadie la usa para robots. Pero la idea de penalizar la KL va a volver en el capítulo 11, en el ajuste de los modelos de lenguaje.</p></div><div class="lab" id="10-lab-1"><div class="lab-title"><span class="tag">Laboratorio</span><h3>Mueve el rango de recorte de PPO y mira cuándo la política mejora estable y cuándo se derrumba</h3></div><p class="hint">Dos agentes con la misma semilla aprenden CartPole a la vez, con actualizaciones agresivas: diez épocas por lote y una tasa de aprendizaje alta. El de la izquierda usa el recorte; el otro, no. Pulsa «Entrenar» y compara las dos curvas y, sobre todo, la KL de la derecha: cuánto se mueve la política en cada actualización. Después prueba ε = 1 y ε = 0,05, y el tamaño «moderado».</p><style>
+[id="10-lab-1"] .c10l1-rot{font:700 .7rem var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin:8px 0 4px}
+[id="10-lab-1"] .btns{align-items:center;margin:6px 0}
+[id="10-lab-1"] canvas{width:100%;display:block;border-radius:8px}
+[id="10-lab-1"] .c10l1-dos{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px;align-items:start}
+[id="10-lab-1"] .c10l1-ley{display:flex;flex-wrap:wrap;gap:4px 14px;font:500 .8rem var(--f-display);color:var(--muted);margin-top:4px}
+[id="10-lab-1"] .c10l1-ley i{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:5px;border-radius:2px}
+[id="10-lab-1"] .c10l1-ley i.p{height:0;background:none!important;border-top:2px dashed}
+</style>
+<div class="opciones">
+  <label>Recorte ε del agente PPO
+    <select id="c10l1-eps">
+      <option value="0.05">0,05 (pasos muy cortos)</option>
+      <option value="0.1">0,1</option>
+      <option value="0.2" selected>0,2 (el valor por defecto)</option>
+      <option value="0.3">0,3</option>
+      <option value="0.5">0,5</option>
+      <option value="1">1 (casi sin freno)</option>
+    </select></label>
+  <label>Tamaño de cada actualización
+    <select id="c10l1-agr">
+      <option value="agresivo" selected>Agresivo (10 épocas, tasa 0,01)</option>
+      <option value="moderado">Moderado (4 épocas, tasa 0,003)</option>
+    </select></label>
+</div>
+<div class="btns">
+  <button type="button" id="c10l1-go" aria-pressed="false">Entrenar</button>
+  <button type="button" id="c10l1-uno">Una iteración</button>
+  <button type="button" id="c10l1-diez">Entrenar 10 iteraciones</button>
+  <button type="button" id="c10l1-cero">Reiniciar</button>
+  <button type="button" id="c10l1-sem">Otra semilla</button>
+</div>
+<p class="hint" style="margin:2px 0 0">Dos agentes con la misma semilla y la misma red aprenden CartPole a la vez. Cada iteración juega 512 pasos y después actualiza la política con esos pasos. La única diferencia: el de la izquierda recorta el cociente de probabilidades; el otro no tiene freno.</p>
+<div class="c10l1-dos">
+  <div><span class="c10l1-rot">Pasos que aguanta el péndulo (media de cada iteración)</span>
+    <canvas id="c10l1-g" data-prop="0.62" role="img" aria-label="Curva de los pasos que dura cada episodio, iteración por iteración, para el agente con recorte y el agente sin recorte"></canvas></div>
+  <div><span class="c10l1-rot">Cuánto cambió la política en cada actualización (KL)</span>
+    <canvas id="c10l1-k" data-prop="0.62" role="img" aria-label="Divergencia KL entre la política antes y después de cada actualización, para los dos agentes"></canvas></div>
+</div>
+<div class="c10l1-ley"><span><i style="background:var(--c-tra)"></i><span id="c10l1-nom">PPO con recorte ε = 0,2</span></span><span><i style="background:var(--c-apl)"></i>Sin recorte (gradiente de política simple, mismos lotes)</span><span><i class="p" style="border-color:var(--good)"></i>Tope: 500</span></div>
+<div class="readout texto" id="c10l1-out" aria-live="polite"></div></div><div class="prose"><p>En nuestra prueba con la semilla de referencia, el agente sin recorte llega primero: toca los 500 pasos en la iteración 7. Pero en las once iteraciones siguientes se derrumba hasta 10 pasos y tarda otras quince en recuperarse. El agente con recorte llega a 500 en la iteración 11 y no vuelve a bajar en las 100. La diferencia está en la KL: con recorte, cada actualización mueve la política 0,013 en promedio; sin recorte, 4,4, más de 300 veces más. Con ε = 1 el freno casi no actúa, y el agente sube y cae durante todo el entrenamiento. Con ε = 0,05 aprende sin sobresaltos, pero más despacio: tarda 22 iteraciones en llegar a 500. Con el tamaño moderado, el agente sin recorte también aprende, aunque oscila entre unos 50 y 500 pasos. Las cifras exactas cambian con la semilla y hasta con el navegador, porque una diferencia mínima en un redondeo se amplifica a lo largo del entrenamiento; la forma de las curvas, no.</p></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>PPO en CartPole, con y sin recorte</h3></div><p>Vas a entrenar PPO con Stable-Baselines3 en <code>CartPole-v1</code> y a leer, después de cada tramo, dos números que mide la biblioteca: la KL aproximada y la fracción de muestras recortadas. Entra a <code>refuerzo</code> y activa el entorno; necesitas PyTorch y Stable-Baselines3 (capítulo 8).</p><ol class="steps"><li><span>Guarda este programa como <code>ppo_cartpole.py</code>:</span></li></ol><div class="code-copia code-lineas"><pre tabindex="0"><code><span class="ln">"""PPO en CartPole-v1 con Stable-Baselines3: 8 copias del entorno; prueba la politica cada 20.000 pasos, hasta 60.000.</span>
+<span class="ln">Uso: python ppo_cartpole.py            (recorte 0.2, el valor por defecto)</span>
+<span class="ln">     python ppo_cartpole.py 100        (recorte 100: en la practica, sin recorte)"""</span>
+<span class="ln">import sys</span>
+<span class="ln">import time</span>
+<span class="ln">import gymnasium as gym</span>
+<span class="ln">from stable_baselines3 import PPO</span>
+<span class="ln">from stable_baselines3.common.env_util import make_vec_env</span>
+<span class="ln">from stable_baselines3.common.evaluation import evaluate_policy</span>
+<span class="ln">from stable_baselines3.common.monitor import Monitor</span>
+<span class="ln"></span>
+<span class="ln">recorte = float(sys.argv[1]) if len(sys.argv) &gt; 1 else 0.2</span>
+<span class="ln">envs = make_vec_env("CartPole-v1", n_envs=8, seed=42)</span>
+<span class="ln">modelo = PPO("MlpPolicy", envs, n_steps=32, batch_size=256, n_epochs=20, learning_rate=0.001,</span>
+<span class="ln">             gamma=0.98, gae_lambda=0.8, clip_range=recorte, ent_coef=0.0, seed=42, verbose=0)</span>
+<span class="ln"></span>
+<span class="ln">inicio = time.time()</span>
+<span class="ln">for tramo in range(1, 4):</span>
+<span class="ln">    modelo.learn(total_timesteps=20_000, reset_num_timesteps=False)</span>
+<span class="ln">    media, _ = evaluate_policy(modelo, Monitor(gym.make("CartPole-v1")), n_eval_episodes=10, deterministic=True)</span>
+<span class="ln">    m = modelo.logger.name_to_value             # lo que midio la ultima actualizacion</span>
+<span class="ln">    print(f"{tramo * 20_000:7,d} pasos ({time.time() - inicio:3.0f} s): aguanta {media:5.1f} pasos | "</span>
+<span class="ln">          f"KL aprox. {m['train/approx_kl']:.4f} | muestras recortadas {m['train/clip_fraction']:.0%}")</span>
+<span class="ln"></span>
+<span class="ln">if recorte == 0.2:</span>
+<span class="ln">    modelo.save("ppo_cartpole")                 # lo usa la practica del capitulo 12</span></code></pre><button type="button" class="ver-todo" aria-expanded="false">Ver las 26 líneas</button><button type="button" class="copiar copiar-todo">Copiar</button></div><ol class="steps" start="2" style="counter-reset:st 1"><li><span>Córrelo con el recorte por defecto y después con un recorte de 100, que en la práctica es no recortar:</span></li></ol><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python ppo_cartpole.py</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>python ppo_cartpole.py 100</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 ppo_cartpole.py</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>python3 ppo_cartpole.py 100</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps" start="3" style="counter-reset:st 2"><li><span>Compara las tres líneas de cada corrida. Los hiperparámetros son los que publica la colección RL Zoo para CartPole: 20 épocas sobre cada lote, muy agresivo a propósito.</span></li></ol><p><b>Qué observar:</b> con recorte 0,2, la política aguanta los 500 pasos desde el primer tramo de 20.000, con una KL de 0,007 a 0,001 y entre el 4 y el 10 % de las muestras recortadas. Con recorte 100, aguanta 9,2 pasos y se queda ahí: la KL marca 0,0000 porque la política ya es determinista y no cambia, y ninguna muestra se recorta. Es el colapso del laboratorio, con una biblioteca profesional. En el equipo de prueba, ocupado con otras tareas, cada corrida tardó unos 6 minutos; en un portátil desocupado debería tardar menos. Con otra versión de SB3 o PyTorch, las cifras exactas pueden cambiar. La corrida con el recorte por defecto guarda la política en <code>ppo_cartpole.zip</code>: no lo borres, lo usa el capítulo 12.</p></div></section>
+<section><h2>La ventaja generalizada (GAE)</h2><div class="prose"><p>PPO necesita una ventaja para cada paso, y hay varias formas de estimarla. El capítulo 9 mostró las dos puntas. Con el retorno completo, <span class="math">G_t - V(S_t)</span>, no hay sesgo pero hay mucho ruido, porque <span class="math">G_t</span> suma el azar de todo el resto del episodio. Con el error TD de un paso, <span class="math">\delta_t = R_{t+1} + \gamma V(S_{t+1}) - V(S_t)</span>, hay poco ruido pero sesgo, porque se confía en un crítico que puede estar equivocado. En el medio están las ventajas de <span class="math">n</span> pasos: <span class="math">n</span> recompensas reales y después la estimación del crítico.</p><p>En 2015, Schulman, Philipp Moritz, Sergey Levine, Michael Jordan y Pieter Abbeel propusieron no elegir: la <b>estimación de ventaja generalizada</b> (<i>Generalized Advantage Estimation</i>, GAE) promedia todas las ventajas de <span class="math">n</span> pasos con pesos que caen como <span class="math">\lambda^{n-1}</span>. La cuenta queda sorprendentemente simple:</p><div class="math-display">\hat{A}_t = \delta_t + (\gamma\lambda)\,\delta_{t+1} + (\gamma\lambda)^2\,\delta_{t+2} + \dots</div><p>la suma de los errores TD que vienen, cada uno descontado por γλ. Con λ = 0 es el error TD de un paso; con λ = 1, el retorno completo menos <span class="math">V</span>, como Monte Carlo. El valor habitual, λ = 0,95, queda cerca de Monte Carlo pero con algo del alivio de TD. Es la misma idea de las trazas de elegibilidad y TD(λ) del capítulo 6, aplicada a la ventaja.</p></div><div class="analogia"><b>Imagínalo así</b><p>Para juzgar una jugada de fútbol puedes mirar solo el pase siguiente (rápido, pero te pierdes si terminó en gol) o el partido entero (completo, pero mezclado con todo lo que pasó después). Un buen comentarista mira lo que siguió a la jugada dando cada vez menos peso a lo más lejano. Eso es λ.</p></div><div class="prose"><p>Con números: si los tres errores TD que siguen a un paso son +1,0, −0,5 y +0,8, con γ = 0,99 y λ = 0,95 (γλ = 0,9405), la ventaja es <span class="math">1{,}0 + 0{,}9405 \cdot (-0{,}5) + 0{,}9405^2 \cdot 0{,}8 = 1{,}24</span>. Se calcula de atrás hacia adelante, igual que el retorno: <span class="math">\hat{A}_t = \delta_t + \gamma\lambda\,\hat{A}_{t+1}</span>, cortando la suma al final de cada episodio. El diagrama de la sección anterior muestra los pesos que reciben los retornos de 1 a 7 pasos con cada λ.</p></div></section>
+<section><h2>Entornos continuos: caminar, saltar, manipular</h2><div class="prose"><p>El terreno donde TRPO y PPO se hicieron fuertes fue el control continuo: robots simulados que deben aprender a caminar moviendo cada articulación. Para eso se usa <b>MuJoCo</b> (<i>Multi-Joint dynamics with Contact</i>, dinámica de varias articulaciones con contacto), un motor de física pensado para robótica que calcula cómo se mueven cuerpos unidos por articulaciones cuando chocan con el piso. Nació en la Universidad de Washington, lo compró DeepMind en 2021 y desde 2022 es libre y gratuito. Gymnasium trae, con un paquete aparte, los entornos clásicos: Hopper (una pata que salta), Walker2d (un caminante de dos patas), HalfCheetah (medio guepardo que corre), Ant (una hormiga de cuatro patas) y Humanoid, una figura humana con 17 articulaciones.</p><p>En esos entornos la acción es un vector de fuerzas o torques, uno por articulación, y la política es la campana del capítulo 9: la red da la media de cada torque y la acción se sortea alrededor de ella. El artículo de PPO comparó los métodos en siete de estos robots con un millón de pasos cada uno, unas horas de cálculo en 2017. Ese mismo año, DeepMind mostró figuras simuladas que aprendían a correr, saltar obstáculos y agacharse con una versión distribuida de PPO, solo con una recompensa por avanzar.</p></div><div class="lab" id="10-lab-2"><div class="lab-title"><span class="tag">Laboratorio</span><h3>Un caminante simulado aprende a avanzar: compara la política a las 10, 100 y 1000 iteraciones</h3></div><p class="hint">Este caminante es mucho más simple que los de MuJoCo: un cuerpo con una pata de dos articulaciones que se mueven por pasos fijos, para que entrene en el navegador. Pulsa «Entrenar 1.000 iteraciones» y mira la curva. Cuando termine, pulsa «Ver la carrera»: las tres copias guardadas de la política corren a la vez desde la misma postura.</p><style>
+[id="10-lab-2"] .c10l2-rot{font:700 .7rem var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin:8px 0 4px}
+[id="10-lab-2"] .btns{align-items:center;margin:6px 0}
+[id="10-lab-2"] canvas{width:100%;display:block;border-radius:8px}
+[id="10-lab-2"] .c10l2-ley{display:flex;flex-wrap:wrap;gap:4px 14px;font:500 .8rem var(--f-display);color:var(--muted);margin-top:4px}
+[id="10-lab-2"] .c10l2-ley i{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:5px;border-radius:2px}
+[id="10-lab-2"] .c10l2-ley i.p{height:0;background:none!important;border-top:2px dashed}
+</style>
+<div class="btns">
+  <button type="button" id="c10l2-go" aria-pressed="false">Entrenar 1.000 iteraciones</button>
+  <button type="button" id="c10l2-ver" disabled>Ver la carrera</button>
+  <button type="button" id="c10l2-cero">Reiniciar</button>
+  <button type="button" id="c10l2-sem">Otra semilla</button>
+</div>
+<p class="hint" style="margin:2px 0 0">El caminante tiene un cuerpo apoyado en el piso y una pata con cadera y rodilla. En cada paso elige una de cuatro acciones: subir o bajar la cadera, estirar o doblar la rodilla. Gana lo que avanza. Cada iteración de PPO juega un episodio de 100 pasos y actualiza la política; se guarda una copia de la política a las 10, a las 100 y a las 1.000 iteraciones.</p>
+<span class="c10l2-rot">La carrera: las tres copias, 100 pasos cada una, desde la misma postura</span>
+<canvas id="c10l2-c" data-prop="0.62" role="img" aria-label="Tres caminantes en tres carriles: la política a las 10, a las 100 y a las 1.000 iteraciones, con la distancia que recorre cada uno"></canvas>
+<span class="c10l2-rot">Metros que avanza la política en 100 pasos, iteración por iteración</span>
+<canvas id="c10l2-g" data-prop="0.45" role="img" aria-label="Curva de la distancia que recorre la política del caminante en 100 pasos a lo largo del entrenamiento"></canvas>
+<div class="c10l2-ley"><span><i style="background:var(--c-tra)"></i>Política sin sortear (cada 10 iteraciones)</span><span><i class="p" style="border-color:var(--good)"></i>El máximo posible: <span id="c10l2-max"></span> m</span></div>
+<div class="readout texto" id="c10l2-out" aria-live="polite"></div></div><div class="prose"><p>Al azar, el caminante avanza unos 6 centímetros en 100 pasos: mueve la pata sin orden. Con la semilla de referencia, la política a las 10 iteraciones avanza 0,37 m, apenas un empujón. A las 100 iteraciones ya encontró un ciclo, levantar la pata, estirarla, apoyarla y tirar del cuerpo, y avanza 4,62 m. A las 1.000, el ciclo se pulió y avanza 5,90 m, lo máximo que permite este caminante: es lo que da la iteración de valor del capítulo 4 cuando conoce las reglas. PPO no las conoce; solo recibe lo que avanzó en cada paso.</p></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>PPO con una acción continua: el péndulo que se levanta</h3></div><p>Vas a entrenar PPO en <code>Pendulum-v1</code>, un entorno de Gymnasium con una acción continua: el torque de un motor, entre −2 y 2, que debe levantar un péndulo colgado y sostenerlo arriba. La recompensa castiga en cada paso el ángulo, la velocidad y el torque usado, así que lo mejor posible ronda 0; un episodio dura 200 pasos. Usa la misma carpeta y el mismo entorno.</p><ol class="steps"><li><span>Guarda este programa como <code>ppo_pendulo.py</code>:</span></li></ol><div class="code-copia code-lineas"><pre tabindex="0"><code><span class="ln">"""PPO con una accion continua: Pendulum-v1 (levantar un pendulo y sostenerlo arriba con un motor de torque).</span>
+<span class="ln">La politica es una campana: la red da la media del torque y la politica sortea alrededor de ella."""</span>
+<span class="ln">import time</span>
+<span class="ln">import gymnasium as gym</span>
+<span class="ln">from stable_baselines3 import PPO</span>
+<span class="ln">from stable_baselines3.common.env_util import make_vec_env</span>
+<span class="ln">from stable_baselines3.common.evaluation import evaluate_policy</span>
+<span class="ln">from stable_baselines3.common.monitor import Monitor</span>
+<span class="ln"></span>
+<span class="ln">env = Monitor(gym.make("Pendulum-v1"))</span>
+<span class="ln">print("Accion:", env.action_space, "| observacion:", env.observation_space.shape)</span>
+<span class="ln">envs = make_vec_env("Pendulum-v1", n_envs=4, seed=42)</span>
+<span class="ln">modelo = PPO("MlpPolicy", envs, n_steps=1024, n_epochs=10, learning_rate=0.001, gamma=0.9, gae_lambda=0.95,</span>
+<span class="ln">             clip_range=0.2, use_sde=True, sde_sample_freq=4, seed=42, verbose=0)</span>
+<span class="ln"></span>
+<span class="ln">media, _ = evaluate_policy(modelo, env, n_eval_episodes=10)</span>
+<span class="ln">print(f"      0 pasos: recompensa por episodio {media:7.1f} (sin entrenar)")</span>
+<span class="ln">inicio = time.time()</span>
+<span class="ln">for tramo in range(1, 4):</span>
+<span class="ln">    modelo.learn(total_timesteps=20_000, reset_num_timesteps=False)</span>
+<span class="ln">    media, _ = evaluate_policy(modelo, env, n_eval_episodes=10, deterministic=True)</span>
+<span class="ln">    print(f"{tramo * 20_000:7,d} pasos ({time.time() - inicio:3.0f} s): recompensa por episodio {media:7.1f}")</span></code></pre><button type="button" class="ver-todo" aria-expanded="false">Ver las 22 líneas</button><button type="button" class="copiar copiar-todo">Copiar</button></div><ol class="steps" start="2" style="counter-reset:st 1"><li><span>Córrelo:</span></li></ol><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python ppo_pendulo.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 ppo_pendulo.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps" start="3" style="counter-reset:st 2"><li><span>Mira la primera línea: <code>Box(-2.0, 2.0, (1,), float32)</code> es una acción continua, un número real entre −2 y 2. Es el mismo <code>PPO("MlpPolicy", ...)</code> que en CartPole: la biblioteca elige la campana sola al ver que la acción es continua.</span></li></ol><p><b>Qué observar:</b> sin entrenar, la política pierde unos 990 puntos por episodio: el péndulo cuelga y gira. A los 20.000 pasos sube a −222; a los 40.000, a −157, y a los 60.000, a −142: levanta el péndulo en pocos segundos y lo sostiene arriba. Los hiperparámetros son los de RL Zoo; uno de ellos, <code>use_sde=True</code>, cambia la forma de explorar (está entre las preguntas para investigar). En el equipo de prueba tardó unos 8 minutos; con otra versión de las bibliotecas las cifras cambian algo.</p></div><div class="caso"><b>Un caso real</b><p>En 2019, OpenAI mostró una mano robótica de cinco dedos, Dactyl, que resolvía un cubo de Rubik con una sola mano. La política que movía los dedos se entrenó con PPO, por completo en simulación, sobre miles de procesadores en paralelo, y después se pasó a la mano real sin más entrenamiento. Para que eso funcionara, en cada episodio simulado se cambiaban al azar la fricción, el tamaño del cubo, el peso de los dedos y decenas de parámetros más. El capítulo 12 vuelve sobre esa técnica, porque es la que permite cruzar del simulador al mundo real.</p></div></section>
+<section><h2>Por qué PPO se volvió el algoritmo por defecto</h2><div class="prose"><p>PPO no es el método que más rinde en cada problema. Su ventaja es otra: funciona razonablemente bien en casi todos, sin mucho ajuste. Las razones son prácticas:</p><ol class="steps"><li><span><b>Es simple.</b> Sobre un actor-crítico como A2C, PPO agrega el cociente, el recorte y un bucle de épocas. Es descenso por gradiente de primer orden, sin el gradiente conjugado de TRPO.</span></li><li><span><b>Es robusto.</b> Los valores por defecto (ε = 0,2, λ = 0,95, unas 10 épocas) sirven en problemas muy distintos, discretos y continuos.</span></li><li><span><b>Aprovecha mejor los datos que A2C</b>, porque cada lote se usa varias veces, y escala bien con muchas copias del entorno en paralelo.</span></li></ol><p>Por eso es el algoritmo por defecto en bibliotecas como Stable-Baselines3, RLlib o CleanRL, y la base de algunos de los resultados más visibles del campo: OpenAI Five, que en 2019 le ganó al campeón mundial de Dota 2, un videojuego de equipos de cinco, se entrenó con PPO jugando contra sí mismo el equivalente a unos 180 años de partidas por día durante diez meses. Y es el algoritmo con que se ajustaron los primeros asistentes de conversación con preferencias humanas, el tema del capítulo 11.</p><p>Tiene también límites. Es <b>on-policy</b> (<i>on-policy</i>: aprende solo de lo que juega la política actual): los datos de cada iteración se descartan, así que necesita muchas interacciones, algo barato en un simulador y caro con un robot real. Y es más sensible de lo que parece a los detalles de programación: en 2022, un trabajo muy citado contó 37 detalles de implementación, como normalizar las ventajas o recortar la norma del gradiente, que cambian bastante el resultado. Los laboratorios de este capítulo usan varios de ellos.</p></div><div class="ml"><b>En la práctica</b><p><b>El freno, a la vista.</b> Noemí repitió en la reunión el laboratorio del recorte. Teodoro miró la gráfica de la KL: «O sea que cada actualización tiene permitido cambiar el robot solo un poco». Esa era la idea. Yolanda preguntó si eso garantiza que nunca va a empeorar. No lo garantiza: PPO hace improbable el colapso, no imposible, y por eso Noemí propuso guardar una copia de la política cada cierto número de iteraciones y probarla en el simulador antes de reemplazar la anterior, como se hace con cualquier versión de software. Ulises calculó el costo: PPO necesita cientos de miles de pasos aun en problemas chicos, así que todo el entrenamiento va a ocurrir en el simulador. Al salir, Teodoro hizo una pregunta que nadie esperaba: el proveedor del asistente de texto que usan los supervisores dice que su modelo «se ajustó con PPO». ¿Es el mismo PPO del robot?</p></div></section>
+<section><h2>Otros métodos que vale la pena conocer: SAC, basados en modelo y AlphaZero</h2><div class="prose"><p>PPO es un buen punto de partida, pero no es el único camino. Tres familias más aparecen a menudo.</p><p><b>SAC</b> (<i>Soft Actor-Critic</i>, actor-crítico suave), publicado en 2018 por Tuomas Haarnoja y sus colegas en Berkeley, es un actor-crítico <b>off-policy</b>: guarda las experiencias en una memoria de repetición, como DQN, y las reutiliza muchas veces. Además, maximiza la recompensa <b>más</b> la entropía de la política, de modo que explora por diseño. Con acciones continuas suele necesitar muchos menos pasos que PPO, y por eso se usa en robots reales: en 2019, el mismo grupo enseñó a caminar a un robot de cuatro patas en unas dos horas de práctica en el piso. TD3, de la misma época, es otro actor-crítico off-policy muy usado.</p><p>Los <b>métodos basados en modelo</b> (<i>model-based</i>) aprenden, además de la política, un modelo del entorno: qué estado y qué recompensa siguen a cada acción. Con ese modelo pueden planificar o «imaginar» experiencias sin tocar el mundo real. La idea viene de Dyna, de Sutton (1990); versiones modernas como Dreamer entrenan la política dentro de los sueños de su modelo, y DreamerV3, publicado en 2025 en la revista Nature, consiguió diamantes en el videojuego Minecraft sin datos humanos. Es lo mismo que hacía la programación dinámica del capítulo 4, con la diferencia de que el modelo se aprende.</p><p><b>AlphaZero</b>, de DeepMind (2017-2018), combina aprendizaje y búsqueda. Una red da, para cada posición del tablero, una política (qué jugadas parecen buenas) y un valor (quién va ganando). Una búsqueda en árbol usa esa red para mirar muchas jugadas adelante, y la red se entrena para imitar lo que la búsqueda encontró y predecir quién ganó. Jugando solo contra sí mismo, sin partidas humanas, superó en horas a los mejores programas de ajedrez, go y shogi. Su sucesor, MuZero, aprende además el modelo de las reglas.</p></div><figure class="fig fig-esquema" id="10-diagrama-4"><div class="lienzo"><svg viewBox="0 0 800 340" style="min-width:640px" role="img" aria-label="Mapa del refuerzo profundo en cuatro familias: sin modelo que aprenden valores (DQN), sin modelo que aprenden la política (REINFORCE, A2C, TRPO, PPO, SAC, TD3), con un modelo del mundo aprendido (Dyna, Dreamer, MuZero) y búsqueda con aprendizaje (AlphaGo, AlphaZero), ordenadas de más a menos datos necesarios">
+<defs><marker id="c10d4-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker></defs><text x="20" y="26" class="t t-xs t-b t-m">UN MAPA DEL REFUERZO PROFUNDO: QUÉ APRENDE CADA FAMILIA Y CON QUÉ DATOS</text><rect x="20" y="44" width="180" height="196" rx="10" class="c-red"/><text x="32" y="68" class="t t-s t-b k-red">Sin modelo, aprende valores</text><text x="32" y="96" class="t t-s t-b">DQN y sus mejoras</text><text x="32" y="113" class="t t-s">cap. 8; off-policy,</text><text x="32" y="130" class="t t-s">memoria de repetición</text><rect x="210" y="44" width="180" height="196" rx="10" class="c-tra"/><text x="222" y="68" class="t t-s t-b k-tra">Sin modelo, aprende la política</text><text x="222" y="96" class="t t-s t-b">REINFORCE, A2C</text><text x="222" y="113" class="t t-s">cap. 9; on-policy</text><text x="222" y="138" class="t t-s t-b">TRPO, PPO</text><text x="222" y="155" class="t t-s">cap. 10; pasos con freno</text><text x="222" y="180" class="t t-s t-b">SAC, TD3</text><text x="222" y="197" class="t t-s">actor-crítico off-policy,</text><text x="222" y="214" class="t t-s">acciones continuas</text><rect x="400" y="44" width="180" height="196" rx="10" class="c-fis"/><text x="412" y="68" class="t t-s t-b k-fis">Aprende un modelo del mundo</text><text x="412" y="96" class="t t-s t-b">Dyna (1990)</text><text x="412" y="113" class="t t-s">planifica con un modelo</text><text x="412" y="130" class="t t-s">aprendido</text><text x="412" y="155" class="t t-s t-b">Dreamer</text><text x="412" y="172" class="t t-s">entrena en su «sueño»</text><text x="412" y="197" class="t t-s t-b">MuZero</text><text x="412" y="214" class="t t-s">modelo para planificar</text><rect x="590" y="44" width="180" height="196" rx="10" class="c-apl"/><text x="602" y="68" class="t t-s t-b k-apl">Búsqueda + aprendizaje</text><text x="602" y="96" class="t t-s t-b">AlphaGo, AlphaZero</text><text x="602" y="113" class="t t-s">búsqueda en árbol con</text><text x="602" y="130" class="t t-s">una red de política y</text><text x="602" y="147" class="t t-s">valor; juega contra sí</text><text x="602" y="164" class="t t-s">mismo</text><path d="M30 276H770" class="ln" style="stroke-width:1.6" marker-end="url(#c10d4-muted)" marker-start="url(#c10d4-muted)"/><text x="30" y="296" class="t t-s t-m">más datos, menos supuestos</text><text x="770" y="296" class="t t-s t-m" text-anchor="end">menos datos, más cálculo y más cosas que pueden fallar</text><text x="400" y="324" class="t t-s" text-anchor="middle">Eficiencia de muestras: cuántas interacciones con el entorno necesita cada familia (en general).</text>
+</svg></div><figcaption><b>Un mapa del refuerzo profundo.</b> Cuatro familias: sin modelo que aprenden valores (DQN, azul), sin modelo que aprenden la política (REINFORCE, A2C, TRPO, PPO, SAC y TD3, morado), con un modelo del mundo aprendido (Dyna, Dreamer, MuZero, ámbar) y con búsqueda (AlphaGo, AlphaZero, rosa). La flecha de abajo ordena, en general, de las que necesitan más interacciones con el entorno a las que necesitan menos, a cambio de más cálculo y de más piezas que pueden fallar.</figcaption></figure></section>
+<section><h2>La idea clave</h2><div class="prose"><p>Un gradiente de política dice hacia dónde mejorar, pero no cuánto, y en refuerzo un paso demasiado grande puede hundir una política que ya funcionaba sin dejarle datos de los que recuperarse. TRPO resolvió el problema con una región de confianza: mejorar lo más posible sin que la KL con la política vieja pase de un límite. PPO consiguió casi lo mismo con un recurso mucho más simple: recortar el cociente de probabilidades entre 1 − ε y 1 + ε, para que ninguna muestra empuje la política más allá de un cambio moderado. Con eso puede reutilizar cada lote varias épocas, y con la ventaja generalizada (GAE) estima cuánto mejor fue cada acción con un buen equilibrio entre sesgo y ruido. Simple, robusto y fácil de escalar, se volvió el algoritmo por defecto. Mejorar la política sin alejarse demasiado de la anterior.</p></div></section>
+<section><h2>Pruébate</h2><div class="quiz"><h3>Pruébate</h3><details><summary>¿Por qué un paso demasiado grande es más grave en refuerzo que en aprendizaje supervisado?</summary><p>Porque en refuerzo la política genera sus propios datos: si empeora, los episodios siguientes los juega la política peor, y si se vuelve determinista hacia el lado equivocado deja de explorar. En supervisado los datos son fijos y el paso siguiente corrige.</p></details><details><summary>¿Qué mide la KL entre dos políticas y para qué la usa TRPO?</summary><p>Cuánto difieren sus probabilidades: 0 si son iguales, más a medida que se separan. TRPO busca la política que más mejora el objetivo con la condición de que la KL media con la política vieja no pase de un límite (la región de confianza).</p></details><details><summary>Una acción tenía probabilidad 0,40 y ventaja positiva. Con ε = 0,2, ¿a partir de qué probabilidad deja de empujar esa muestra?</summary><p>Cuando el cociente llega a 1,2, es decir, cuando la probabilidad nueva llega a 0,48. Por encima, el término recortado manda y su gradiente es cero.</p></details><details><summary>¿Qué permite el recorte que REINFORCE y A2C no hacen?</summary><p>Reutilizar cada lote de experiencia en varias épocas de descenso por gradiente sin que la política se aleje demasiado de la que juntó los datos.</p></details><details><summary>¿Qué pasa con GAE cuando λ vale 0 y cuando vale 1?</summary><p>Con λ = 0, la ventaja es el error TD de un paso (poco ruido, más sesgo). Con λ = 1, es el retorno completo menos V(s), como Monte Carlo (sin sesgo por el crítico, más ruido).</p></details><details><summary>Nombra una ventaja y una desventaja de PPO frente a SAC.</summary><p>PPO es más simple, robusto y fácil de paralelizar, y sirve para acciones discretas y continuas. Pero es on-policy y descarta los datos de cada iteración, así que necesita muchas más interacciones que SAC, que reutiliza la experiencia con una memoria de repetición.</p></details></div></section>
+<section><h2>Para investigar</h2><div class="investiga"><h3>Para investigar</h3><p class="hint">Estas preguntas no se responden en el capítulo: búscalas por tu cuenta.</p><ol><li>¿Qué es el método del gradiente conjugado y por qué TRPO lo usa en lugar de invertir una matriz?<small>Pista: busca «conjugate gradient Fisher-vector product TRPO».</small></li><li>¿Por qué la KL no es simétrica, y qué cambia si se mide de la política vieja a la nueva o al revés?<small>Pista: busca «forward vs reverse KL divergence».</small></li><li>¿Cómo funciona la búsqueda de árbol Monte Carlo (MCTS) que usan AlphaGo y AlphaZero?<small>Pista: busca «Monte Carlo tree search UCT PUCT AlphaZero».</small></li><li>¿Qué es la exploración dependiente del estado (gSDE) que usa la práctica del péndulo y por qué conviene en robots reales?<small>Pista: busca «generalized state dependent exploration Raffin 2021».</small></li><li>¿Por qué simular el contacto y la fricción entre cuerpos es tan difícil para un motor de física como MuJoCo?<small>Pista: busca «contact dynamics simulation complementarity MuJoCo soft contacts».</small></li></ol></div></section>
+<section><h2>Para saber más</h2><div class="vids"><span>Para saber más</span><a class="vid" href="https://arxiv.org/abs/1707.06347" target="_blank" rel="noopener">Proximal Policy Optimization Algorithms <small>el artículo de PPO (2017), en inglés</small></a><a class="vid" href="https://arxiv.org/abs/1502.05477" target="_blank" rel="noopener">Trust Region Policy Optimization <small>el artículo de TRPO (2015), en inglés</small></a><a class="vid" href="https://arxiv.org/abs/1506.02438" target="_blank" rel="noopener">High-Dimensional Continuous Control Using Generalized Advantage Estimation <small>el artículo de GAE (2015), en inglés</small></a><a class="vid" href="https://spinningup.openai.com/en/latest/algorithms/ppo.html" target="_blank" rel="noopener">Spinning Up: Proximal Policy Optimization <small>la explicación de OpenAI, con pseudocódigo, en inglés</small></a><a class="vid" href="https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/" target="_blank" rel="noopener">The 37 Implementation Details of Proximal Policy Optimization <small>los detalles que cambian el resultado (2022), en inglés</small></a><a class="vid" href="https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html" target="_blank" rel="noopener">PPO en Stable-Baselines3 <small>la documentación de la implementación de las prácticas, en inglés</small></a></div></section>
+<label class="got"><input type="checkbox" id="got"> Lo tengo claro</label>
+<nav class="pager" id="pager" aria-label="Capítulo anterior y siguiente"></nav>
+</main>
+</div>
+<footer><span>Curso abierto de aaramirez.github.io.</span><span>Sitio publicado: <a href="https://github.com/aaramirez/aprendizaje-por-refuerzo" target="_blank" rel="noopener">github.com/aaramirez/aprendizaje-por-refuerzo</a></span></footer>
+</div>
+<script src="assets/lab.js"></script>
+<script>
+(function(){
+  const raiz=document.querySelector('[id="10-lab-1"]');
+/* MundoRL: biblioteca mínima común de los labs del curso «Aprendizaje por refuerzo» (sin dependencias, con semilla).
+   Plantilla: copia este bloque DENTRO de la IIFE de tu lab (el motor solo admite <script> en línea, sin src).
+   Uso típico:
+     const M=MundoRL, m=M.cuadricula('almacen');            // la cuadrícula de referencia del curso
+     const r=M.rnd(42);
+     const {V,pi}=M.iterarValor(m);                         // valores óptimos y política óptima
+     M.dibujar(canvas,m,{raiz,V,pi,numeros:true});          // mapa de calor de V y flechas de la política
+     const ep=M.episodio(m,s=>M.elegir(pi,s,r),r);          // un episodio: ep.G, ep.Gd, ep.pasos, ep.final
+   Acciones: 0 arriba, 1 derecha, 2 abajo, 3 izquierda (el orden de CliffWalking en Gymnasium).
+   Estados: s = fila*cols + columna (fila 0 arriba), como FrozenLake y CliffWalking. Nombre de casilla: 'A5' =
+   columna A (la primera de la izquierda), fila 5 contada desde arriba. */
+const MundoRL=(function(){
+  /* ---------- Azar con semilla (mulberry32) ---------- */
+  function rnd(s){return function(){s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  function gauss(r){let u=0;while(!u)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r());}
+  const entero=(r,n)=>Math.floor(r()*n);
+  function barajar(n,r){const a=Array.from({length:n},(_,i)=>i);for(let i=n-1;i>0;i--){const j=entero(r,i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+  /* ---------- Números en español: punto de miles, coma decimal ---------- */
+  const nf=(n,d=0)=>{if(!isFinite(n))return '—';const s=Math.abs(n).toFixed(d).split('.');s[0]=s[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');return (n<0&&Number(Math.abs(n).toFixed(d))!==0?'−':'')+s.join(',');};
+  const pct=(x,d=1)=>nf(100*x,d)+' %';
+
+  /* ---------- Cuadrículas ---------- */
+  const ACC=['arriba','derecha','abajo','izquierda'],FLECHA=['↑','→','↓','←'],DF=[-1,0,1,0],DC=[0,1,0,-1];
+  /* Caracteres: '.' piso, '#' pared (estantería), 'S' inicio, 'P' premio (termina), 'T' trampa (termina),
+     'C' acantilado (castigo y vuelta al inicio, no termina: CliffWalking). */
+  const MAPAS={
+    almacen:['.....P',
+             '.###.T',
+             '...T..',
+             '.#....',
+             '..S#..'],
+    acantilado:['............','............','............','SCCCCCCCCCCP'],
+    lago4:['S...','.T.T','...T','T..P']
+  };
+  /* Recompensas y dinámica por defecto de la cuadrícula de referencia. */
+  const DEF={paso:-0.1,premio:10,trampa:-10,acantilado:-100,resbalar:0.2,gamma:0.9,maxPasos:100};
+  const PRESET={
+    almacen:{},
+    acantilado:{paso:-1,premio:-1,resbalar:0,gamma:1,maxPasos:200},          // CliffWalking-v1 de Gymnasium
+    lago4:{paso:0,premio:1,trampa:0,resbalar:2/3,gamma:0.99,maxPasos:100}      // FrozenLake-v1 4x4, resbaloso
+  };
+  function cuadricula(mapa,o){
+    const clave=typeof mapa==='string'?mapa:null;
+    const filas=(clave?MAPAS[clave]:mapa).slice();
+    const op=Object.assign({},DEF,clave?PRESET[clave]:{},o||{});
+    const nF=filas.length,nC=filas[0].length,nS=nF*nC,tipo=[];
+    let inicio=0;
+    for(let f=0;f<nF;f++)for(let c=0;c<nC;c++){const t=filas[f][c]||'.';tipo.push(t);if(t==='S')inicio=f*nC+c;}
+    const m={mapa:filas,filas:nF,cols:nC,nS,nA:4,tipo,inicio,gamma:op.gamma,maxPasos:op.maxPasos,op,
+      esPared:s=>tipo[s]==='#',esTerminal:s=>tipo[s]==='P'||tipo[s]==='T',
+      fila:s=>Math.floor(s/nC),col:s=>s%nC,
+      nombre:s=>String.fromCharCode(65+s%nC)+(Math.floor(s/nC)+1)};
+    m.libres=[];for(let s=0;s<nS;s++)if(!m.esPared(s)&&!m.esTerminal(s))m.libres.push(s);
+    /* Adónde lleva moverse en la dirección d desde s (paredes y bordes: se queda). */
+    function mover(s,d){const f=m.fila(s)+DF[d],c=m.col(s)+DC[d];if(f<0||f>=nF||c<0||c>=nC)return s;const s2=f*nC+c;return tipo[s2]==='#'?s:s2;}
+    function resultado(s2){const t=tipo[s2];
+      if(t==='P')return {s2,r:op.premio,fin:true};
+      if(t==='T')return {s2,r:op.trampa,fin:true};
+      if(t==='C')return {s2:inicio,r:op.acantilado,fin:false,cayo:true};
+      return {s2,r:op.paso,fin:false};}
+    /* P[s][a]: lista de {p,s2,r,fin} (como env.unwrapped.P de Gymnasium). Con probabilidad 1−resbalar va adonde
+       quiere; con resbalar/2 se desvía a cada lado (nunca hacia atrás). */
+    m.reconstruir=function(){
+      m.P=[];
+      for(let s=0;s<nS;s++){const fila=[];
+        for(let a=0;a<4;a++){const lista=[];
+          if(m.esPared(s)||m.esTerminal(s)){fila.push([{p:1,s2:s,r:0,fin:true}]);continue;}
+          const q=op.resbalar,opciones=[[a,1-q],[(a+1)%4,q/2],[(a+3)%4,q/2]];
+          for(const [d,p] of opciones){if(p<=0)continue;const res=resultado(mover(s,d));
+            const ya=lista.find(x=>x.s2===res.s2&&x.r===res.r);if(ya)ya.p+=p;else lista.push(Object.assign({p},res));}
+          fila.push(lista);}
+        m.P.push(fila);}
+    };
+    m.reconstruir();
+    /* Cambia una casilla (para labs donde el lector arma la cuadrícula) o una opción, y recalcula P. */
+    m.poner=function(s,t){tipo[s]=t;if(t==='S'){for(let i=0;i<nS;i++)if(i!==s&&tipo[i]==='S')tipo[i]='.';inicio=s;m.inicio=s;}
+      m.libres=[];for(let i=0;i<nS;i++)if(!m.esPared(i)&&!m.esTerminal(i))m.libres.push(i);m.reconstruir();};
+    m.opcion=function(k,v){op[k]=v;if(k==='gamma')m.gamma=v;if(k==='maxPasos')m.maxPasos=v;m.reconstruir();};
+    /* Un paso con azar: {s2, r, fin, cayo}. */
+    m.paso=function(s,a,r){const L=m.P[s][a];let u=r(),k=0;while(k<L.length-1&&u>=L[k].p){u-=L[k].p;k++;}
+      const x=L[k];return {s2:x.s2,r:x.r,fin:x.fin,cayo:tipo[s]!=='C'&&x.s2===inicio&&x.r===op.acantilado};};
+    return m;
+  }
+
+  /* ---------- Políticas: Float64Array de nS*4 probabilidades (pi[s*4+a]) ---------- */
+  function politicaAlAzar(m){const pi=new Float64Array(m.nS*4).fill(0.25);return pi;}
+  function politicaDe(m,acciones){const pi=new Float64Array(m.nS*4);for(let s=0;s<m.nS;s++)pi[s*4+(acciones[s]??0)]=1;return pi;}
+  function accionDe(pi,s){let k=0;for(let a=1;a<4;a++)if(pi[s*4+a]>pi[s*4+k]+1e-12)k=a;return k;}
+  function elegir(pi,s,r){let u=r();for(let a=0;a<3;a++){u-=pi[s*4+a];if(u<0)return a;}return 3;}
+  /* Política codiciosa respecto de Q (nS*4). empates: 'primero' (determinista) o 'repartir'. */
+  function codiciosa(m,Q,empates){const pi=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++){let mx=-Infinity;for(let a=0;a<4;a++)mx=Math.max(mx,Q[s*4+a]);
+      const mejores=[];for(let a=0;a<4;a++)if(Q[s*4+a]>=mx-1e-9)mejores.push(a);
+      if(empates==='repartir')mejores.forEach(a=>pi[s*4+a]=1/mejores.length);else pi[s*4+mejores[0]]=1;}
+    return pi;}
+  function egreedy(m,Q,eps){const pi=codiciosa(m,Q);for(let i=0;i<pi.length;i++)pi[i]=pi[i]*(1-eps)+eps/4;return pi;}
+
+  /* ---------- Bellman ---------- */
+  function g_(m,o){return o&&o.gamma!==undefined?o.gamma:m.gamma;}
+  /* Q a partir de V: q(s,a) = Σ p·(r + γ·V(s')) */
+  function qDeV(m,V,gamma){const Q=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++)for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));Q[s*4+a]=(m.esPared(s)||m.esTerminal(s))?0:q;}
+    return Q;}
+  /* Un barrido de evaluación (síncrono): V'(s) = Σ_a π(a|s) Σ p·(r + γ·V(s')). Devuelve {V, delta}. */
+  function barridoEval(m,pi,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let v=0;for(let a=0;a<4;a++){const w=pi[s*4+a];if(!w)continue;let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));v+=w*q;}
+      W[s]=v;delta=Math.max(delta,Math.abs(v-V[s]));}
+    return {V:W,delta};}
+  /* Un barrido de optimalidad: V'(s) = max_a Σ p·(r + γ·V(s')). */
+  function barridoValor(m,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let mx=-Infinity;for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));if(q>mx)mx=q;}
+      W[s]=mx;delta=Math.max(delta,Math.abs(mx-V[s]));}
+    return {V:W,delta};}
+  /* Evaluación de política hasta que el cambio máximo baje de tol. */
+  function evaluar(m,pi,o={}){let V=o.V0?Float64Array.from(o.V0):new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoEval(m,pi,V,o);V=x.V;delta=x.delta;b++;}
+    return {V,barridos:b,delta};}
+  function iterarValor(m,o={}){let V=new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoValor(m,V,o);V=x.V;delta=x.delta;b++;}
+    const Q=qDeV(m,V,g_(m,o));return {V,Q,pi:codiciosa(m,Q),barridos:b};}
+  function iterarPolitica(m,o={}){let pi=o.pi0?Float64Array.from(o.pi0):politicaAlAzar(m),vueltas=0,V,historia=[];
+    for(;vueltas<100;vueltas++){V=evaluar(m,pi,o).V;const nuevo=codiciosa(m,qDeV(m,V,g_(m,o)));historia.push({V,pi});
+      let igual=true;for(const s of m.libres)if(accionDe(nuevo,s)!==accionDe(pi,s)||pi[s*4+accionDe(pi,s)]<1){igual=false;break;}
+      pi=nuevo;if(igual)break;}
+    return {V,pi,vueltas:vueltas+1,historia};}
+
+  /* ---------- Experiencia ---------- */
+  /* Un episodio desde el inicio (o desde o.desde). elegir(s) -> acción. Devuelve estados, acciones, recompensas,
+     G (suma), Gd (suma descontada con γ), pasos y final: 'premio', 'trampa' o 'tope'. */
+  function episodio(m,elegirA,r,o={}){const S=[],A=[],R=[];let s=o.desde??m.inicio,fin=false,final='tope',G=0,Gd=0,d=1;const max=o.max??m.maxPasos;
+    for(let t=0;t<max&&!fin;t++){const a=elegirA(s);const x=m.paso(s,a,r);S.push(s);A.push(a);R.push(x.r);G+=x.r;Gd+=d*x.r;d*=m.gamma;s=x.s2;fin=x.fin;
+      if(fin)final=m.tipo[s]==='P'?'premio':'trampa';}
+    S.push(s);return {S,A,R,G,Gd,pasos:A.length,final};}
+  /* Retorno medio de una política (pi) en n episodios. */
+  function retornoMedio(m,pi,r,n=1000){let G=0,Gd=0,P=0,ex=0;for(let i=0;i<n;i++){const e=episodio(m,s=>elegir(pi,s,r),r);G+=e.G;Gd+=e.Gd;P+=e.pasos;if(e.final==='premio')ex++;}
+    return {G:G/n,Gd:Gd/n,pasos:P/n,exito:ex/n};}
+
+  /* ---------- Bandido multibrazo (cap. 01) ---------- */
+  const BANDIDO=[0.25,0.40,0.55,0.50,0.30];   // máquinas A-E: probabilidad de pagar 1 ficha
+  function bandido(probs,r){probs=probs||BANDIDO;let mejor=0;probs.forEach((p,i)=>{if(p>probs[mejor])mejor=i;});
+    return {k:probs.length,probs,mejor,tirar:a=>r()<probs[a]?1:0};}
+  /* Agente de bandido. metodo: 'egreedy' (ε, promedio de la muestra), 'optimista' (codicioso con Q inicial q0 y
+     paso constante alfa) o 'ucb' (cota superior de confianza con c). */
+  function agenteBandido(k,o={}){const met=o.metodo||'egreedy',q0=o.q0??0,r=o.r||rnd(42);
+    const Q=new Float64Array(k).fill(met==='optimista'?q0:0),N=new Float64Array(k);let t=0;
+    function arg(f){let mx=-Infinity,L=[];for(let a=0;a<k;a++){const v=f(a);if(v>mx+1e-12){mx=v;L=[a];}else if(Math.abs(v-mx)<=1e-12)L.push(a);}return L[entero(r,L.length)];}
+    /* epsilon, alfa y c se pueden cambiar en vivo (ag.epsilon = 0.2). exploro: si la última elección fue al azar. */
+    return {Q,N,metodo:met,epsilon:o.epsilon??0.1,alfa:o.alfa??0.1,c:o.c??2,exploro:false,
+      elegir(){t++;this.exploro=false;
+        if(met==='ucb'){for(let a=0;a<k;a++)if(N[a]===0)return a;const c=this.c;return arg(a=>Q[a]+c*Math.sqrt(Math.log(t)/N[a]));}
+        if(met==='egreedy'&&r()<this.epsilon){this.exploro=true;return entero(r,k);}
+        return arg(a=>Q[a]);},
+      aprender(a,R){N[a]++;Q[a]+=(met==='optimista'?this.alfa:1/N[a])*(R-Q[a]);}};}
+
+  /* ---------- CartPole (Barto, Sutton y Anderson, 1983; constantes de Gymnasium CartPole-v1) ---------- */
+  function cartpole(r){const g=9.8,mc=1.0,mp=0.1,mt=mc+mp,l=0.5,pml=mp*l,F=10,tau=0.02,thMax=12*2*Math.PI/360,xMax=2.4;
+    const e={x:0,v:0,th:0,w:0,t:0,fin:false,
+      reiniciar(){this.x=(r()-.5)*.1;this.v=(r()-.5)*.1;this.th=(r()-.5)*.1;this.w=(r()-.5)*.1;this.t=0;this.fin=false;return this.obs();},
+      obs(){return [this.x,this.v,this.th,this.w];},
+      /* a: 0 empuja a la izquierda, 1 a la derecha. Recompensa 1 por paso; termina si |θ|>12° o |x|>2,4; trunca a 500. */
+      paso(a){const f=a===1?F:-F,ct=Math.cos(this.th),st=Math.sin(this.th);
+        const tmp=(f+pml*this.w*this.w*st)/mt,ta=(g*st-ct*tmp)/(l*(4/3-mp*ct*ct/mt)),xa=tmp-pml*ta*ct/mt;
+        this.x+=tau*this.v;this.v+=tau*xa;this.th+=tau*this.w;this.w+=tau*ta;this.t++;
+        const termina=Math.abs(this.x)>xMax||Math.abs(this.th)>thMax,trunca=this.t>=500;this.fin=termina||trunca;
+        return {obs:this.obs(),r:1,termina,trunca};}};
+    e.reiniciar();return e;}
+
+  /* ---------- Dibujo ---------- */
+  function color(raiz,n){return getComputedStyle(raiz).getPropertyValue(n).trim();}
+  function rgb(c){if(!c)return [128,128,128];if(c[0]==='#'){if(c.length===4)c='#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];return [1,3,5].map(i=>parseInt(c.substr(i,2),16));}
+    const m=c.match(/[\d.]+/g);return m?m.slice(0,3).map(Number):[128,128,128];}
+  function mezcla(a,b,t){const A=rgb(a),B=rgb(b);return 'rgb('+A.map((x,i)=>Math.round(x+(B[i]-x)*t)).join(',')+')';}
+  /* Prepara un canvas con devicePixelRatio. Alto = ancho * data-prop (o o.prop). Devuelve {c,w,h}. */
+  function lienzo(cv,prop){const w=Math.max(120,cv.clientWidth||cv.parentNode.clientWidth||300),p=prop??parseFloat(cv.dataset.prop||'0.6'),h=Math.round(w*p),k=window.devicePixelRatio||1;
+    cv.style.height=h+'px';cv.width=Math.round(w*k);cv.height=Math.round(h*k);const c=cv.getContext('2d');c.setTransform(k,0,0,k,0,0);return {c,w,h};}
+  function flecha(c,x,y,a,L,col,ancho){const dx=DC[a],dy=DF[a];c.strokeStyle=col;c.fillStyle=col;c.lineWidth=ancho||2;
+    const x0=x-dx*L*.45,y0=y-dy*L*.45,x1=x+dx*L*.45,y1=y+dy*L*.45;c.beginPath();c.moveTo(x0,y0);c.lineTo(x1-dx*L*.18,y1-dy*L*.18);c.stroke();
+    const px=-dy,py=dx;c.beginPath();c.moveTo(x1,y1);c.lineTo(x1-dx*L*.3+px*L*.2,y1-dy*L*.3+py*L*.2);c.lineTo(x1-dx*L*.3-px*L*.2,y1-dy*L*.3-py*L*.2);c.closePath();c.fill();}
+  /* Dibuja la cuadrícula. o: {raiz, V (mapa de calor), rango (|V| que satura el color), pi (flechas: probabilidades),
+     numeros (escribe V), ruta (lista de estados), agente (estado), resaltar (estado), Q (cuatro triángulos por casilla),
+     visitas (Float64Array: opacidad de exploración), prop}. Devuelve {lado, x0, y0, casilla(px,py) -> s o -1}. */
+  function dibujar(cv,m,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),prop=o.prop??(m.filas/m.cols);
+    const {c,w,h}=lienzo(cv,prop),lado=Math.min((w-2)/m.cols,(h-2)/m.filas),x0=(w-lado*m.cols)/2,y0=(h-lado*m.filas)/2;
+    const card=C('--card'),azul=C('--c-red'),rojo=C('--warm'),ink=C('--ink'),muted=C('--muted'),good=C('--good'),line=C('--line');
+    c.clearRect(0,0,w,h);
+    let rango=o.rango;if(!rango&&(o.V||o.Q)){rango=1e-9;const src=o.V||o.Q;for(let i=0;i<src.length;i++)rango=Math.max(rango,Math.abs(src[i]));}
+    const tinte=v=>v>=0?mezcla(card,azul,Math.min(1,v/rango)*.85):mezcla(card,rojo,Math.min(1,-v/rango)*.85);
+    const fuente=Math.max(9,Math.min(14,lado*.24));
+    for(let s=0;s<m.nS;s++){const x=x0+m.col(s)*lado,y=y0+m.fila(s)*lado,t=m.tipo[s],cx=x+lado/2,cy=y+lado/2;
+      c.fillStyle=card;
+      if(t==='#'){c.fillStyle=mezcla(card,muted,.55);c.fillRect(x,y,lado,lado);
+        c.strokeStyle=mezcla(card,muted,.8);c.lineWidth=1;c.beginPath();for(let k=1;k<4;k++){c.moveTo(x+3,y+lado*k/4);c.lineTo(x+lado-3,y+lado*k/4);}c.stroke();continue;}
+      if(t==='P'){c.fillStyle=mezcla(card,good,.28);c.fillRect(x,y,lado,lado);}
+      else if(t==='T'||t==='C'){c.fillStyle=mezcla(card,rojo,.28);c.fillRect(x,y,lado,lado);}
+      else if(o.Q){const q=k=>o.Q[s*4+k];const P=[[cx,cy],[x,y],[x+lado,y],[x+lado,y+lado],[x,y+lado]];
+        const tri=[[1,2],[2,3],[3,4],[4,1]];for(let a=0;a<4;a++){c.fillStyle=tinte(q(a));c.beginPath();c.moveTo(cx,cy);c.lineTo(...P[tri[a][0]]);c.lineTo(...P[tri[a][1]]);c.closePath();c.fill();}
+        c.strokeStyle=line;c.lineWidth=.6;c.beginPath();c.moveTo(x,y);c.lineTo(x+lado,y+lado);c.moveTo(x+lado,y);c.lineTo(x,y+lado);c.stroke();}
+      else if(o.V){c.fillStyle=tinte(o.V[s]);c.fillRect(x,y,lado,lado);}
+      else c.fillRect(x,y,lado,lado);
+      if(o.visitas&&!m.esTerminal(s)){const vmax=Math.max(1,...o.visitas);c.fillStyle=C('--c-apl');c.globalAlpha=.45*Math.sqrt(o.visitas[s]/vmax);c.fillRect(x,y,lado,lado);c.globalAlpha=1;}
+      c.textAlign='center';c.textBaseline='middle';
+      if(t==='P'||t==='T'||t==='C'){c.fillStyle=t==='P'?good:rojo;c.font='700 '+Math.round(fuente*1.05)+'px '+C('--f-display');
+        const val=t==='P'?m.op.premio:t==='T'?m.op.trampa:m.op.acantilado;
+        c.fillText(t==='P'?'Premio':t==='T'?'Trampa':'',cx,cy-(lado>44?fuente*.55:0));if(lado>44||t==='C'){c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText((val>0?'+':'')+nf(val,Number.isInteger(val)?0:1),cx,t==='C'?cy:cy+fuente*.65);}
+        continue;}
+      if(o.pi&&!o.Q){const ps=[0,1,2,3].map(a=>o.pi[s*4+a]),mx=Math.max(...ps);
+        for(let a=0;a<4;a++)if(ps[a]>0.01){const L=lado*(o.numeros?.42:.6)*(0.45+0.55*ps[a]/mx);flecha(c,cx,cy-(o.numeros?lado*.14:0),a,L,ink,ps[a]>=mx-1e-9?2.2:1.2);}}
+      if(o.numeros&&o.V){c.fillStyle=ink;c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText(nf(o.V[s],1),cx,o.pi?y+lado*.78:cy);}
+      if(t==='S'&&!o.V&&!o.Q){c.fillStyle=muted;c.font='700 '+Math.round(fuente*.85)+'px '+C('--f-display');c.fillText('Inicio',cx,y+lado*.82);}
+    }
+    c.strokeStyle=line;c.lineWidth=1;for(let i=0;i<=m.cols;i++){c.beginPath();c.moveTo(x0+i*lado,y0);c.lineTo(x0+i*lado,y0+m.filas*lado);c.stroke();}
+    for(let j=0;j<=m.filas;j++){c.beginPath();c.moveTo(x0,y0+j*lado);c.lineTo(x0+m.cols*lado,y0+j*lado);c.stroke();}
+    const ini=m.inicio,xi=x0+m.col(ini)*lado,yi=y0+m.fila(ini)*lado;c.strokeStyle=C('--accent');c.setLineDash([4,3]);c.lineWidth=2;c.strokeRect(xi+2,yi+2,lado-4,lado-4);c.setLineDash([]);
+    if(o.resaltar!==undefined&&o.resaltar>=0){const xr=x0+m.col(o.resaltar)*lado,yr=y0+m.fila(o.resaltar)*lado;c.strokeStyle=C('--c-tra');c.lineWidth=3;c.strokeRect(xr+1.5,yr+1.5,lado-3,lado-3);}
+    if(o.ruta&&o.ruta.length>1){c.strokeStyle=C('--c-fis');c.lineWidth=Math.max(2,lado*.07);c.lineJoin='round';c.globalAlpha=.85;c.beginPath();
+      o.ruta.forEach((s,i)=>{const px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado;i?c.lineTo(px,py):c.moveTo(px,py);});c.stroke();c.globalAlpha=1;}
+    if(o.agente!==undefined&&o.agente>=0){const s=o.agente,px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado,R=lado*.26;
+      c.fillStyle=C('--d-casa');c.strokeStyle=card;c.lineWidth=2;c.beginPath();c.arc(px,py,R,0,7);c.fill();c.stroke();
+      c.fillStyle=card;c.beginPath();c.arc(px-R*.38,py-R*.15,R*.16,0,7);c.arc(px+R*.38,py-R*.15,R*.16,0,7);c.fill();}
+    return {lado,x0,y0,casilla(px,py){const cc=Math.floor((px-x0)/lado),ff=Math.floor((py-y0)/lado);return (cc<0||ff<0||cc>=m.cols||ff>=m.filas)?-1:ff*m.cols+cc;}};
+  }
+  /* Curvas. series: [{y:[...], color:'--c-tra', nombre, punteada, tenue, ancho}]. o: {raiz, media (ventana de la
+     media móvil; la serie cruda se dibuja tenue), ymin, ymax, xmax, ejeX, ejeY, lineas:[{y, color, nombre}], prop}. */
+  function media(y,k){const out=new Array(y.length);let s=0;for(let i=0;i<y.length;i++){s+=y[i];if(i>=k)s-=y[i-k];out[i]=s/Math.min(i+1,k);}return out;}
+  function curva(cv,series,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),{c,w,h}=lienzo(cv,o.prop);
+    const iz=46,de=10,ar=10,ab=26,W=w-iz-de,H=h-ar-ab;
+    let n=o.xmax||1,lo=o.ymin,hi=o.ymax;series.forEach(S=>{n=Math.max(n,S.y.length);});
+    if(lo===undefined||hi===undefined){let a=Infinity,b=-Infinity;series.forEach(S=>S.y.forEach(v=>{if(isFinite(v)){a=Math.min(a,v);b=Math.max(b,v);}}));(o.lineas||[]).forEach(L=>{a=Math.min(a,L.y);b=Math.max(b,L.y);});
+      if(!isFinite(a)){a=0;b=1;}if(a===b){a-=1;b+=1;}const pad=(b-a)*.06;if(lo===undefined)lo=a-pad;if(hi===undefined)hi=b+pad;}
+    const X=i=>iz+(n>1?i/(n-1):0)*W,Y=v=>ar+H-(Math.min(hi,Math.max(lo,v))-lo)/(hi-lo)*H;
+    c.clearRect(0,0,w,h);c.fillStyle=C('--card');c.fillRect(0,0,w,h);
+    c.strokeStyle=C('--grid');c.lineWidth=1;c.fillStyle=C('--muted');c.font='10px '+C('--f-mono');c.textAlign='right';c.textBaseline='middle';
+    for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4,y=Y(v);c.beginPath();c.moveTo(iz,y);c.lineTo(iz+W,y);c.stroke();c.fillText(nf(v,o.decimales??(Math.abs(hi-lo)<0.5?2:Math.abs(hi-lo)<5?1:0)),iz-4,y);}
+    c.textAlign='center';c.textBaseline='top';for(let k=0;k<=4;k++){const i=Math.round((n-1)*k/4);if(k&&i===Math.round((n-1)*(k-1)/4))continue;const ul=n>1&&i===n-1;c.textAlign=ul?'right':'center';c.fillText(nf(i+(o.desde1?1:0)),ul?X(i)+de-1:X(i),ar+H+5);}
+    if(o.ejeX){c.textAlign='right';c.fillText(o.ejeX,iz+W,ar+H+15);}
+    if(o.ejeY){c.save();c.translate(10,ar+H/2);c.rotate(-Math.PI/2);c.textAlign='center';c.fillText(o.ejeY,0,0);c.restore();}
+    (o.lineas||[]).forEach(L=>{c.strokeStyle=C(L.color||'--muted');c.setLineDash([5,4]);c.lineWidth=1.4;c.beginPath();c.moveTo(iz,Y(L.y));c.lineTo(iz+W,Y(L.y));c.stroke();c.setLineDash([]);
+      if(L.nombre){c.fillStyle=C(L.color||'--muted');c.textAlign='right';c.textBaseline='bottom';c.fillText(L.nombre,iz+W-4,Y(L.y)-2);}});
+    const traza=(y,col,anch,alfa,punt)=>{if(!y.length)return;c.strokeStyle=col;c.lineWidth=anch;c.globalAlpha=alfa;c.setLineDash(punt?[5,4]:[]);c.beginPath();
+      y.forEach((v,i)=>{i?c.lineTo(X(i),Y(v)):c.moveTo(X(i),Y(v));});c.stroke();c.globalAlpha=1;c.setLineDash([]);};
+    series.forEach(S=>{const col=C(S.color||'--accent');if(o.media&&S.y.length>1){if(o.crudo!==false&&!S.sinCrudo)traza(S.y,col,1,.22,false);traza(media(S.y,o.media),col,S.ancho||2.2,1,S.punteada);}else traza(S.y,col,S.ancho||2,S.tenue?.35:1,S.punteada);});
+    c.strokeStyle=C('--line');c.strokeRect(iz+.5,ar+.5,W,H);
+    return {X,Y};
+  }
+  /* Redibuja al cambiar el tema o el ancho. */
+  function tema(raiz,fn){let t;const re=()=>{clearTimeout(t);t=setTimeout(fn,60);};
+    if(window.ResizeObserver)new ResizeObserver(re).observe(raiz);
+    new MutationObserver(re).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme','class']});
+    if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',re);}
+  const quieto=()=>!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+  /* Entrenar por tramos sin congelar la página: trabajo() hace una unidad (un episodio, un paso) y devuelve false
+     cuando ya no hay más; cada cuadro trabaja o.ms milisegundos (24 por defecto) y llama a o.cuadro(). */
+  function bucle(trabajo,o={}){const ms=o.ms??24;let vivo=false,id=0;
+    function cuadro(){if(!vivo)return;const t0=performance.now();let sigue=true;
+      do{sigue=trabajo()!==false;}while(sigue&&performance.now()-t0<ms&&!o.unoPorCuadro);
+      if(o.cuadro)o.cuadro();if(!sigue){vivo=false;if(o.fin)o.fin();return;}
+      id=o.pausa?setTimeout(cuadro,o.pausa):requestAnimationFrame(cuadro);}
+    return {iniciar(){if(vivo)return;vivo=true;cuadro();},parar(){vivo=false;cancelAnimationFrame(id);clearTimeout(id);},get corriendo(){return vivo;}};}
+
+  return {rnd,gauss,entero,barajar,nf,pct,ACC,FLECHA,MAPAS,DEF,cuadricula,
+    politicaAlAzar,politicaDe,accionDe,elegir,codiciosa,egreedy,qDeV,barridoEval,barridoValor,evaluar,iterarValor,iterarPolitica,
+    episodio,retornoMedio,BANDIDO,bandido,agenteBandido,cartpole,
+    color,rgb,mezcla,lienzo,flecha,dibujar,media,curva,tema,quieto,bucle};
+})();
+/* RedRL: red densa mínima para los labs de refuerzo profundo (caps. 08-09), en Float32Array, sin dependencias.
+   Parte de la idea de RedMini (curso «Aprendizaje profundo»), recortada a lo que piden DQN y REINFORCE:
+   un ejemplo a la vez, capas ocultas ReLU o tanh, salida lineal (valores Q) o softmax (probabilidades),
+   gradientes acumulados y Adam. W[l][j*n+i]: peso de la entrada i a la neurona j. */
+const RedRL=(function(){
+  function crear(tam,o={}){const r=o.r,oc=o.oculta||'relu',W=[],b=[];
+    for(let l=0;l<tam.length-1;l++){const n=tam[l],m=tam[l+1],esc=(o.escalaSalida&&l===tam.length-2)?o.escalaSalida:Math.sqrt((oc==='relu'?2:1)/n);
+      const w=new Float32Array(n*m);for(let i=0;i<w.length;i++)w[i]=MundoRL.gauss(r)*esc;W.push(w);b.push(new Float32Array(m));}
+    const red={tam:tam.slice(),oculta:oc,salida:o.salida||'lineal',W,b,
+      A:tam.map(n=>new Float32Array(n)),Z:tam.map(n=>new Float32Array(n)),D:tam.map(n=>new Float32Array(n)),
+      gW:W.map(w=>new Float32Array(w.length)),gb:b.map(v=>new Float32Array(v.length)),
+      mW:W.map(w=>new Float32Array(w.length)),vW:W.map(w=>new Float32Array(w.length)),
+      mb:b.map(v=>new Float32Array(v.length)),vb:b.map(v=>new Float32Array(v.length)),t:0};
+    return red;}
+  /* Pase hacia adelante de un estado x: deja las activaciones en red.A y devuelve la salida (no la guardes: se reusa). */
+  function adelante(red,x){const L=red.W.length;red.A[0].set(x);
+    for(let l=0;l<L;l++){const n=red.tam[l],m=red.tam[l+1],w=red.W[l],bb=red.b[l],a=red.A[l],z=red.Z[l+1],y=red.A[l+1];
+      for(let j=0;j<m;j++){let s=bb[j];const k=j*n;for(let i=0;i<n;i++)s+=w[k+i]*a[i];z[j]=s;}
+      if(l<L-1){if(red.oculta==='relu')for(let j=0;j<m;j++)y[j]=z[j]>0?z[j]:0;else for(let j=0;j<m;j++)y[j]=Math.tanh(z[j]);}
+      else if(red.salida==='softmax'){let mx=-Infinity;for(let j=0;j<m;j++)mx=Math.max(mx,z[j]);let s=0;for(let j=0;j<m;j++){y[j]=Math.exp(z[j]-mx);s+=y[j];}for(let j=0;j<m;j++)y[j]/=s;}
+      else y.set(z);}
+    return red.A[L];}
+  /* Pase hacia atrás tras adelante(): g = ∂pérdida/∂salida (antes de softmax si la salida es softmax: p − objetivo).
+     Suma los gradientes en red.gW y red.gb. */
+  function atras(red,g){const L=red.W.length;let d=red.D[L];d.set(g);
+    for(let l=L-1;l>=0;l--){const n=red.tam[l],m=red.tam[l+1],w=red.W[l],a=red.A[l],gw=red.gW[l],gb=red.gb[l];
+      for(let j=0;j<m;j++){const dj=d[j];if(dj===0)continue;gb[j]+=dj;const k=j*n;for(let i=0;i<n;i++)gw[k+i]+=dj*a[i];}
+      if(l>0){const dp=red.D[l];dp.fill(0);for(let j=0;j<m;j++){const dj=d[j];if(dj===0)continue;const k=j*n;for(let i=0;i<n;i++)dp[i]+=w[k+i]*dj;}
+        const z=red.Z[l],y=red.A[l];if(red.oculta==='relu'){for(let i=0;i<n;i++)if(z[i]<=0)dp[i]=0;}else for(let i=0;i<n;i++)dp[i]*=1-y[i]*y[i];
+        d=dp;}}}
+  /* Un paso de Adam con el promedio de los gradientes acumulados (divididos por n); los deja en cero.
+     recorte: limita la norma del gradiente (como max_grad_norm de Stable-Baselines3). */
+  function adam(red,lr,n,recorte){red.t++;const b1=0.9,b2=0.999,c1=1-Math.pow(b1,red.t),c2=1-Math.pow(b2,red.t),k=1/(n||1);
+    let esc=k;if(recorte){let s=0;for(let l=0;l<red.W.length;l++){for(const v of red.gW[l])s+=v*v*k*k;for(const v of red.gb[l])s+=v*v*k*k;}const nr=Math.sqrt(s);if(nr>recorte)esc=k*recorte/nr;}
+    for(let l=0;l<red.W.length;l++)for(const [P,g,mm,vv] of [[red.W[l],red.gW[l],red.mW[l],red.vW[l]],[red.b[l],red.gb[l],red.mb[l],red.vb[l]]])
+      for(let i=0;i<P.length;i++){const gi=g[i]*esc;g[i]=0;mm[i]=b1*mm[i]+(1-b1)*gi;vv[i]=b2*vv[i]+(1-b2)*gi*gi;P[i]-=lr*(mm[i]/c1)/(Math.sqrt(vv[i]/c2)+1e-8);}}
+  /* Copia los pesos de otra red de la misma forma (la red objetivo de DQN). */
+  function copiar(dst,src){for(let l=0;l<src.W.length;l++){dst.W[l].set(src.W[l]);dst.b[l].set(src.b[l]);}}
+  function clonar(red){const c=crear(red.tam,{r:MundoRL.rnd(1),oculta:red.oculta,salida:red.salida});copiar(c,red);return c;}
+  return {crear,adelante,atras,adam,copiar,clonar};
+})();
+  const M=MundoRL,nf=M.nf,pct=M.pct,$=s=>raiz.querySelector(s);
+  /* Agente PPO (Schulman y otros, 2017) con acciones discretas, en JS puro sobre RedRL.
+     Actor: red de política con salida softmax. Crítico: red de valor. Cada iteración: junta N pasos con la
+     política actual, calcula la ventaja con GAE (γ, λ) y hace K épocas de minilotes sobre esos pasos con el
+     objetivo recortado: mín(ρ·A, recorte(ρ, 1−ε, 1+ε)·A), con ρ = π_nuevo(a|s) / π_viejo(a|s).
+     env: {reiniciar() → obs, paso(a) → {obs, r, termina, trunca}}; norm(obs) → Float32Array para la red.
+     ag.trabajo() avanza un tramo corto (64 pasos del entorno o un minilote) y devuelve el resumen de la
+     iteración cuando la termina (si no, null): así el lab entrena por tramos sin congelar la página. */
+  function crearPPO(o){
+    o=Object.assign({semilla:42,nObs:4,nAcc:2,oculta:32,N:512,K:4,lote:64,lr:0.001,lrV:0.001,gamma:0.99,lambda:0.95,
+      eps:0.2,escalaR:0.01,recorteGrad:0.5,ent:0},o);
+    const r=M.rnd(o.semilla),env=o.env;
+    const pol=RedRL.crear([o.nObs,o.oculta,o.nAcc],{r,oculta:'tanh',salida:'softmax',escalaSalida:0.01});
+    const val=RedRL.crear([o.nObs,o.oculta,1],{r,oculta:'tanh'});
+    const N=o.N,S=[],A=new Int32Array(N),PV=new Float32Array(N),Vs=new Float32Array(N+1),R=new Float32Array(N),
+      FIN=new Uint8Array(N),VB=new Float32Array(N),ADV=new Float32Array(N),RET=new Float32Array(N),idx=Array.from({length:N},(_,i)=>i);
+    for(let i=0;i<N;i++)S.push(new Float32Array(o.nObs));
+    const gA=new Float32Array(o.nAcc),g1=new Float32Array(1);
+    let s=o.norm(env.reiniciar()),largo=0,gen=null;
+    function sortear(p){let u=r(),a=0;for(;a<o.nAcc-1;a++){u-=p[a];if(u<0)break;}return a;}
+    function* ciclo(){
+      /* 1) Juntar N pasos con la política actual (la «vieja» durante esta actualización). */
+      const terminados=[];
+      for(let t=0;t<N;t++){S[t].set(s);const p=RedRL.adelante(pol,s),a=sortear(p);
+        A[t]=a;PV[t]=p[a];Vs[t]=RedRL.adelante(val,s)[0];
+        const x=env.paso(a);R[t]=x.r*o.escalaR;largo++;ag.pasos++;
+        if(x.termina||x.trunca){FIN[t]=1;VB[t]=x.trunca&&!x.termina?RedRL.adelante(val,o.norm(x.obs))[0]:0;
+          terminados.push(largo);ag.largos.push(largo);largo=0;s=o.norm(env.reiniciar());}
+        else{FIN[t]=0;s=o.norm(x.obs);}
+        if(t%64===63)yield;}
+      Vs[N]=RedRL.adelante(val,s)[0];
+      /* 2) Ventaja generalizada (GAE): suma de errores TD descontados por γλ, cortada al final de cada episodio. */
+      let ult=0;for(let t=N-1;t>=0;t--){const sig=FIN[t]?VB[t]:Vs[t+1],d=R[t]+o.gamma*sig-Vs[t];
+        ult=d+(FIN[t]?0:o.gamma*o.lambda*ult);ADV[t]=ult;RET[t]=ult+Vs[t];}
+      let mu=0,sd=0;for(let t=0;t<N;t++)mu+=ADV[t];mu/=N;for(let t=0;t<N;t++)sd+=(ADV[t]-mu)**2;sd=Math.sqrt(sd/N)+1e-8;
+      /* 3) K épocas de minilotes con el objetivo recortado. */
+      let recortados=0,vistos=0;
+      for(let k=0;k<o.K;k++){for(let i=N-1;i>0;i--){const j=Math.floor(r()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}
+        for(let b=0;b<N;b+=o.lote){const fin=Math.min(N,b+o.lote);
+          for(let q=b;q<fin;q++){const t=idx[q],adv=(ADV[t]-mu)/sd,p=RedRL.adelante(pol,S[t]),rho=p[A[t]]/PV[t];vistos++;
+            /* Si el cociente ya salió del intervalo en la dirección que favorece la ventaja, manda el término
+               recortado, cuyo gradiente es cero: esa muestra ya no empuja más. */
+            const fuera=(adv>0&&rho>1+o.eps)||(adv<0&&rho<1-o.eps);if(fuera)recortados++;
+            /* ∇ de −ρ·A respecto de los puntajes de la salida (antes del softmax): A·ρ·(p − uno_en_a). */
+            for(let a=0;a<o.nAcc;a++)gA[a]=fuera?0:adv*rho*(p[a]-(a===A[t]?1:0));
+            /* Bono de entropía (opcional): premia mantener las probabilidades repartidas. */
+            if(o.ent){let H=0;for(let a=0;a<o.nAcc;a++)H-=p[a]*Math.log(p[a]+1e-12);for(let a=0;a<o.nAcc;a++)gA[a]+=o.ent*p[a]*(Math.log(p[a]+1e-12)+H);}
+            if(!fuera||o.ent)RedRL.atras(pol,gA);}
+          RedRL.adam(pol,o.lr,fin-b,o.recorteGrad);
+          for(let q=b;q<fin;q++){const t=idx[q],v=RedRL.adelante(val,S[t])[0];g1[0]=v-RET[t];RedRL.atras(val,g1);}
+          RedRL.adam(val,o.lrV,fin-b,o.recorteGrad);
+          yield;}}
+      /* 4) Cuánto se movió la política: KL aproximada entre la vieja y la nueva (estimador (ρ−1) − log ρ). */
+      let kl=0;for(let t=0;t<N;t++){const p=RedRL.adelante(pol,S[t]),q=Math.max(1e-12,p[A[t]])/PV[t];kl+=(q-1)-Math.log(q);}
+      ag.iter++;const h={iter:ag.iter,kl:kl/N,recorte:recortados/Math.max(1,vistos),largos:terminados,
+        media:terminados.length?terminados.reduce((x,y)=>x+y,0)/terminados.length:largo};
+      ag.hist.push(h);return h;}
+    const ag={pol,val,o,largos:[],iter:0,pasos:0,hist:[],
+      /* La acción de la política: sorteada o, con det, la más probable. */
+      actuar(x,det){const p=RedRL.adelante(pol,x);if(!det)return sortear(p);let b=0;for(let k=1;k<o.nAcc;k++)if(p[k]>p[b])b=k;return b;},
+      trabajo(){if(!gen)gen=ciclo();const x=gen.next();if(x.done){gen=null;return x.value;}return null;},
+      iteracion(){let h=null;while(!h)h=ag.trabajo();return h;}};
+    return ag;}
+  const ESC=[2.4,3,0.21,3.5],norm=v=>Float32Array.from(v,(x,i)=>x/ESC[i]),ITER=100;
+  let semilla=6,con,sin;
+  function config(){const ag=$('#c10l1-agr').value==='agresivo';return ag?{K:10,lr:0.01,lrV:0.01,lote:32}:{K:4,lr:0.003,lrV:0.003,lote:32};}
+  function crear(eps){return crearPPO(Object.assign({semilla,env:M.cartpole(M.rnd(semilla+1000)),norm,N:512,eps},config()));}
+  function reiniciar(){const e=+$('#c10l1-eps').value;con=crear(e);sin=crear(1e9);$('#c10l1-nom').textContent='PPO con recorte ε = '+nf(e,e<0.1?2:1);}
+  const serie=(ag,k)=>ag.hist.map(h=>h[k]);
+  function caida(ag){const y=serie(ag,'media');let pico=0,ip=-1;y.forEach((v,i)=>{if(v>pico){pico=v;ip=i;}});
+    let peor=pico;for(let i=ip+1;i<y.length;i++)peor=Math.min(peor,y[i]);return {pico,peor,ip};}
+  const prom=(a,k)=>{const x=a.slice(-k);return x.length?x.reduce((p,q)=>p+q,0)/x.length:0;};
+  function pintar(){
+    M.curva($('#c10l1-g'),[{y:serie(sin,'media'),color:'--c-apl',ancho:2},{y:serie(con,'media'),color:'--c-tra',ancho:2.4}],
+      {raiz,ymin:0,ymax:520,xmax:ITER,desde1:true,ejeX:'iteración',lineas:[{y:500,color:'--good'}]});
+    const kmax=Math.max(0.05,...serie(sin,'kl'),...serie(con,'kl'));
+    M.curva($('#c10l1-k'),[{y:serie(sin,'kl'),color:'--c-apl',ancho:2},{y:serie(con,'kl'),color:'--c-tra',ancho:2.4}],
+      {raiz,ymin:0,ymax:Math.min(2,kmax*1.05),xmax:ITER,desde1:true,ejeX:'iteración',decimales:2});
+    const n=con.hist.length;let t='<span class="big">Iteración '+nf(n)+' de '+ITER+'</span>';
+    if(!n){t+='<span>Pulsa «Entrenar». Al principio los dos agentes empujan al azar y el péndulo cae en unos 20 pasos.</span>';$('#c10l1-out').innerHTML=t;return;}
+    const mc=prom(serie(con,'media'),5),ms=prom(serie(sin,'media'),5),kc=prom(serie(con,'kl'),10),ks=prom(serie(sin,'kl'),10),rc=prom(serie(con,'recorte'),10);
+    t+='<span><span style="color:var(--c-tra)">Con recorte</span>: aguanta '+nf(mc,0)+' pasos (media de las últimas 5 iteraciones); cada actualización mueve la política una KL de '+nf(kc,3)+' y el recorte apaga el '+pct(rc,0)+' de las muestras.</span>';
+    t+='<span><span style="color:var(--c-apl)">Sin recorte</span>: aguanta '+nf(ms,0)+' pasos; cada actualización mueve la política una KL de '+nf(ks,3)+', '+(ks>kc?nf(ks/Math.max(kc,1e-6),0)+' veces más':'parecido')+'.</span>';
+    const cs=caida(sin),cc=caida(con);
+    if(n>=15){
+      if(cs.pico>=300&&cs.peor<cs.pico*0.4)t+='<span class="warn">El agente sin recorte llegó a '+nf(cs.pico,0)+' pasos en la iteración '+(cs.ip+1)+' y después se derrumbó hasta '+nf(cs.peor,0)+': una actualización demasiado grande arruinó una política que ya funcionaba.</span>';
+      if(cc.pico>=300&&cc.peor<cc.pico*0.4)t+='<span class="warn">El agente con recorte también tuvo una caída: de '+nf(cc.pico,0)+' a '+nf(cc.peor,0)+' pasos. Con ε grande, el freno casi no actúa.</span>';
+      else if(cc.pico>=450)t+='<span class="ok">Con recorte, la política mejora sin saltos bruscos: cada actualización se queda cerca de la anterior.</span>';}
+    $('#c10l1-out').innerHTML=t;}
+  /* Los dos agentes avanzan por turnos, un tramo corto cada vez, para que las curvas crezcan juntas. */
+  let turno=0,meta=ITER;
+  function trabajo(){if(con.hist.length>=meta&&sin.hist.length>=meta)return false;
+    const a=(con.hist.length<=sin.hist.length&&con.hist.length<meta)||sin.hist.length>=meta?con:sin;a.trabajo();turno++;return true;}
+  const b=M.bucle(trabajo,{ms:22,cuadro:pintar,fin:parar});
+  function parar(){b.parar();const g=$('#c10l1-go');g.setAttribute('aria-pressed','false');g.textContent='Entrenar';pintar();}
+  function correr(hasta){meta=Math.min(ITER,hasta);if(con.hist.length>=meta&&sin.hist.length>=meta)return;const g=$('#c10l1-go');g.setAttribute('aria-pressed','true');g.textContent='Pausa';b.iniciar();}
+  $('#c10l1-go').addEventListener('click',()=>{if(b.corriendo){parar();return;}if(con.hist.length>=ITER)reiniciar();correr(ITER);});
+  $('#c10l1-uno').addEventListener('click',()=>{if(b.corriendo)return;if(con.hist.length>=ITER)reiniciar();correr(con.hist.length+1);});
+  $('#c10l1-diez').addEventListener('click',()=>{if(b.corriendo)return;if(con.hist.length>=ITER)reiniciar();correr(con.hist.length+10);});
+  $('#c10l1-cero').addEventListener('click',()=>{parar();reiniciar();pintar();});
+  $('#c10l1-sem').addEventListener('click',()=>{parar();semilla++;reiniciar();pintar();});
+  $('#c10l1-eps').addEventListener('change',()=>{parar();reiniciar();pintar();});
+  $('#c10l1-agr').addEventListener('change',()=>{parar();reiniciar();pintar();});
+  M.tema(raiz,pintar);reiniciar();pintar();
+})();
+</script>
+<script>
+(function(){
+  const raiz=document.querySelector('[id="10-lab-2"]');
+/* MundoRL: biblioteca mínima común de los labs del curso «Aprendizaje por refuerzo» (sin dependencias, con semilla).
+   Plantilla: copia este bloque DENTRO de la IIFE de tu lab (el motor solo admite <script> en línea, sin src).
+   Uso típico:
+     const M=MundoRL, m=M.cuadricula('almacen');            // la cuadrícula de referencia del curso
+     const r=M.rnd(42);
+     const {V,pi}=M.iterarValor(m);                         // valores óptimos y política óptima
+     M.dibujar(canvas,m,{raiz,V,pi,numeros:true});          // mapa de calor de V y flechas de la política
+     const ep=M.episodio(m,s=>M.elegir(pi,s,r),r);          // un episodio: ep.G, ep.Gd, ep.pasos, ep.final
+   Acciones: 0 arriba, 1 derecha, 2 abajo, 3 izquierda (el orden de CliffWalking en Gymnasium).
+   Estados: s = fila*cols + columna (fila 0 arriba), como FrozenLake y CliffWalking. Nombre de casilla: 'A5' =
+   columna A (la primera de la izquierda), fila 5 contada desde arriba. */
+const MundoRL=(function(){
+  /* ---------- Azar con semilla (mulberry32) ---------- */
+  function rnd(s){return function(){s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  function gauss(r){let u=0;while(!u)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r());}
+  const entero=(r,n)=>Math.floor(r()*n);
+  function barajar(n,r){const a=Array.from({length:n},(_,i)=>i);for(let i=n-1;i>0;i--){const j=entero(r,i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+  /* ---------- Números en español: punto de miles, coma decimal ---------- */
+  const nf=(n,d=0)=>{if(!isFinite(n))return '—';const s=Math.abs(n).toFixed(d).split('.');s[0]=s[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');return (n<0&&Number(Math.abs(n).toFixed(d))!==0?'−':'')+s.join(',');};
+  const pct=(x,d=1)=>nf(100*x,d)+' %';
+
+  /* ---------- Cuadrículas ---------- */
+  const ACC=['arriba','derecha','abajo','izquierda'],FLECHA=['↑','→','↓','←'],DF=[-1,0,1,0],DC=[0,1,0,-1];
+  /* Caracteres: '.' piso, '#' pared (estantería), 'S' inicio, 'P' premio (termina), 'T' trampa (termina),
+     'C' acantilado (castigo y vuelta al inicio, no termina: CliffWalking). */
+  const MAPAS={
+    almacen:['.....P',
+             '.###.T',
+             '...T..',
+             '.#....',
+             '..S#..'],
+    acantilado:['............','............','............','SCCCCCCCCCCP'],
+    lago4:['S...','.T.T','...T','T..P']
+  };
+  /* Recompensas y dinámica por defecto de la cuadrícula de referencia. */
+  const DEF={paso:-0.1,premio:10,trampa:-10,acantilado:-100,resbalar:0.2,gamma:0.9,maxPasos:100};
+  const PRESET={
+    almacen:{},
+    acantilado:{paso:-1,premio:-1,resbalar:0,gamma:1,maxPasos:200},          // CliffWalking-v1 de Gymnasium
+    lago4:{paso:0,premio:1,trampa:0,resbalar:2/3,gamma:0.99,maxPasos:100}      // FrozenLake-v1 4x4, resbaloso
+  };
+  function cuadricula(mapa,o){
+    const clave=typeof mapa==='string'?mapa:null;
+    const filas=(clave?MAPAS[clave]:mapa).slice();
+    const op=Object.assign({},DEF,clave?PRESET[clave]:{},o||{});
+    const nF=filas.length,nC=filas[0].length,nS=nF*nC,tipo=[];
+    let inicio=0;
+    for(let f=0;f<nF;f++)for(let c=0;c<nC;c++){const t=filas[f][c]||'.';tipo.push(t);if(t==='S')inicio=f*nC+c;}
+    const m={mapa:filas,filas:nF,cols:nC,nS,nA:4,tipo,inicio,gamma:op.gamma,maxPasos:op.maxPasos,op,
+      esPared:s=>tipo[s]==='#',esTerminal:s=>tipo[s]==='P'||tipo[s]==='T',
+      fila:s=>Math.floor(s/nC),col:s=>s%nC,
+      nombre:s=>String.fromCharCode(65+s%nC)+(Math.floor(s/nC)+1)};
+    m.libres=[];for(let s=0;s<nS;s++)if(!m.esPared(s)&&!m.esTerminal(s))m.libres.push(s);
+    /* Adónde lleva moverse en la dirección d desde s (paredes y bordes: se queda). */
+    function mover(s,d){const f=m.fila(s)+DF[d],c=m.col(s)+DC[d];if(f<0||f>=nF||c<0||c>=nC)return s;const s2=f*nC+c;return tipo[s2]==='#'?s:s2;}
+    function resultado(s2){const t=tipo[s2];
+      if(t==='P')return {s2,r:op.premio,fin:true};
+      if(t==='T')return {s2,r:op.trampa,fin:true};
+      if(t==='C')return {s2:inicio,r:op.acantilado,fin:false,cayo:true};
+      return {s2,r:op.paso,fin:false};}
+    /* P[s][a]: lista de {p,s2,r,fin} (como env.unwrapped.P de Gymnasium). Con probabilidad 1−resbalar va adonde
+       quiere; con resbalar/2 se desvía a cada lado (nunca hacia atrás). */
+    m.reconstruir=function(){
+      m.P=[];
+      for(let s=0;s<nS;s++){const fila=[];
+        for(let a=0;a<4;a++){const lista=[];
+          if(m.esPared(s)||m.esTerminal(s)){fila.push([{p:1,s2:s,r:0,fin:true}]);continue;}
+          const q=op.resbalar,opciones=[[a,1-q],[(a+1)%4,q/2],[(a+3)%4,q/2]];
+          for(const [d,p] of opciones){if(p<=0)continue;const res=resultado(mover(s,d));
+            const ya=lista.find(x=>x.s2===res.s2&&x.r===res.r);if(ya)ya.p+=p;else lista.push(Object.assign({p},res));}
+          fila.push(lista);}
+        m.P.push(fila);}
+    };
+    m.reconstruir();
+    /* Cambia una casilla (para labs donde el lector arma la cuadrícula) o una opción, y recalcula P. */
+    m.poner=function(s,t){tipo[s]=t;if(t==='S'){for(let i=0;i<nS;i++)if(i!==s&&tipo[i]==='S')tipo[i]='.';inicio=s;m.inicio=s;}
+      m.libres=[];for(let i=0;i<nS;i++)if(!m.esPared(i)&&!m.esTerminal(i))m.libres.push(i);m.reconstruir();};
+    m.opcion=function(k,v){op[k]=v;if(k==='gamma')m.gamma=v;if(k==='maxPasos')m.maxPasos=v;m.reconstruir();};
+    /* Un paso con azar: {s2, r, fin, cayo}. */
+    m.paso=function(s,a,r){const L=m.P[s][a];let u=r(),k=0;while(k<L.length-1&&u>=L[k].p){u-=L[k].p;k++;}
+      const x=L[k];return {s2:x.s2,r:x.r,fin:x.fin,cayo:tipo[s]!=='C'&&x.s2===inicio&&x.r===op.acantilado};};
+    return m;
+  }
+
+  /* ---------- Políticas: Float64Array de nS*4 probabilidades (pi[s*4+a]) ---------- */
+  function politicaAlAzar(m){const pi=new Float64Array(m.nS*4).fill(0.25);return pi;}
+  function politicaDe(m,acciones){const pi=new Float64Array(m.nS*4);for(let s=0;s<m.nS;s++)pi[s*4+(acciones[s]??0)]=1;return pi;}
+  function accionDe(pi,s){let k=0;for(let a=1;a<4;a++)if(pi[s*4+a]>pi[s*4+k]+1e-12)k=a;return k;}
+  function elegir(pi,s,r){let u=r();for(let a=0;a<3;a++){u-=pi[s*4+a];if(u<0)return a;}return 3;}
+  /* Política codiciosa respecto de Q (nS*4). empates: 'primero' (determinista) o 'repartir'. */
+  function codiciosa(m,Q,empates){const pi=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++){let mx=-Infinity;for(let a=0;a<4;a++)mx=Math.max(mx,Q[s*4+a]);
+      const mejores=[];for(let a=0;a<4;a++)if(Q[s*4+a]>=mx-1e-9)mejores.push(a);
+      if(empates==='repartir')mejores.forEach(a=>pi[s*4+a]=1/mejores.length);else pi[s*4+mejores[0]]=1;}
+    return pi;}
+  function egreedy(m,Q,eps){const pi=codiciosa(m,Q);for(let i=0;i<pi.length;i++)pi[i]=pi[i]*(1-eps)+eps/4;return pi;}
+
+  /* ---------- Bellman ---------- */
+  function g_(m,o){return o&&o.gamma!==undefined?o.gamma:m.gamma;}
+  /* Q a partir de V: q(s,a) = Σ p·(r + γ·V(s')) */
+  function qDeV(m,V,gamma){const Q=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++)for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));Q[s*4+a]=(m.esPared(s)||m.esTerminal(s))?0:q;}
+    return Q;}
+  /* Un barrido de evaluación (síncrono): V'(s) = Σ_a π(a|s) Σ p·(r + γ·V(s')). Devuelve {V, delta}. */
+  function barridoEval(m,pi,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let v=0;for(let a=0;a<4;a++){const w=pi[s*4+a];if(!w)continue;let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));v+=w*q;}
+      W[s]=v;delta=Math.max(delta,Math.abs(v-V[s]));}
+    return {V:W,delta};}
+  /* Un barrido de optimalidad: V'(s) = max_a Σ p·(r + γ·V(s')). */
+  function barridoValor(m,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let mx=-Infinity;for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));if(q>mx)mx=q;}
+      W[s]=mx;delta=Math.max(delta,Math.abs(mx-V[s]));}
+    return {V:W,delta};}
+  /* Evaluación de política hasta que el cambio máximo baje de tol. */
+  function evaluar(m,pi,o={}){let V=o.V0?Float64Array.from(o.V0):new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoEval(m,pi,V,o);V=x.V;delta=x.delta;b++;}
+    return {V,barridos:b,delta};}
+  function iterarValor(m,o={}){let V=new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoValor(m,V,o);V=x.V;delta=x.delta;b++;}
+    const Q=qDeV(m,V,g_(m,o));return {V,Q,pi:codiciosa(m,Q),barridos:b};}
+  function iterarPolitica(m,o={}){let pi=o.pi0?Float64Array.from(o.pi0):politicaAlAzar(m),vueltas=0,V,historia=[];
+    for(;vueltas<100;vueltas++){V=evaluar(m,pi,o).V;const nuevo=codiciosa(m,qDeV(m,V,g_(m,o)));historia.push({V,pi});
+      let igual=true;for(const s of m.libres)if(accionDe(nuevo,s)!==accionDe(pi,s)||pi[s*4+accionDe(pi,s)]<1){igual=false;break;}
+      pi=nuevo;if(igual)break;}
+    return {V,pi,vueltas:vueltas+1,historia};}
+
+  /* ---------- Experiencia ---------- */
+  /* Un episodio desde el inicio (o desde o.desde). elegir(s) -> acción. Devuelve estados, acciones, recompensas,
+     G (suma), Gd (suma descontada con γ), pasos y final: 'premio', 'trampa' o 'tope'. */
+  function episodio(m,elegirA,r,o={}){const S=[],A=[],R=[];let s=o.desde??m.inicio,fin=false,final='tope',G=0,Gd=0,d=1;const max=o.max??m.maxPasos;
+    for(let t=0;t<max&&!fin;t++){const a=elegirA(s);const x=m.paso(s,a,r);S.push(s);A.push(a);R.push(x.r);G+=x.r;Gd+=d*x.r;d*=m.gamma;s=x.s2;fin=x.fin;
+      if(fin)final=m.tipo[s]==='P'?'premio':'trampa';}
+    S.push(s);return {S,A,R,G,Gd,pasos:A.length,final};}
+  /* Retorno medio de una política (pi) en n episodios. */
+  function retornoMedio(m,pi,r,n=1000){let G=0,Gd=0,P=0,ex=0;for(let i=0;i<n;i++){const e=episodio(m,s=>elegir(pi,s,r),r);G+=e.G;Gd+=e.Gd;P+=e.pasos;if(e.final==='premio')ex++;}
+    return {G:G/n,Gd:Gd/n,pasos:P/n,exito:ex/n};}
+
+  /* ---------- Bandido multibrazo (cap. 01) ---------- */
+  const BANDIDO=[0.25,0.40,0.55,0.50,0.30];   // máquinas A-E: probabilidad de pagar 1 ficha
+  function bandido(probs,r){probs=probs||BANDIDO;let mejor=0;probs.forEach((p,i)=>{if(p>probs[mejor])mejor=i;});
+    return {k:probs.length,probs,mejor,tirar:a=>r()<probs[a]?1:0};}
+  /* Agente de bandido. metodo: 'egreedy' (ε, promedio de la muestra), 'optimista' (codicioso con Q inicial q0 y
+     paso constante alfa) o 'ucb' (cota superior de confianza con c). */
+  function agenteBandido(k,o={}){const met=o.metodo||'egreedy',q0=o.q0??0,r=o.r||rnd(42);
+    const Q=new Float64Array(k).fill(met==='optimista'?q0:0),N=new Float64Array(k);let t=0;
+    function arg(f){let mx=-Infinity,L=[];for(let a=0;a<k;a++){const v=f(a);if(v>mx+1e-12){mx=v;L=[a];}else if(Math.abs(v-mx)<=1e-12)L.push(a);}return L[entero(r,L.length)];}
+    /* epsilon, alfa y c se pueden cambiar en vivo (ag.epsilon = 0.2). exploro: si la última elección fue al azar. */
+    return {Q,N,metodo:met,epsilon:o.epsilon??0.1,alfa:o.alfa??0.1,c:o.c??2,exploro:false,
+      elegir(){t++;this.exploro=false;
+        if(met==='ucb'){for(let a=0;a<k;a++)if(N[a]===0)return a;const c=this.c;return arg(a=>Q[a]+c*Math.sqrt(Math.log(t)/N[a]));}
+        if(met==='egreedy'&&r()<this.epsilon){this.exploro=true;return entero(r,k);}
+        return arg(a=>Q[a]);},
+      aprender(a,R){N[a]++;Q[a]+=(met==='optimista'?this.alfa:1/N[a])*(R-Q[a]);}};}
+
+  /* ---------- CartPole (Barto, Sutton y Anderson, 1983; constantes de Gymnasium CartPole-v1) ---------- */
+  function cartpole(r){const g=9.8,mc=1.0,mp=0.1,mt=mc+mp,l=0.5,pml=mp*l,F=10,tau=0.02,thMax=12*2*Math.PI/360,xMax=2.4;
+    const e={x:0,v:0,th:0,w:0,t:0,fin:false,
+      reiniciar(){this.x=(r()-.5)*.1;this.v=(r()-.5)*.1;this.th=(r()-.5)*.1;this.w=(r()-.5)*.1;this.t=0;this.fin=false;return this.obs();},
+      obs(){return [this.x,this.v,this.th,this.w];},
+      /* a: 0 empuja a la izquierda, 1 a la derecha. Recompensa 1 por paso; termina si |θ|>12° o |x|>2,4; trunca a 500. */
+      paso(a){const f=a===1?F:-F,ct=Math.cos(this.th),st=Math.sin(this.th);
+        const tmp=(f+pml*this.w*this.w*st)/mt,ta=(g*st-ct*tmp)/(l*(4/3-mp*ct*ct/mt)),xa=tmp-pml*ta*ct/mt;
+        this.x+=tau*this.v;this.v+=tau*xa;this.th+=tau*this.w;this.w+=tau*ta;this.t++;
+        const termina=Math.abs(this.x)>xMax||Math.abs(this.th)>thMax,trunca=this.t>=500;this.fin=termina||trunca;
+        return {obs:this.obs(),r:1,termina,trunca};}};
+    e.reiniciar();return e;}
+
+  /* ---------- Dibujo ---------- */
+  function color(raiz,n){return getComputedStyle(raiz).getPropertyValue(n).trim();}
+  function rgb(c){if(!c)return [128,128,128];if(c[0]==='#'){if(c.length===4)c='#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];return [1,3,5].map(i=>parseInt(c.substr(i,2),16));}
+    const m=c.match(/[\d.]+/g);return m?m.slice(0,3).map(Number):[128,128,128];}
+  function mezcla(a,b,t){const A=rgb(a),B=rgb(b);return 'rgb('+A.map((x,i)=>Math.round(x+(B[i]-x)*t)).join(',')+')';}
+  /* Prepara un canvas con devicePixelRatio. Alto = ancho * data-prop (o o.prop). Devuelve {c,w,h}. */
+  function lienzo(cv,prop){const w=Math.max(120,cv.clientWidth||cv.parentNode.clientWidth||300),p=prop??parseFloat(cv.dataset.prop||'0.6'),h=Math.round(w*p),k=window.devicePixelRatio||1;
+    cv.style.height=h+'px';cv.width=Math.round(w*k);cv.height=Math.round(h*k);const c=cv.getContext('2d');c.setTransform(k,0,0,k,0,0);return {c,w,h};}
+  function flecha(c,x,y,a,L,col,ancho){const dx=DC[a],dy=DF[a];c.strokeStyle=col;c.fillStyle=col;c.lineWidth=ancho||2;
+    const x0=x-dx*L*.45,y0=y-dy*L*.45,x1=x+dx*L*.45,y1=y+dy*L*.45;c.beginPath();c.moveTo(x0,y0);c.lineTo(x1-dx*L*.18,y1-dy*L*.18);c.stroke();
+    const px=-dy,py=dx;c.beginPath();c.moveTo(x1,y1);c.lineTo(x1-dx*L*.3+px*L*.2,y1-dy*L*.3+py*L*.2);c.lineTo(x1-dx*L*.3-px*L*.2,y1-dy*L*.3-py*L*.2);c.closePath();c.fill();}
+  /* Dibuja la cuadrícula. o: {raiz, V (mapa de calor), rango (|V| que satura el color), pi (flechas: probabilidades),
+     numeros (escribe V), ruta (lista de estados), agente (estado), resaltar (estado), Q (cuatro triángulos por casilla),
+     visitas (Float64Array: opacidad de exploración), prop}. Devuelve {lado, x0, y0, casilla(px,py) -> s o -1}. */
+  function dibujar(cv,m,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),prop=o.prop??(m.filas/m.cols);
+    const {c,w,h}=lienzo(cv,prop),lado=Math.min((w-2)/m.cols,(h-2)/m.filas),x0=(w-lado*m.cols)/2,y0=(h-lado*m.filas)/2;
+    const card=C('--card'),azul=C('--c-red'),rojo=C('--warm'),ink=C('--ink'),muted=C('--muted'),good=C('--good'),line=C('--line');
+    c.clearRect(0,0,w,h);
+    let rango=o.rango;if(!rango&&(o.V||o.Q)){rango=1e-9;const src=o.V||o.Q;for(let i=0;i<src.length;i++)rango=Math.max(rango,Math.abs(src[i]));}
+    const tinte=v=>v>=0?mezcla(card,azul,Math.min(1,v/rango)*.85):mezcla(card,rojo,Math.min(1,-v/rango)*.85);
+    const fuente=Math.max(9,Math.min(14,lado*.24));
+    for(let s=0;s<m.nS;s++){const x=x0+m.col(s)*lado,y=y0+m.fila(s)*lado,t=m.tipo[s],cx=x+lado/2,cy=y+lado/2;
+      c.fillStyle=card;
+      if(t==='#'){c.fillStyle=mezcla(card,muted,.55);c.fillRect(x,y,lado,lado);
+        c.strokeStyle=mezcla(card,muted,.8);c.lineWidth=1;c.beginPath();for(let k=1;k<4;k++){c.moveTo(x+3,y+lado*k/4);c.lineTo(x+lado-3,y+lado*k/4);}c.stroke();continue;}
+      if(t==='P'){c.fillStyle=mezcla(card,good,.28);c.fillRect(x,y,lado,lado);}
+      else if(t==='T'||t==='C'){c.fillStyle=mezcla(card,rojo,.28);c.fillRect(x,y,lado,lado);}
+      else if(o.Q){const q=k=>o.Q[s*4+k];const P=[[cx,cy],[x,y],[x+lado,y],[x+lado,y+lado],[x,y+lado]];
+        const tri=[[1,2],[2,3],[3,4],[4,1]];for(let a=0;a<4;a++){c.fillStyle=tinte(q(a));c.beginPath();c.moveTo(cx,cy);c.lineTo(...P[tri[a][0]]);c.lineTo(...P[tri[a][1]]);c.closePath();c.fill();}
+        c.strokeStyle=line;c.lineWidth=.6;c.beginPath();c.moveTo(x,y);c.lineTo(x+lado,y+lado);c.moveTo(x+lado,y);c.lineTo(x,y+lado);c.stroke();}
+      else if(o.V){c.fillStyle=tinte(o.V[s]);c.fillRect(x,y,lado,lado);}
+      else c.fillRect(x,y,lado,lado);
+      if(o.visitas&&!m.esTerminal(s)){const vmax=Math.max(1,...o.visitas);c.fillStyle=C('--c-apl');c.globalAlpha=.45*Math.sqrt(o.visitas[s]/vmax);c.fillRect(x,y,lado,lado);c.globalAlpha=1;}
+      c.textAlign='center';c.textBaseline='middle';
+      if(t==='P'||t==='T'||t==='C'){c.fillStyle=t==='P'?good:rojo;c.font='700 '+Math.round(fuente*1.05)+'px '+C('--f-display');
+        const val=t==='P'?m.op.premio:t==='T'?m.op.trampa:m.op.acantilado;
+        c.fillText(t==='P'?'Premio':t==='T'?'Trampa':'',cx,cy-(lado>44?fuente*.55:0));if(lado>44||t==='C'){c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText((val>0?'+':'')+nf(val,Number.isInteger(val)?0:1),cx,t==='C'?cy:cy+fuente*.65);}
+        continue;}
+      if(o.pi&&!o.Q){const ps=[0,1,2,3].map(a=>o.pi[s*4+a]),mx=Math.max(...ps);
+        for(let a=0;a<4;a++)if(ps[a]>0.01){const L=lado*(o.numeros?.42:.6)*(0.45+0.55*ps[a]/mx);flecha(c,cx,cy-(o.numeros?lado*.14:0),a,L,ink,ps[a]>=mx-1e-9?2.2:1.2);}}
+      if(o.numeros&&o.V){c.fillStyle=ink;c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText(nf(o.V[s],1),cx,o.pi?y+lado*.78:cy);}
+      if(t==='S'&&!o.V&&!o.Q){c.fillStyle=muted;c.font='700 '+Math.round(fuente*.85)+'px '+C('--f-display');c.fillText('Inicio',cx,y+lado*.82);}
+    }
+    c.strokeStyle=line;c.lineWidth=1;for(let i=0;i<=m.cols;i++){c.beginPath();c.moveTo(x0+i*lado,y0);c.lineTo(x0+i*lado,y0+m.filas*lado);c.stroke();}
+    for(let j=0;j<=m.filas;j++){c.beginPath();c.moveTo(x0,y0+j*lado);c.lineTo(x0+m.cols*lado,y0+j*lado);c.stroke();}
+    const ini=m.inicio,xi=x0+m.col(ini)*lado,yi=y0+m.fila(ini)*lado;c.strokeStyle=C('--accent');c.setLineDash([4,3]);c.lineWidth=2;c.strokeRect(xi+2,yi+2,lado-4,lado-4);c.setLineDash([]);
+    if(o.resaltar!==undefined&&o.resaltar>=0){const xr=x0+m.col(o.resaltar)*lado,yr=y0+m.fila(o.resaltar)*lado;c.strokeStyle=C('--c-tra');c.lineWidth=3;c.strokeRect(xr+1.5,yr+1.5,lado-3,lado-3);}
+    if(o.ruta&&o.ruta.length>1){c.strokeStyle=C('--c-fis');c.lineWidth=Math.max(2,lado*.07);c.lineJoin='round';c.globalAlpha=.85;c.beginPath();
+      o.ruta.forEach((s,i)=>{const px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado;i?c.lineTo(px,py):c.moveTo(px,py);});c.stroke();c.globalAlpha=1;}
+    if(o.agente!==undefined&&o.agente>=0){const s=o.agente,px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado,R=lado*.26;
+      c.fillStyle=C('--d-casa');c.strokeStyle=card;c.lineWidth=2;c.beginPath();c.arc(px,py,R,0,7);c.fill();c.stroke();
+      c.fillStyle=card;c.beginPath();c.arc(px-R*.38,py-R*.15,R*.16,0,7);c.arc(px+R*.38,py-R*.15,R*.16,0,7);c.fill();}
+    return {lado,x0,y0,casilla(px,py){const cc=Math.floor((px-x0)/lado),ff=Math.floor((py-y0)/lado);return (cc<0||ff<0||cc>=m.cols||ff>=m.filas)?-1:ff*m.cols+cc;}};
+  }
+  /* Curvas. series: [{y:[...], color:'--c-tra', nombre, punteada, tenue, ancho}]. o: {raiz, media (ventana de la
+     media móvil; la serie cruda se dibuja tenue), ymin, ymax, xmax, ejeX, ejeY, lineas:[{y, color, nombre}], prop}. */
+  function media(y,k){const out=new Array(y.length);let s=0;for(let i=0;i<y.length;i++){s+=y[i];if(i>=k)s-=y[i-k];out[i]=s/Math.min(i+1,k);}return out;}
+  function curva(cv,series,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),{c,w,h}=lienzo(cv,o.prop);
+    const iz=46,de=10,ar=10,ab=26,W=w-iz-de,H=h-ar-ab;
+    let n=o.xmax||1,lo=o.ymin,hi=o.ymax;series.forEach(S=>{n=Math.max(n,S.y.length);});
+    if(lo===undefined||hi===undefined){let a=Infinity,b=-Infinity;series.forEach(S=>S.y.forEach(v=>{if(isFinite(v)){a=Math.min(a,v);b=Math.max(b,v);}}));(o.lineas||[]).forEach(L=>{a=Math.min(a,L.y);b=Math.max(b,L.y);});
+      if(!isFinite(a)){a=0;b=1;}if(a===b){a-=1;b+=1;}const pad=(b-a)*.06;if(lo===undefined)lo=a-pad;if(hi===undefined)hi=b+pad;}
+    const X=i=>iz+(n>1?i/(n-1):0)*W,Y=v=>ar+H-(Math.min(hi,Math.max(lo,v))-lo)/(hi-lo)*H;
+    c.clearRect(0,0,w,h);c.fillStyle=C('--card');c.fillRect(0,0,w,h);
+    c.strokeStyle=C('--grid');c.lineWidth=1;c.fillStyle=C('--muted');c.font='10px '+C('--f-mono');c.textAlign='right';c.textBaseline='middle';
+    for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4,y=Y(v);c.beginPath();c.moveTo(iz,y);c.lineTo(iz+W,y);c.stroke();c.fillText(nf(v,o.decimales??(Math.abs(hi-lo)<0.5?2:Math.abs(hi-lo)<5?1:0)),iz-4,y);}
+    c.textAlign='center';c.textBaseline='top';for(let k=0;k<=4;k++){const i=Math.round((n-1)*k/4);if(k&&i===Math.round((n-1)*(k-1)/4))continue;const ul=n>1&&i===n-1;c.textAlign=ul?'right':'center';c.fillText(nf(i+(o.desde1?1:0)),ul?X(i)+de-1:X(i),ar+H+5);}
+    if(o.ejeX){c.textAlign='right';c.fillText(o.ejeX,iz+W,ar+H+15);}
+    if(o.ejeY){c.save();c.translate(10,ar+H/2);c.rotate(-Math.PI/2);c.textAlign='center';c.fillText(o.ejeY,0,0);c.restore();}
+    (o.lineas||[]).forEach(L=>{c.strokeStyle=C(L.color||'--muted');c.setLineDash([5,4]);c.lineWidth=1.4;c.beginPath();c.moveTo(iz,Y(L.y));c.lineTo(iz+W,Y(L.y));c.stroke();c.setLineDash([]);
+      if(L.nombre){c.fillStyle=C(L.color||'--muted');c.textAlign='right';c.textBaseline='bottom';c.fillText(L.nombre,iz+W-4,Y(L.y)-2);}});
+    const traza=(y,col,anch,alfa,punt)=>{if(!y.length)return;c.strokeStyle=col;c.lineWidth=anch;c.globalAlpha=alfa;c.setLineDash(punt?[5,4]:[]);c.beginPath();
+      y.forEach((v,i)=>{i?c.lineTo(X(i),Y(v)):c.moveTo(X(i),Y(v));});c.stroke();c.globalAlpha=1;c.setLineDash([]);};
+    series.forEach(S=>{const col=C(S.color||'--accent');if(o.media&&S.y.length>1){if(o.crudo!==false&&!S.sinCrudo)traza(S.y,col,1,.22,false);traza(media(S.y,o.media),col,S.ancho||2.2,1,S.punteada);}else traza(S.y,col,S.ancho||2,S.tenue?.35:1,S.punteada);});
+    c.strokeStyle=C('--line');c.strokeRect(iz+.5,ar+.5,W,H);
+    return {X,Y};
+  }
+  /* Redibuja al cambiar el tema o el ancho. */
+  function tema(raiz,fn){let t;const re=()=>{clearTimeout(t);t=setTimeout(fn,60);};
+    if(window.ResizeObserver)new ResizeObserver(re).observe(raiz);
+    new MutationObserver(re).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme','class']});
+    if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',re);}
+  const quieto=()=>!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+  /* Entrenar por tramos sin congelar la página: trabajo() hace una unidad (un episodio, un paso) y devuelve false
+     cuando ya no hay más; cada cuadro trabaja o.ms milisegundos (24 por defecto) y llama a o.cuadro(). */
+  function bucle(trabajo,o={}){const ms=o.ms??24;let vivo=false,id=0;
+    function cuadro(){if(!vivo)return;const t0=performance.now();let sigue=true;
+      do{sigue=trabajo()!==false;}while(sigue&&performance.now()-t0<ms&&!o.unoPorCuadro);
+      if(o.cuadro)o.cuadro();if(!sigue){vivo=false;if(o.fin)o.fin();return;}
+      id=o.pausa?setTimeout(cuadro,o.pausa):requestAnimationFrame(cuadro);}
+    return {iniciar(){if(vivo)return;vivo=true;cuadro();},parar(){vivo=false;cancelAnimationFrame(id);clearTimeout(id);},get corriendo(){return vivo;}};}
+
+  return {rnd,gauss,entero,barajar,nf,pct,ACC,FLECHA,MAPAS,DEF,cuadricula,
+    politicaAlAzar,politicaDe,accionDe,elegir,codiciosa,egreedy,qDeV,barridoEval,barridoValor,evaluar,iterarValor,iterarPolitica,
+    episodio,retornoMedio,BANDIDO,bandido,agenteBandido,cartpole,
+    color,rgb,mezcla,lienzo,flecha,dibujar,media,curva,tema,quieto,bucle};
+})();
+/* RedRL: red densa mínima para los labs de refuerzo profundo (caps. 08-09), en Float32Array, sin dependencias.
+   Parte de la idea de RedMini (curso «Aprendizaje profundo»), recortada a lo que piden DQN y REINFORCE:
+   un ejemplo a la vez, capas ocultas ReLU o tanh, salida lineal (valores Q) o softmax (probabilidades),
+   gradientes acumulados y Adam. W[l][j*n+i]: peso de la entrada i a la neurona j. */
+const RedRL=(function(){
+  function crear(tam,o={}){const r=o.r,oc=o.oculta||'relu',W=[],b=[];
+    for(let l=0;l<tam.length-1;l++){const n=tam[l],m=tam[l+1],esc=(o.escalaSalida&&l===tam.length-2)?o.escalaSalida:Math.sqrt((oc==='relu'?2:1)/n);
+      const w=new Float32Array(n*m);for(let i=0;i<w.length;i++)w[i]=MundoRL.gauss(r)*esc;W.push(w);b.push(new Float32Array(m));}
+    const red={tam:tam.slice(),oculta:oc,salida:o.salida||'lineal',W,b,
+      A:tam.map(n=>new Float32Array(n)),Z:tam.map(n=>new Float32Array(n)),D:tam.map(n=>new Float32Array(n)),
+      gW:W.map(w=>new Float32Array(w.length)),gb:b.map(v=>new Float32Array(v.length)),
+      mW:W.map(w=>new Float32Array(w.length)),vW:W.map(w=>new Float32Array(w.length)),
+      mb:b.map(v=>new Float32Array(v.length)),vb:b.map(v=>new Float32Array(v.length)),t:0};
+    return red;}
+  /* Pase hacia adelante de un estado x: deja las activaciones en red.A y devuelve la salida (no la guardes: se reusa). */
+  function adelante(red,x){const L=red.W.length;red.A[0].set(x);
+    for(let l=0;l<L;l++){const n=red.tam[l],m=red.tam[l+1],w=red.W[l],bb=red.b[l],a=red.A[l],z=red.Z[l+1],y=red.A[l+1];
+      for(let j=0;j<m;j++){let s=bb[j];const k=j*n;for(let i=0;i<n;i++)s+=w[k+i]*a[i];z[j]=s;}
+      if(l<L-1){if(red.oculta==='relu')for(let j=0;j<m;j++)y[j]=z[j]>0?z[j]:0;else for(let j=0;j<m;j++)y[j]=Math.tanh(z[j]);}
+      else if(red.salida==='softmax'){let mx=-Infinity;for(let j=0;j<m;j++)mx=Math.max(mx,z[j]);let s=0;for(let j=0;j<m;j++){y[j]=Math.exp(z[j]-mx);s+=y[j];}for(let j=0;j<m;j++)y[j]/=s;}
+      else y.set(z);}
+    return red.A[L];}
+  /* Pase hacia atrás tras adelante(): g = ∂pérdida/∂salida (antes de softmax si la salida es softmax: p − objetivo).
+     Suma los gradientes en red.gW y red.gb. */
+  function atras(red,g){const L=red.W.length;let d=red.D[L];d.set(g);
+    for(let l=L-1;l>=0;l--){const n=red.tam[l],m=red.tam[l+1],w=red.W[l],a=red.A[l],gw=red.gW[l],gb=red.gb[l];
+      for(let j=0;j<m;j++){const dj=d[j];if(dj===0)continue;gb[j]+=dj;const k=j*n;for(let i=0;i<n;i++)gw[k+i]+=dj*a[i];}
+      if(l>0){const dp=red.D[l];dp.fill(0);for(let j=0;j<m;j++){const dj=d[j];if(dj===0)continue;const k=j*n;for(let i=0;i<n;i++)dp[i]+=w[k+i]*dj;}
+        const z=red.Z[l],y=red.A[l];if(red.oculta==='relu'){for(let i=0;i<n;i++)if(z[i]<=0)dp[i]=0;}else for(let i=0;i<n;i++)dp[i]*=1-y[i]*y[i];
+        d=dp;}}}
+  /* Un paso de Adam con el promedio de los gradientes acumulados (divididos por n); los deja en cero.
+     recorte: limita la norma del gradiente (como max_grad_norm de Stable-Baselines3). */
+  function adam(red,lr,n,recorte){red.t++;const b1=0.9,b2=0.999,c1=1-Math.pow(b1,red.t),c2=1-Math.pow(b2,red.t),k=1/(n||1);
+    let esc=k;if(recorte){let s=0;for(let l=0;l<red.W.length;l++){for(const v of red.gW[l])s+=v*v*k*k;for(const v of red.gb[l])s+=v*v*k*k;}const nr=Math.sqrt(s);if(nr>recorte)esc=k*recorte/nr;}
+    for(let l=0;l<red.W.length;l++)for(const [P,g,mm,vv] of [[red.W[l],red.gW[l],red.mW[l],red.vW[l]],[red.b[l],red.gb[l],red.mb[l],red.vb[l]]])
+      for(let i=0;i<P.length;i++){const gi=g[i]*esc;g[i]=0;mm[i]=b1*mm[i]+(1-b1)*gi;vv[i]=b2*vv[i]+(1-b2)*gi*gi;P[i]-=lr*(mm[i]/c1)/(Math.sqrt(vv[i]/c2)+1e-8);}}
+  /* Copia los pesos de otra red de la misma forma (la red objetivo de DQN). */
+  function copiar(dst,src){for(let l=0;l<src.W.length;l++){dst.W[l].set(src.W[l]);dst.b[l].set(src.b[l]);}}
+  function clonar(red){const c=crear(red.tam,{r:MundoRL.rnd(1),oculta:red.oculta,salida:red.salida});copiar(c,red);return c;}
+  return {crear,adelante,atras,adam,copiar,clonar};
+})();
+  const M=MundoRL,nf=M.nf,$=s=>raiz.querySelector(s);
+  /* Agente PPO (Schulman y otros, 2017) con acciones discretas, en JS puro sobre RedRL.
+     Actor: red de política con salida softmax. Crítico: red de valor. Cada iteración: junta N pasos con la
+     política actual, calcula la ventaja con GAE (γ, λ) y hace K épocas de minilotes sobre esos pasos con el
+     objetivo recortado: mín(ρ·A, recorte(ρ, 1−ε, 1+ε)·A), con ρ = π_nuevo(a|s) / π_viejo(a|s).
+     env: {reiniciar() → obs, paso(a) → {obs, r, termina, trunca}}; norm(obs) → Float32Array para la red.
+     ag.trabajo() avanza un tramo corto (64 pasos del entorno o un minilote) y devuelve el resumen de la
+     iteración cuando la termina (si no, null): así el lab entrena por tramos sin congelar la página. */
+  function crearPPO(o){
+    o=Object.assign({semilla:42,nObs:4,nAcc:2,oculta:32,N:512,K:4,lote:64,lr:0.001,lrV:0.001,gamma:0.99,lambda:0.95,
+      eps:0.2,escalaR:0.01,recorteGrad:0.5,ent:0},o);
+    const r=M.rnd(o.semilla),env=o.env;
+    const pol=RedRL.crear([o.nObs,o.oculta,o.nAcc],{r,oculta:'tanh',salida:'softmax',escalaSalida:0.01});
+    const val=RedRL.crear([o.nObs,o.oculta,1],{r,oculta:'tanh'});
+    const N=o.N,S=[],A=new Int32Array(N),PV=new Float32Array(N),Vs=new Float32Array(N+1),R=new Float32Array(N),
+      FIN=new Uint8Array(N),VB=new Float32Array(N),ADV=new Float32Array(N),RET=new Float32Array(N),idx=Array.from({length:N},(_,i)=>i);
+    for(let i=0;i<N;i++)S.push(new Float32Array(o.nObs));
+    const gA=new Float32Array(o.nAcc),g1=new Float32Array(1);
+    let s=o.norm(env.reiniciar()),largo=0,gen=null;
+    function sortear(p){let u=r(),a=0;for(;a<o.nAcc-1;a++){u-=p[a];if(u<0)break;}return a;}
+    function* ciclo(){
+      /* 1) Juntar N pasos con la política actual (la «vieja» durante esta actualización). */
+      const terminados=[];
+      for(let t=0;t<N;t++){S[t].set(s);const p=RedRL.adelante(pol,s),a=sortear(p);
+        A[t]=a;PV[t]=p[a];Vs[t]=RedRL.adelante(val,s)[0];
+        const x=env.paso(a);R[t]=x.r*o.escalaR;largo++;ag.pasos++;
+        if(x.termina||x.trunca){FIN[t]=1;VB[t]=x.trunca&&!x.termina?RedRL.adelante(val,o.norm(x.obs))[0]:0;
+          terminados.push(largo);ag.largos.push(largo);largo=0;s=o.norm(env.reiniciar());}
+        else{FIN[t]=0;s=o.norm(x.obs);}
+        if(t%64===63)yield;}
+      Vs[N]=RedRL.adelante(val,s)[0];
+      /* 2) Ventaja generalizada (GAE): suma de errores TD descontados por γλ, cortada al final de cada episodio. */
+      let ult=0;for(let t=N-1;t>=0;t--){const sig=FIN[t]?VB[t]:Vs[t+1],d=R[t]+o.gamma*sig-Vs[t];
+        ult=d+(FIN[t]?0:o.gamma*o.lambda*ult);ADV[t]=ult;RET[t]=ult+Vs[t];}
+      let mu=0,sd=0;for(let t=0;t<N;t++)mu+=ADV[t];mu/=N;for(let t=0;t<N;t++)sd+=(ADV[t]-mu)**2;sd=Math.sqrt(sd/N)+1e-8;
+      /* 3) K épocas de minilotes con el objetivo recortado. */
+      let recortados=0,vistos=0;
+      for(let k=0;k<o.K;k++){for(let i=N-1;i>0;i--){const j=Math.floor(r()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}
+        for(let b=0;b<N;b+=o.lote){const fin=Math.min(N,b+o.lote);
+          for(let q=b;q<fin;q++){const t=idx[q],adv=(ADV[t]-mu)/sd,p=RedRL.adelante(pol,S[t]),rho=p[A[t]]/PV[t];vistos++;
+            /* Si el cociente ya salió del intervalo en la dirección que favorece la ventaja, manda el término
+               recortado, cuyo gradiente es cero: esa muestra ya no empuja más. */
+            const fuera=(adv>0&&rho>1+o.eps)||(adv<0&&rho<1-o.eps);if(fuera)recortados++;
+            /* ∇ de −ρ·A respecto de los puntajes de la salida (antes del softmax): A·ρ·(p − uno_en_a). */
+            for(let a=0;a<o.nAcc;a++)gA[a]=fuera?0:adv*rho*(p[a]-(a===A[t]?1:0));
+            /* Bono de entropía (opcional): premia mantener las probabilidades repartidas. */
+            if(o.ent){let H=0;for(let a=0;a<o.nAcc;a++)H-=p[a]*Math.log(p[a]+1e-12);for(let a=0;a<o.nAcc;a++)gA[a]+=o.ent*p[a]*(Math.log(p[a]+1e-12)+H);}
+            if(!fuera||o.ent)RedRL.atras(pol,gA);}
+          RedRL.adam(pol,o.lr,fin-b,o.recorteGrad);
+          for(let q=b;q<fin;q++){const t=idx[q],v=RedRL.adelante(val,S[t])[0];g1[0]=v-RET[t];RedRL.atras(val,g1);}
+          RedRL.adam(val,o.lrV,fin-b,o.recorteGrad);
+          yield;}}
+      /* 4) Cuánto se movió la política: KL aproximada entre la vieja y la nueva (estimador (ρ−1) − log ρ). */
+      let kl=0;for(let t=0;t<N;t++){const p=RedRL.adelante(pol,S[t]),q=Math.max(1e-12,p[A[t]])/PV[t];kl+=(q-1)-Math.log(q);}
+      ag.iter++;const h={iter:ag.iter,kl:kl/N,recorte:recortados/Math.max(1,vistos),largos:terminados,
+        media:terminados.length?terminados.reduce((x,y)=>x+y,0)/terminados.length:largo};
+      ag.hist.push(h);return h;}
+    const ag={pol,val,o,largos:[],iter:0,pasos:0,hist:[],
+      /* La acción de la política: sorteada o, con det, la más probable. */
+      actuar(x,det){const p=RedRL.adelante(pol,x);if(!det)return sortear(p);let b=0;for(let k=1;k<o.nAcc;k++)if(p[k]>p[b])b=k;return b;},
+      trabajo(){if(!gen)gen=ciclo();const x=gen.next();if(x.done){gen=null;return x.value;}return null;},
+      iteracion(){let h=null;while(!h)h=ag.trabajo();return h;}};
+    return ag;}
+  /* El caminante: un cuerpo apoyado en el piso con una pata de dos articulaciones (cadera y rodilla), como el
+     «crawler» clásico de los cursos de refuerzo. Ángulos discretos: 9 posiciones de cadera y 9 de rodilla.
+     Acciones (4): 0 sube la cadera, 1 baja la cadera, 2 estira la rodilla, 3 dobla la rodilla.
+     Si la punta de la pata está apoyada (por debajo del piso) y se mueve hacia atrás, el cuerpo avanza lo mismo:
+     la punta no resbala. Recompensa: lo que avanza el cuerpo en el paso (en metros ×10). 100 pasos por episodio. */
+  function caminante(r,o={}){
+    const NC=9,NR=9,L1=0.55,L2=0.55,H=o.H||0.35,T=o.T||100,c0=-0.55,c1=0.9,r0=-2.3,r1=-0.2;
+    const ang=(i,j)=>[c0+(c1-c0)*i/(NC-1),r0+(r1-r0)*j/(NR-1)];
+    function punta(i,j){const [a,b]=ang(i,j);return [L1*Math.cos(a)+L2*Math.cos(a+b),H+L1*Math.sin(a)+L2*Math.sin(a+b)];}
+    const e={i:4,j:4,x:0,t:0,NC,NR,L1,L2,H,ang,punta,
+      reiniciar(){this.i=o.azar===false?4:Math.floor(r()*NC);this.j=o.azar===false?4:Math.floor(r()*NR);this.x=0;this.t=0;return this.obs();},
+      obs(){const [px,py]=punta(this.i,this.j);return [this.i/(NC-1)*2-1,this.j/(NR-1)*2-1,py<=0?1:-1,px];},
+      paso(a){let i=this.i,j=this.j;if(a===0)i=Math.min(NC-1,i+1);else if(a===1)i=Math.max(0,i-1);else if(a===2)j=Math.min(NR-1,j+1);else j=Math.max(0,j-1);
+        const [x0,y0]=punta(this.i,this.j),[x1,y1]=punta(i,j);let dx=0;
+        if(y0<=0&&y1<=0)dx=-(x1-x0);
+        this.i=i;this.j=j;this.x+=dx;this.t++;
+        return {obs:this.obs(),r:dx*10,termina:false,trunca:this.t>=T,dx};}};
+    e.reiniciar();return e;}
+  const H=0.5,ITER=1000,HITOS=[10,100,1000],NC=9;
+  /* La red recibe la posición de cada articulación (una de nueve) codificada como dos grupos de nueve casillas. */
+  const norm=v=>{const x=new Float32Array(18),i=Math.round((v[0]+1)/2*8),j=Math.round((v[1]+1)/2*8);x[i]=1;x[9+j]=1;return x;};
+  /* El máximo posible: iteración de valor sobre las 81 posturas (con el modelo, lo que el agente no tiene). */
+  const MAXIMO=(function(){const e=caminante(M.rnd(1),{azar:false,H});let V=new Float64Array(81),pol=new Int32Array(81);
+    for(let it=0;it<1500;it++){const V2=new Float64Array(81);for(let i=0;i<9;i++)for(let j=0;j<9;j++){let b=-1e9,ba=0;
+      for(let a=0;a<4;a++){e.i=i;e.j=j;e.t=0;const x=e.paso(a);const v=x.r+0.98*V[e.i*9+e.j];if(v>b){b=v;ba=a;}}V2[i*9+j]=b;pol[i*9+j]=ba;}V=V2;}
+    return recorrido(()=>0,pol).x;})();
+  function recorrido(f,tabla){const e=caminante(M.rnd(1),{azar:false,H,T:100});e.reiniciar();const X=[{x:0,i:e.i,j:e.j}];
+    for(let t=0;t<100;t++){e.paso(tabla?tabla[e.i*9+e.j]:f(e));X.push({x:e.x,i:e.i,j:e.j});}return {x:e.x,X};}
+  let semilla=3,ag,copias,curva,carrera=null,cuadroCarrera=0;
+  function reiniciar(){ag=crearPPO({semilla,env:caminante(M.rnd(semilla+1000),{H}),norm,nObs:18,nAcc:4,N:100,K:4,lote:50,lr:0.001,lrV:0.001,
+      gamma:0.98,lambda:0.95,eps:0.2,escalaR:1,ent:0.1});copias={};curva=[];carrera=null;$('#c10l2-ver').disabled=true;}
+  const politicaDe=red=>e=>{const p=RedRL.adelante(red,norm(e.obs()));let b=0;for(let k=1;k<4;k++)if(p[k]>p[b])b=k;return b;};
+  /* Dibuja un caminante en el carril y (alto h) con el cuerpo en x (metros). */
+  function dibujarCaminante(c,C,x0,esc,yb,cfg,xm,col){const [a1,a2]=caminante(M.rnd(1),{H}).ang(cfg.i,cfg.j),L1=0.55,L2=0.55;
+    const kx=L1*Math.cos(a1),ky=H+L1*Math.sin(a1),tx=kx+L2*Math.cos(a1+a2),ty=ky+L2*Math.sin(a1+a2),sube=Math.max(0,-ty);
+    const X=m=>x0+(xm+m)*esc,Y=m=>yb-(m+sube)*esc;
+    c.fillStyle=C(col);c.globalAlpha=.9;c.fillRect(X(-1.0),Y(0.42),esc*1.0,esc*0.42*0.9);c.globalAlpha=1;
+    c.fillStyle=C('--card');c.beginPath();c.arc(X(-0.2),Y(0.3),esc*0.05,0,7);c.fill();
+    c.strokeStyle=C('--ink');c.lineWidth=Math.max(2.5,esc*0.07);c.lineCap='round';c.beginPath();c.moveTo(X(0),Y(H));c.lineTo(X(kx),Y(ky));c.lineTo(X(tx),Y(ty));c.stroke();
+    c.fillStyle=C(ty<=0?'--c-fis':'--muted');c.beginPath();c.arc(X(tx),Y(ty),Math.max(3,esc*0.06),0,7);c.fill();}
+  function pintarCarrera(){const cv=$('#c10l2-c'),{c,w,h}=M.lienzo(cv),C=k=>M.color(raiz,k);c.clearRect(0,0,w,h);c.fillStyle=C('--card');c.fillRect(0,0,w,h);
+    const carril=h/3,maxX=Math.max(6.5,MAXIMO+1),esc=Math.min((w-30)/(maxX+1.3),carril*0.62),x0=16+esc*1.1;
+    HITOS.forEach((k,q)=>{const yb=carril*(q+1)-carril*0.2;
+      c.strokeStyle=C('--line');c.lineWidth=1;c.beginPath();c.moveTo(6,yb);c.lineTo(w-6,yb);c.stroke();
+      c.fillStyle=C('--muted');c.font='10px '+C('--f-mono');c.textAlign='center';c.textBaseline='top';
+      for(let m=0;m<=maxX;m++){const px=x0+m*esc;if(px>w-8)break;c.fillRect(px,yb,1,4);if(m%2===0)c.fillText(m+' m',px,yb+5);}
+      const R=carrera&&carrera[k],t=R?Math.min(100,cuadroCarrera):0,cfg=R?R.X[t]:{x:0,i:4,j:4};
+      dibujarCaminante(c,C,x0,esc,yb,cfg,cfg.x,R?'--c-tra':'--muted');
+      c.textAlign='left';c.textBaseline='top';c.font='700 12px '+C('--f-display');c.fillStyle=C(R?'--ink':'--muted');
+      c.fillText(nf(k)+' iteraciones'+(R?': '+nf(cfg.x,2)+' m':copias[k]?'':' (aún no)'),8,carril*q+6);});}
+  function pintarCurva(){M.curva($('#c10l2-g'),[{y:curva.map(p=>p.d),color:'--c-tra',ancho:2.2}],{raiz,ymin:0,ymax:8,xmax:ITER/10,ejeX:'iteraciones (× 10)',decimales:0,lineas:[{y:MAXIMO,color:'--good'}]});}
+  function pintar(){pintarCarrera();pintarCurva();$('#c10l2-max').textContent=nf(MAXIMO,2);
+    let t='<span class="big">Iteración '+nf(ag.iter)+' de '+nf(ITER)+'</span>';
+    if(!ag.iter)t+='<span>Pulsa «Entrenar 1.000 iteraciones». Al azar, el caminante avanza unos centímetros: mueve la pata sin orden.</span>';
+    else{const d=curva.length?curva[curva.length-1].d:0;t+='<span>La política actual, sin sortear, avanza <b>'+nf(d,2)+' m</b> en 100 pasos ('+nf(ag.pasos)+' pasos de experiencia en total).</span>';
+      const ks=HITOS.filter(k=>copias[k]);if(ks.length)t+='<span>Copias guardadas: '+ks.map(k=>nf(k)+' iteraciones → '+nf(copias[k].d,2)+' m').join(' · ')+'.</span>';
+      if(copias[1000])t+='<span class="ok">Pulsa «Ver la carrera». A las 10 iteraciones la pata se agita sin avanzar; a las 100 ya encontró un ciclo que empuja; a las 1.000 el ciclo se pulió'+(copias[1000].d>=MAXIMO-0.01?' y avanza lo máximo que permite este caminante.':'.')+' Cada actualización movió poco la política: PPO no deja que una iteración tire lo aprendido.</span>';}
+    $('#c10l2-out').innerHTML=t;}
+  const b=M.bucle(()=>{if(ag.iter>=ITER)return false;const h=ag.trabajo();
+    if(h){const it=ag.iter;if(it%10===0)curva.push({it,d:recorrido(politicaDe(ag.pol)).x});
+      if(HITOS.includes(it))copias[it]={red:RedRL.clonar(ag.pol),d:recorrido(politicaDe(ag.pol)).x};}
+    return true;},{ms:22,cuadro:pintar,fin:()=>{parar();$('#c10l2-ver').disabled=false;}});
+  function parar(){b.parar();const g=$('#c10l2-go');g.setAttribute('aria-pressed','false');g.textContent=ag.iter>=ITER?'Entrenar de nuevo':'Entrenar 1.000 iteraciones';pintar();}
+  let anim=0;
+  function verCarrera(){carrera={};HITOS.forEach(k=>{if(copias[k])carrera[k]=recorrido(politicaDe(copias[k].red));});
+    cancelAnimationFrame(anim);if(M.quieto()){cuadroCarrera=100;pintar();return;}cuadroCarrera=0;let ult=0;
+    const paso=ts=>{if(ts-ult>70){ult=ts;cuadroCarrera++;pintarCarrera();}if(cuadroCarrera<100)anim=requestAnimationFrame(paso);else pintar();};anim=requestAnimationFrame(paso);}
+  $('#c10l2-go').addEventListener('click',e=>{if(b.corriendo){parar();return;}if(ag.iter>=ITER)reiniciar();cancelAnimationFrame(anim);carrera=null;
+    e.currentTarget.setAttribute('aria-pressed','true');e.currentTarget.textContent='Pausa';b.iniciar();});
+  $('#c10l2-ver').addEventListener('click',verCarrera);
+  $('#c10l2-cero').addEventListener('click',()=>{parar();cancelAnimationFrame(anim);reiniciar();pintar();});
+  $('#c10l2-sem').addEventListener('click',()=>{parar();cancelAnimationFrame(anim);semilla++;reiniciar();pintar();});
+  M.tema(raiz,pintar);reiniciar();pintar();
+})();
+</script>
+</body>
+</html>

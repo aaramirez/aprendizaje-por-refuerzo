@@ -1,0 +1,1026 @@
+<!doctype html>
+<html lang="es">
+<head>
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-KX76XF8R');</script>
+<!-- End Google Tag Manager -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Programación dinámica · Aprendizaje por refuerzo · Aprendizaje por refuerzo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Agentes que aprenden por prueba y error a partir de una recompensa, de los procesos de decisión de Markov a Q-learning, DQN, PPO y el ajuste de los modelos de lenguaje con retroalimentación humana.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,600&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous" referrerpolicy="no-referrer">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KX76XF8R"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+<div class="wrap" data-page="programacion-dinamica">
+<header class="topbar"><a class="brand" href="index.html">Aprendizaje por <b>refuerzo</b></a><span class="eyebrow">Curso visual e interactivo · Datos e inteligencia artificial</span><a class="al-sitio" href="https://aaramirez.github.io/">← Todos los cursos</a></header>
+<div class="layout">
+<nav class="toc" id="toc" aria-label="Ruta de aprendizaje"></nav>
+<main>
+<header class="page-head"><span class="num">CAPÍTULO 04 DE 12</span><h1>Programación dinámica: evaluar y mejorar políticas</h1><p class="lede">Si el robot conoce las reglas del almacén, puede calcular el mejor camino sin dar un solo paso. Este capítulo presenta los dos algoritmos que lo hacen, la iteración de política y la iteración de valor, y la idea que ambos comparten y que reaparece en todo el curso: evaluar y mejorar, una y otra vez.</p></header>
+<section><h2>Planificar con un modelo del entorno</h2><div class="prose"><p>Ulises Robles terminó de cargar en el simulador el plano de la maqueta: dónde están las estanterías, dónde el foso y la rampa, y la probabilidad de patinar que midió Yolanda Pinto en la zona de lavado (8 de cada 10 veces el robot va adonde quiere; 2 de cada 10 patina hacia un costado). Con eso, el simulador sabe, para cada casilla y cada orden, a qué casillas puede llegar el robot, con qué probabilidad y qué recompensa recibe. Teodoro Vidal dejó pendiente una pregunta en la última reunión: Yolanda le contó que en verano el piso patina la mitad, y con eso el mejor camino cambia. «Si las reglas cambian cada temporada, ¿cómo se recalcula el mejor camino? No quiero mandar el robot a probar».</p><p>Noemí Ferrer puede hacerlo. En el capítulo 3 escribió la ecuación de Bellman, que relaciona el valor de cada casilla con el de sus vecinas, y la de optimalidad, que define el mejor valor posible. Lo que falta es un procedimiento para resolverlas con cualquier juego de reglas y para sacar de la solución la mejor política. Ese procedimiento es el tema de este capítulo.</p></div><div class="analogia"><b>Imagínalo así</b><p>Planear un viaje en carretera con un mapa completo y el pronóstico del tiempo es muy distinto de salir a explorar. Con el mapa en la mano, te sientas a la mesa, comparas rutas, calculas tiempos y decides antes de arrancar. No hace falta equivocarse de salida para saber que esa salida era mala: el mapa ya te lo dice.</p></div><div class="prose"><p>El mapa, en refuerzo, se llama <b>modelo del entorno</b> (<i>model of the environment</i>): la descripción completa de cómo responde el mundo. Para un MDP finito como la maqueta, es la función <span class="math">p(s', r \mid s, a)</span> del capítulo 2, la probabilidad de llegar al estado <span class="math">s'</span> con recompensa <span class="math">r</span> si en el estado <span class="math">s</span> se toma la acción <span class="math">a</span>. Usar el modelo para calcular una política sin actuar se llama <b>planificación</b> (<i>planning</i>). Y el conjunto de algoritmos que planifican resolviendo las ecuaciones de Bellman barrido tras barrido se llama <b>programación dinámica</b> (<i>dynamic programming</i>, DP), un nombre que puso Richard Bellman en los años cincuenta.</p><p>La programación dinámica no aprende de la experiencia: calcula. Por eso es la base teórica del resto del curso. Los métodos de los capítulos 5 a 7 hacen lo mismo que este capítulo, pero sin modelo, reemplazando el cálculo exacto por promedios de lo que le pasa al robot. Si quieres ver la programación dinámica aplicada a problemas de inventarios, rutas y producción, está en <a href="https://aaramirez.github.io/investigacion-de-operaciones/temario.html" target="_blank" rel="noopener">Investigación de operaciones</a>.</p></div><figure class="fig fig-esquema" id="04-diagrama-1"><div class="lienzo"><svg viewBox="0 0 910 380" style="min-width:700px" role="img" aria-label="Árbol de una actualización de Bellman en la casilla E3 con la acción arriba: con probabilidad 0,8 llega a E2, con 0,1 patina a F3 y con 0,1 patina al foso D3; la cuenta da V*(E3) = 3,58. A la derecha, el modelo que necesita: la lista de resultados posibles de cada casilla y acción">
+<defs><marker id="c4d1-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker><marker id="c4d1-tra" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-tra)"/></marker></defs>
+<text x="20" y="28" class="t t-xs t-b t-m">UNA ACTUALIZACIÓN DE BELLMAN EN E3 (ACCIÓN: ARRIBA)</text>
+<circle cx="250" cy="70" r="22" class="c-red"/><text x="250" y="74" class="t t-b k-red" text-anchor="middle">E3</text>
+<text x="282" y="64" class="t t-s t-b k-red">V*(E3) = ?</text>
+<path d="M250 92L250 128" class="ln" style=""/>
+<circle cx="250" cy="134" r="7" style="fill:var(--c-tra)"/>
+<text x="264" y="138" class="t t-s k-tra">arriba (la acción de π*)</text>
+<path d="M250 141L90 196" class="ln" style=""/>
+<text x="156" y="172" class="t t-s t-b t-mono" text-anchor="middle">0,8</text>
+<circle cx="90" cy="214" r="18" class="c-red"/><text x="90" y="218" class="t t-s t-b k-red" text-anchor="middle">E2</text>
+<text x="90" y="250" class="t t-s" text-anchor="middle">llega a E2</text>
+<text x="90" y="268" class="t t-s t-mono k-fis" text-anchor="middle">R = −0,1</text>
+<text x="90" y="286" class="t t-s t-m" text-anchor="middle">V*(E2) = 6,23</text>
+<path d="M250 141L250 196" class="ln" style=""/>
+<text x="262" y="172" class="t t-s t-b t-mono" text-anchor="middle">0,1</text>
+<circle cx="250" cy="214" r="18" class="c-red"/><text x="250" y="218" class="t t-s t-b k-red" text-anchor="middle">F3</text>
+<text x="250" y="250" class="t t-s" text-anchor="middle">patina a la derecha: F3</text>
+<text x="250" y="268" class="t t-s t-mono k-fis" text-anchor="middle">R = −0,1</text>
+<text x="250" y="286" class="t t-s t-m" text-anchor="middle">V*(F3) = 2,03</text>
+<path d="M250 141L410 196" class="ln" style=""/>
+<text x="344" y="172" class="t t-s t-b t-mono" text-anchor="middle">0,1</text>
+<rect x="395.0" y="199.0" width="30" height="30" style="fill:var(--warm-soft);stroke:var(--warm)"/>
+<text x="410" y="218" class="t t-s t-b k-warm" text-anchor="middle">D3</text>
+<text x="410" y="250" class="t t-s" text-anchor="middle">patina a la izquierda: D3</text>
+<text x="410" y="268" class="t t-s t-mono k-fis" text-anchor="middle">R = −10</text>
+<text x="410" y="286" class="t t-s t-m" text-anchor="middle">el foso: fin, vale 0</text>
+<rect x="20" y="304" width="500" height="58" rx="8" class="caja"/>
+<text x="32" y="326" class="t t-s t-mono">V*(E3) = 0,8·(−0,1 + 0,9·6,23) + 0,1·(−0,1 + 0,9·2,03)</text>
+<text x="118" y="348" class="t t-s t-mono">+ 0,1·(−10) = 4,41 + 0,17 − 1,00 = 3,58</text>
+<text x="560" y="28" class="t t-xs t-b t-m">LO QUE NECESITA: EL MODELO P(s′, r | s, a)</text>
+<rect x="560" y="44" width="330" height="196" rx="10" class="d-inet"/>
+<text x="574" y="70" class="t t-xs t-b t-m">casilla</text>
+<text x="624" y="70" class="t t-xs t-b t-m">acción</text>
+<text x="700" y="70" class="t t-xs t-b t-m">resultados posibles (p, s′, r)</text>
+<text x="574" y="104" class="t t-s t-mono">E3</text>
+<text x="624" y="104" class="t t-s t-mono">arriba</text>
+<text x="574" y="120" class="t t-xs t-mono t-m">(0,8 E2 −0,1) (0,1 F3 −0,1) (0,1 D3 −10)</text>
+<text x="574" y="138" class="t t-s t-mono">E1</text>
+<text x="624" y="138" class="t t-s t-mono">derecha</text>
+<text x="574" y="154" class="t t-xs t-mono t-m">(0,8 F1 +10) (0,1 E2 −0,1) (0,1 E1 −0,1)</text>
+<text x="574" y="172" class="t t-s t-mono">C5</text>
+<text x="624" y="172" class="t t-s t-mono">izquierda</text>
+<text x="574" y="188" class="t t-xs t-mono t-m">(0,8 B5 −0,1) (0,1 C4 −0,1) (0,1 C5 −0,1)</text>
+<text x="574" y="206" class="t t-s t-mono">…</text>
+<text x="624" y="206" class="t t-s t-mono">…</text>
+<text x="574" y="222" class="t t-xs t-mono t-m">88 listas: 22 casillas × 4 acciones</text>
+<text x="560" y="262" class="t t-s">Con el modelo, el robot calcula sin moverse:</text>
+<text x="560" y="282" class="t t-s">cada casilla promedia sus resultados posibles,</text>
+<text x="560" y="302" class="t t-s">pesados por su probabilidad. Nadie camina.</text>
+<text x="560" y="334" class="t t-s t-mono t-m">Gymnasium lo expone igual: env.unwrapped.P</text>
+</svg></div><figcaption><b>Una actualización de Bellman y el modelo que necesita.</b> A la izquierda, un árbol que se lee de arriba abajo. Arriba, la casilla E3, al lado del foso. Debajo, la acción que toma la política óptima: arriba (punto morado). Abajo, los tres resultados posibles con su probabilidad, los mismos de la transición del capítulo 2: con 0,8 llega a E2, con 0,1 patina a la derecha, a F3 (las dos pagan −0,1), y con 0,1 patina a la izquierda y cae en el foso D3 (−10, y el episodio termina). El recuadro hace la cuenta: cada resultado aporta su probabilidad por su recompensa más el valor descontado de donde cae, y el total da 3,58. A la derecha, lo que hace posible la cuenta: el modelo, una lista de resultados posibles para cada casilla y acción, 88 listas en total.</figcaption></figure><div class="prose"><p>La cuenta del diagrama es la misma que el capítulo 3 hizo en E1, ahora junto al foso: el 10 % de caer pesa −1,00 en el valor de E3. Lo que cambia es quién la hace y cuántas veces: el algoritmo la repite para cada una de las 22 casillas libres, una y otra vez, hasta que los números dejan de moverse. En Gymnasium, los entornos pequeños como FrozenLake traen su modelo a la vista, en <code>env.unwrapped.P</code>, con el mismo formato que la tabla de la derecha; el archivo <code>almacen.py</code> del capítulo 2 lo expone en <code>env.P</code>.</p></div></section>
+<section><h2>Evaluación de política: aplicar Bellman hasta que no cambie</h2><div class="prose"><p>El primer problema es más modesto que encontrar la mejor política: dada una política <span class="math">\pi</span> cualquiera, ¿cuánto vale cada casilla si el robot la sigue? Se llama <b>evaluación de política</b> (<i>policy evaluation</i>) o <b>problema de predicción</b> (<i>prediction problem</i>).</p><p>La ecuación de Bellman para <span class="math">V_\pi</span> dice que el valor de una casilla es el promedio, según la política y el modelo, de la recompensa inmediata más el valor descontado de la casilla siguiente:</p><div class="math-display">V_\pi(s) = \sum_a \pi(a \mid s) \sum_{s', r} p(s', r \mid s, a)\,\big[r + \gamma\, V_\pi(s')\big]</div><p>Son 22 ecuaciones con 22 incógnitas, una por casilla libre. Se pueden resolver como un sistema lineal, como hiciste en la práctica del capítulo 3, pero hay una forma más simple y que escala mejor: empezar con cualquier valor (por ejemplo, cero en todas partes) y usar la ecuación como una regla para actualizar. En cada pasada, cada casilla reemplaza su valor por el lado derecho de la ecuación, calculado con los valores que tienen sus vecinas en ese momento:</p><div class="math-display">V_{k+1}(s) \leftarrow \sum_a \pi(a \mid s) \sum_{s', r} p(s', r \mid s, a)\,\big[r + \gamma\, V_k(s')\big]</div><p>Una pasada completa por todas las casillas es un <b>barrido</b> (<i>sweep</i>). Se repite hasta que el cambio más grande de un barrido, que se escribe <span class="math">\Delta</span> (delta mayúscula), queda por debajo de una tolerancia pequeña, por ejemplo una millonésima. Este método se llama <b>evaluación iterativa de política</b> (<i>iterative policy evaluation</i>). Está garantizado que converge al valor verdadero de la política cuando <span class="math">\gamma &lt; 1</span> o cuando todos los episodios terminan.</p></div><div class="analogia"><b>Imagínalo así</b><p>Imagina un edificio donde cada vecino quiere saber cuánto tarda en llegar al metro, y nadie tiene mapa. Cada mañana, cada uno pregunta a los vecinos de al lado su estimación y calcula la suya: «un minuto hasta su puerta más lo que ellos tardan». El primer día casi todos dicen «no sé». Pero los que viven junto a la estación sí saben, y su dato se propaga piso por piso. Después de unos días, todos los números se estabilizan en el tiempo real.</p></div><div class="prose"><p>Con la política al azar (cada flecha con probabilidad un cuarto), la evaluación de la maqueta tarda 29 barridos en que ningún valor cambie más de 0,01 y 154 en bajar de una milmillonésima. El resultado es el del capítulo 3: <span class="math">V_\pi(\text{C5}) = -2{,}71</span>. Un robot que camina al azar desde la base termina, en promedio, con un retorno descontado negativo: lo más probable es que caiga en una trampa antes de encontrar el muelle.</p><p>Hay una variante que ahorra memoria y suele converger antes: actualizar <b>en el lugar</b> (<i>in place</i>), usando el valor nuevo de una casilla en cuanto se calcula, sin esperar a terminar el barrido. Las dos versiones llegan al mismo resultado. Los laboratorios de este capítulo usan la versión con dos copias, que es más fácil de seguir con la vista, porque cada barrido usa solo los valores del barrido anterior.</p></div></section>
+<section><h2>Mejora de política: elegir la acción codiciosa</h2><div class="prose"><p>Saber cuánto vale la política al azar no basta: Teodoro no quiere un robot que camine al azar. La pregunta siguiente es cómo usar esos valores para encontrar una política mejor.</p><p>La respuesta está en la función <span class="math">Q</span> del capítulo 3. Con el modelo y los valores <span class="math">V_\pi</span>, se puede calcular cuánto vale, en cada casilla, tomar cada una de las cuatro acciones y después seguir con <span class="math">\pi</span>:</p><div class="math-display">q_\pi(s, a) = \sum_{s', r} p(s', r \mid s, a)\,\big[r + \gamma\, V_\pi(s')\big]</div><p>Si en alguna casilla hay una acción con <span class="math">q_\pi(s, a)</span> mayor que <span class="math">V_\pi(s)</span>, conviene cambiar la política para tomarla: esa casilla gana valor y, como las demás dependen de ella, ninguna pierde. Hacerlo en todas las casillas a la vez, eligiendo en cada una la acción de mayor <span class="math">q</span>, es la <b>mejora de política</b> (<i>policy improvement</i>). La política resultante es <b>codiciosa</b> (<i>greedy</i>) respecto de <span class="math">V_\pi</span>: mira un solo paso adelante y elige lo que parece mejor.</p><p>El <b>teorema de mejora de política</b> (<i>policy improvement theorem</i>) garantiza que la política nueva es al menos tan buena como la anterior en todas las casillas. Y si la mejora no cambia nada, porque la política ya era codiciosa respecto de su propio valor, entonces su valor cumple la ecuación de optimalidad de Bellman del capítulo 3: la política es óptima.</p></div><div class="analogia"><b>Imagínalo así</b><p>Un vendedor recorre su zona siempre en el mismo orden. Un día, con el registro de cuánto vendió en cada cliente, se pregunta en cada esquina: «si desde aquí voy primero al cliente de la izquierda y después sigo mi ruta de siempre, ¿me va mejor?». Cada vez que la respuesta es sí, cambia ese tramo. La ruta nueva nunca es peor que la vieja, porque cada cambio se hizo comparando con lo que ya sabía que pasaba.</p></div><div class="prose"><p>En la maqueta, la diferencia se ve de inmediato. Si se evalúa la política al azar y se mejora una sola vez, cada una de las 22 casillas pasa de cuatro flechas repartidas a una sola, y el valor de la base sube de −2,71 a −1,01. Todavía no es la política óptima, porque la mejora se calculó con los valores de un robot que caminaba al azar. Pero ya no camina al azar: apunta hacia el muelle y lejos de las trampas.</p></div></section>
+<section><h2>Iteración de política</h2><div class="prose"><p>Evaluar y mejorar se pueden encadenar. Se parte de una política cualquiera, se evalúa, se mejora, se evalúa la política nueva, se mejora otra vez, y así. Cada vuelta da una política al menos tan buena como la anterior, y como hay un número finito de políticas deterministas, en algún momento la mejora ya no cambia ninguna flecha. Ese algoritmo es la <b>iteración de política</b> (<i>policy iteration</i>), de Ronald Howard (1960).</p></div><figure class="fig fig-flujo" id="04-diagrama-2"><div class="lienzo"><svg viewBox="0 0 890 350" style="min-width:680px" role="img" aria-label="Ciclo de la iteración de política: desde la política al azar se evalúa con Bellman hasta que el valor no cambia, se mejora eligiendo en cada casilla la acción de mayor valor y se repite hasta que ninguna flecha cambia. A la derecha, las seis vueltas en el almacén con sus barridos, las flechas que cambian y el valor de C5">
+<defs><marker id="c4d2-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker><marker id="c4d2-tra" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-tra)"/></marker><marker id="c4d2-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-red)"/></marker></defs>
+<text x="20" y="28" class="t t-xs t-b t-m">ITERACIÓN DE POLÍTICA: EVALUAR Y MEJORAR HASTA QUE NADA CAMBIE</text>
+<rect x="20" y="50" width="170" height="56" rx="10" class="caja"/>
+<text x="105" y="74" class="t t-b" text-anchor="middle">π₀: al azar</text>
+<text x="105" y="94" class="t t-xs t-m" text-anchor="middle">un cuarto a cada flecha</text>
+<path d="M190 78H236" class="ln" style="stroke-width:1.6" marker-end="url(#c4d2-muted)"/>
+<rect x="240" y="44" width="210" height="70" rx="10" class="c-red"/>
+<text x="345" y="68" class="t t-b k-red" text-anchor="middle">1. Evaluar</text>
+<text x="345" y="88" class="t t-xs" text-anchor="middle">Bellman con π fija, barrido</text>
+<text x="345" y="102" class="t t-xs" text-anchor="middle">tras barrido, hasta que no cambie</text>
+<path d="M345 114V168" class="ln" style="stroke:var(--c-red);stroke-width:1.6" marker-end="url(#c4d2-red)"/>
+<text x="355" y="146" class="t t-s k-red">V de π</text>
+<rect x="240" y="172" width="210" height="70" rx="10" class="c-tra"/>
+<text x="345" y="196" class="t t-b k-tra" text-anchor="middle">2. Mejorar</text>
+<text x="345" y="216" class="t t-xs" text-anchor="middle">en cada casilla, la flecha</text>
+<text x="345" y="230" class="t t-xs" text-anchor="middle">hacia la acción de mayor q</text>
+<path d="M240 207C150 207,150 130,236 96" class="ln" style="stroke:var(--c-tra);stroke-width:1.6" marker-end="url(#c4d2-tra)"/>
+<text x="118" y="176" class="t t-s k-tra">π nueva</text>
+<path d="M345 242V282" class="ln" style="stroke-width:1.6" marker-end="url(#c4d2-muted)"/>
+<text x="355" y="266" class="t t-s t-m">¿cambió alguna flecha?</text>
+<rect x="240" y="286" width="210" height="50" rx="10" class="caja"/>
+<text x="345" y="308" class="t t-b" text-anchor="middle">No: π es óptima</text>
+<text x="345" y="326" class="t t-xs t-m" text-anchor="middle">y V es V* (C5 = 1,75)</text>
+<text x="490" y="28" class="t t-xs t-b t-m">EN EL ALMACÉN, DESDE LA POLÍTICA AL AZAR</text>
+<text x="500" y="58" class="t t-xs t-b t-m">vuelta</text>
+<text x="590" y="58" class="t t-xs t-b t-m">barridos</text>
+<text x="690" y="58" class="t t-xs t-b t-m">flechas</text>
+<text x="800" y="58" class="t t-xs t-b t-m">V(C5)</text>
+<path d="M490 96H870" class="ln" style="opacity:.5"/>
+<text x="500" y="86" class="t t-s t-mono">1</text>
+<text x="590" y="86" class="t t-s t-mono">100</text>
+<text x="690" y="86" class="t t-s t-mono k-tra">22</text>
+<text x="800" y="86" class="t t-s t-mono k-red">−2,71</text>
+<path d="M490 128H870" class="ln" style="opacity:.5"/>
+<text x="500" y="118" class="t t-s t-mono">2</text>
+<text x="590" y="118" class="t t-s t-mono">119</text>
+<text x="690" y="118" class="t t-s t-mono k-tra">7</text>
+<text x="800" y="118" class="t t-s t-mono k-red">−1,01</text>
+<path d="M490 160H870" class="ln" style="opacity:.5"/>
+<text x="500" y="150" class="t t-s t-mono">3</text>
+<text x="590" y="150" class="t t-s t-mono">65</text>
+<text x="690" y="150" class="t t-s t-mono k-tra">7</text>
+<text x="800" y="150" class="t t-s t-mono k-red">0,47</text>
+<path d="M490 192H870" class="ln" style="opacity:.5"/>
+<text x="500" y="182" class="t t-s t-mono">4</text>
+<text x="590" y="182" class="t t-s t-mono">19</text>
+<text x="690" y="182" class="t t-s t-mono k-tra">3</text>
+<text x="800" y="182" class="t t-s t-mono k-red">1,74</text>
+<path d="M490 224H870" class="ln" style="opacity:.5"/>
+<text x="500" y="214" class="t t-s t-mono">5</text>
+<text x="590" y="214" class="t t-s t-mono">20</text>
+<text x="690" y="214" class="t t-s t-mono k-tra">2</text>
+<text x="800" y="214" class="t t-s t-mono k-red">1,74</text>
+<path d="M490 256H870" class="ln" style="opacity:.5"/>
+<text x="500" y="246" class="t t-s t-mono">6</text>
+<text x="590" y="246" class="t t-s t-mono">40</text>
+<text x="690" y="246" class="t t-s t-mono k-tra">0</text>
+<text x="800" y="246" class="t t-s t-mono k-red">1,75</text>
+<text x="490" y="300" class="t t-s">6 vueltas, 363 barridos de evaluación en total.</text>
+<text x="490" y="320" class="t t-s t-m">Las flechas se arreglan rápido: el costo está en evaluar.</text>
+</svg></div><figcaption><b>Iteración de política.</b> A la izquierda, el ciclo. Se parte de la política al azar, se evalúa (azul: Bellman con la política fija, barrido tras barrido, hasta que el valor no cambia) y se mejora (morado: en cada casilla, la flecha hacia la acción de mayor valor). La flecha morada devuelve la política nueva al paso de evaluar. Si la mejora no cambió ninguna flecha, la política es óptima. A la derecha, las seis vueltas en la maqueta: cuántos barridos costó cada evaluación, cuántas flechas cambió cada mejora y cuánto vale la base, C5, con cada política.</figcaption></figure><div class="prose"><p>La tabla del diagrama cuenta la historia completa. La primera mejora cambia las 22 flechas; la segunda, 7; la tercera, otras 7; después 3, 2 y ninguna. El valor de la base sube de −2,71 a −1,01, a 0,47, a 1,74 y termina en 1,75, el valor óptimo <span class="math">V^*(\text{C5})</span> del capítulo 3. La política final es la que ya conoces: el rodeo por el pasillo de arriba.</p><p>Fíjate en la columna de los barridos. Las flechas se arreglan en seis vueltas, pero cada evaluación completa cuesta entre 19 y 119 barridos: 363 en total. Casi todo el trabajo de la iteración de política está en evaluar con mucha precisión políticas que se van a descartar enseguida.</p></div><div class="lab" id="04-lab-2"><div class="lab-title"><span class="tag">Laboratorio</span><h3>Iteración de política: alterna evaluar y mejorar y cuenta cuántas vueltas hacen falta</h3></div><p class="hint">Empieza con la política al azar y pulsa «1. Evaluar» y «2. Mejorar» por turnos: mira cómo cambian las flechas y el mapa de calor en cada vuelta, y la tabla de la derecha. Después prueba «Siempre arriba» y «Siempre abajo» como políticas iniciales. Por último, baja el control «Barridos de evaluación en cada vuelta» de «hasta converger» a 1 y pulsa «Hasta que nada cambie»: compara el total de barridos.</p><style>
+[id="04-lab-2"] .c4l2-rot{font:700 .7rem var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+[id="04-lab-2"] .btns{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}
+[id="04-lab-2"] canvas{width:100%;display:block;background:var(--card);border:1px solid var(--line);border-radius:8px}
+[id="04-lab-2"] .c4l2-graf{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;margin-top:6px;align-items:start}
+[id="04-lab-2"] table{width:100%;border-collapse:collapse;font:.8rem var(--f-mono)}
+[id="04-lab-2"] th,[id="04-lab-2"] td{border-bottom:1px solid var(--line);padding:3px 6px;text-align:right}
+[id="04-lab-2"] th{font:700 .68rem var(--f-display);color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+[id="04-lab-2"] tr.c4l2-ya td{color:var(--muted)}
+[id="04-lab-2"] .c4l2-fase{font:600 .85rem var(--f-display);margin:4px 0}
+</style>
+<div class="btns" role="group" aria-label="Política inicial" id="c4l2-ini"><span class="c4l2-rot">Política inicial</span>
+  <button type="button" data-p="azar" aria-pressed="true">Al azar</button>
+  <button type="button" data-p="0" aria-pressed="false">Siempre arriba</button>
+  <button type="button" data-p="2" aria-pressed="false">Siempre abajo</button>
+</div>
+<div class="ctls">
+  <div class="ctl"><label for="c4l2-k">Barridos de evaluación en cada vuelta</label>
+    <input type="range" id="c4l2-k" min="0" max="6" value="6" step="1"><output id="c4l2-k-o"></output></div>
+</div>
+<div class="btns">
+  <button type="button" id="c4l2-ev">1. Evaluar</button>
+  <button type="button" id="c4l2-me">2. Mejorar</button>
+  <button type="button" id="c4l2-vu">Una vuelta completa</button>
+  <button type="button" id="c4l2-fin">Hasta que nada cambie</button>
+  <button type="button" id="c4l2-cero">Reiniciar</button>
+</div>
+<p class="c4l2-fase" id="c4l2-fase" aria-live="polite"></p>
+<div class="c4l2-graf">
+  <div><span class="c4l2-rot" id="c4l2-tit">Política y su valor</span>
+    <canvas id="c4l2-c" role="img" aria-label="La cuadrícula del almacén con la política actual como flechas y su valor como mapa de calor"></canvas></div>
+  <div><span class="c4l2-rot">Vuelta por vuelta</span>
+    <div class="tbl"><table><thead><tr><th>Vuelta</th><th>Barridos</th><th>Flechas que cambian</th><th>V(inicio)</th></tr></thead><tbody id="c4l2-tb"></tbody></table></div></div>
+</div>
+<div class="readout texto" id="c4l2-out" aria-live="polite"></div></div><div class="prose"><p>La política inicial cambia el camino, no el destino. Desde «siempre arriba», la iteración de política llega a la misma política óptima en 5 vueltas; desde «siempre abajo», que manda al robot contra la pared de abajo, tarda 9. En los tres casos, el número de vueltas es pequeño comparado con el número de políticas posibles: con 4 acciones en 22 casillas hay <span class="math">4^{22}</span>, unos 17 billones de políticas deterministas, y el algoritmo encuentra la mejor revisando menos de diez.</p></div></section>
+<section><h2>Iteración de valor</h2><div class="prose"><p>Si casi todo el costo está en evaluar, una pregunta natural es cuánto hace falta evaluar antes de mejorar. La respuesta sorprendente es que basta con un solo barrido. Si en cada casilla se hace un único paso de evaluación y se mejora en el acto, las dos operaciones se funden en una sola regla, que es la ecuación de optimalidad de Bellman usada como actualización:</p><div class="math-display">V_{k+1}(s) \leftarrow \max_a \sum_{s', r} p(s', r \mid s, a)\,\big[r + \gamma\, V_k(s')\big]</div><p>Cada casilla toma, en lugar del promedio según una política, el valor de su mejor acción. Por ese máximo, la ecuación de optimalidad no es lineal y no se puede resolver como un sistema de ecuaciones; se resuelve por aproximaciones sucesivas, barrido tras barrido. Este algoritmo es la <b>iteración de valor</b> (<i>value iteration</i>). No mantiene una política explícita mientras trabaja: al final, cuando los valores se estabilizan, la política óptima se lee eligiendo en cada casilla la acción codiciosa.</p></div><div class="lab" id="04-lab-1"><div class="lab-title"><span class="tag">Laboratorio</span><h3>Iteración de valor en la cuadrícula, barrido por barrido, con el valor que se propaga desde el premio</h3></div><p class="hint">Todas las casillas empiezan en cero. Pulsa «Un barrido» varias veces y mira cómo el azul se extiende desde el muelle hacia la base: la casilla con borde morado es la que más cambió en ese barrido. Después pulsa «Correr» para llegar al final. Mueve la probabilidad de resbalar a 0 y mira qué camino elige la política; súbela a 0,4. Prueba también una recompensa por paso de −1.</p><style>
+[id="04-lab-1"] .c4l1-rot{font:700 .7rem var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+[id="04-lab-1"] .btns{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}
+[id="04-lab-1"] canvas{width:100%;display:block;background:var(--card);border:1px solid var(--line);border-radius:8px}
+[id="04-lab-1"] .c4l1-graf{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;margin-top:6px;align-items:start}
+</style>
+<div class="ctls">
+  <div class="ctl"><label for="c4l1-g">Descuento γ</label>
+    <input type="range" id="c4l1-g" min="0.5" max="0.99" value="0.9" step="0.01"><output id="c4l1-g-o"></output></div>
+  <div class="ctl"><label for="c4l1-r">Probabilidad de resbalar</label>
+    <input type="range" id="c4l1-r" min="0" max="0.4" value="0.2" step="0.05"><output id="c4l1-r-o"></output></div>
+  <div class="ctl"><label for="c4l1-p">Recompensa por paso</label>
+    <input type="range" id="c4l1-p" min="-1" max="0" value="-0.1" step="0.05"><output id="c4l1-p-o"></output></div>
+</div>
+<div class="btns">
+  <button type="button" id="c4l1-uno">Un barrido</button>
+  <button type="button" id="c4l1-go">Correr</button>
+  <button type="button" id="c4l1-cero">Reiniciar</button>
+</div>
+<div class="btns" role="group" aria-label="Flechas" id="c4l1-fl"><span class="c4l1-rot">Flechas</span>
+  <button type="button" data-f="si" aria-pressed="true">Política codiciosa</button>
+  <button type="button" data-f="no" aria-pressed="false">Sin flechas</button>
+</div>
+<div class="c4l1-graf">
+  <div><span class="c4l1-rot" id="c4l1-tit">Valor de cada casilla tras 0 barridos</span>
+    <canvas id="c4l1-c" role="img" aria-label="La cuadrícula del almacén con el valor de cada casilla como mapa de calor y la acción codiciosa como flecha"></canvas></div>
+  <div><span class="c4l1-rot">V(inicio) en cada barrido</span>
+    <canvas id="c4l1-v" data-prop="0.62" role="img" aria-label="Curva del valor de la casilla de inicio en cada barrido, con el valor óptimo como línea punteada"></canvas>
+    <span class="c4l1-rot">Cambio máximo en cada barrido (escala logarítmica)</span>
+    <canvas id="c4l1-d" data-prop="0.45" role="img" aria-label="Curva del cambio máximo del valor en cada barrido, en escala logarítmica"></canvas></div>
+</div>
+<div class="readout texto" id="c4l1-out" aria-live="polite"></div></div><div class="prose"><p>Lo que se ve en el laboratorio es la información viajando. En el primer barrido, solo las casillas junto al muelle saben algo: E1 pasa de 0 a 7,98, porque desde ahí la acción derecha llega al premio 8 de cada 10 veces. Las demás casillas solo ven que cada paso cuesta −0,1. En el segundo barrido, E1 sube a 8,69 y su vecina D1 se entera de que tiene al lado una casilla valiosa. Barrido a barrido, el valor del premio recorre el pasillo de arriba: A1 recién recibe la noticia en el barrido 5 (pasa de −0,34 a 1,76) y la base, C5, en el barrido 7, cuando su valor deja de bajar y empieza a subir.</p><p>En la maqueta, las flechas codiciosas dejan de cambiar en el barrido 14, aunque los valores siguen moviéndose un poco más. El cambio máximo baja de 0,01 en el barrido 23 y de una milmillonésima en el 79. Con la tolerancia de una millonésima que usa el laboratorio, la iteración de valor termina en 55 barridos; la iteración de política, con la misma tolerancia, gastó 363. Cada barrido de la iteración de valor cuesta un poco más (compara las cuatro acciones en vez de promediar según la política), pero el total es mucho menor.</p></div><div class="caso"><b>Un caso real</b><p>La ecuación de Bellman mueve una parte de Internet. Los routers que usan el protocolo <b>RIP</b> (<i>Routing Information Protocol</i>, protocolo de información de enrutamiento), estandarizado en el <a href="https://www.rfc-editor.org/rfc/rfc2453" target="_blank" rel="noopener">RFC 2453</a>, calculan la distancia a cada red con el algoritmo de Bellman-Ford: cada router le pregunta a sus vecinos a qué distancia están de cada destino y se queda con «uno más la distancia del mejor vecino». Es una iteración de valor repartida entre muchas máquinas, cada una con su parte de la tabla, que se actualiza a su ritmo. Protocolos más modernos como OSPF usan otro cálculo, pero RIP todavía se enseña y se usa en redes pequeñas, y su idea de actualizar con la estimación del vecino es la misma que verás en el capítulo 6.</p></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Iteración de política e iteración de valor con numpy</h3></div><p>Vas a programar los dos algoritmos sobre el modelo de <code>almacen.py</code> y a medir cuánto crece el trabajo cuando crece el mundo. Necesitas la carpeta <code>refuerzo</code> con su entorno y el archivo <code>almacen.py</code> del capítulo 2.</p><ol class="steps"><li><span>Entra a la carpeta y activa el entorno:</span></li></ol><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>cd $HOME\refuerzo</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>.venv\Scripts\activate</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>cd ~/refuerzo</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>source .venv/bin/activate</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps" start="2" style="counter-reset:st 1"><li><span>Guarda este programa como <code>programacion_dinamica.py</code>:</span></li></ol><div class="code-copia code-lineas"><pre tabindex="0"><code><span class="ln">"""Programación dinámica con el modelo completo: iteración de política e iteración de valor en el almacén,</span>
+<span class="ln">y la iteración de valor sobre lagos congelados cada vez más grandes."""</span>
+<span class="ln">import time</span>
+<span class="ln">import numpy as np</span>
+<span class="ln">import gymnasium as gym</span>
+<span class="ln">from gymnasium.envs.toy_text.frozen_lake import generate_random_map</span>
+<span class="ln">from almacen import Almacen</span>
+<span class="ln"></span>
+<span class="ln"></span>
+<span class="ln">def q_de_v(P, nS, nA, V, gamma):</span>
+<span class="ln">    """q(s,a) = suma de p * (r + gamma * V(s')) sobre los resultados posibles; si termina, V(s') cuenta 0."""</span>
+<span class="ln">    Q = np.zeros((nS, nA))</span>
+<span class="ln">    for s in range(nS):</span>
+<span class="ln">        for a in range(nA):</span>
+<span class="ln">            Q[s, a] = sum(p * (r + (0 if fin else gamma * V[s2])) for p, s2, r, fin in P[s][a])</span>
+<span class="ln">    return Q</span>
+<span class="ln"></span>
+<span class="ln"></span>
+<span class="ln">def evaluar(P, nS, nA, pi, gamma, tol=1e-6):</span>
+<span class="ln">    """Evaluación de política: aplica Bellman a todas las casillas hasta que nada cambie más que tol."""</span>
+<span class="ln">    V, barridos = np.zeros(nS), 0</span>
+<span class="ln">    while True:</span>
+<span class="ln">        Q = q_de_v(P, nS, nA, V, gamma)</span>
+<span class="ln">        nuevo = Q[np.arange(nS), pi]</span>
+<span class="ln">        barridos += 1</span>
+<span class="ln">        if np.max(np.abs(nuevo - V)) &lt; tol:</span>
+<span class="ln">            return nuevo, barridos</span>
+<span class="ln">        V = nuevo</span>
+<span class="ln"></span>
+<span class="ln"></span>
+<span class="ln">def iteracion_politica(P, nS, nA, gamma, terminales):</span>
+<span class="ln">    pi, vueltas, total = np.zeros(nS, dtype=int), 0, 0          # empieza con "siempre arriba"</span>
+<span class="ln">    while True:</span>
+<span class="ln">        vueltas += 1</span>
+<span class="ln">        V, b = evaluar(P, nS, nA, pi, gamma)</span>
+<span class="ln">        total += b</span>
+<span class="ln">        nueva = np.argmax(q_de_v(P, nS, nA, V, gamma), axis=1)  # mejora: la acción codiciosa</span>
+<span class="ln">        nueva[terminales] = 0</span>
+<span class="ln">        cambios = int(np.sum(nueva != pi))</span>
+<span class="ln">        print(f"   vuelta {vueltas}: {b} barridos de evaluacion, {cambios} flechas cambian, V(inicio) = {V[env.inicio]:.2f}")</span>
+<span class="ln">        if cambios == 0:</span>
+<span class="ln">            return V, pi, vueltas, total</span>
+<span class="ln">        pi = nueva</span>
+<span class="ln"></span>
+<span class="ln"></span>
+<span class="ln">def iteracion_valor(P, nS, nA, gamma, tol=1e-6):</span>
+<span class="ln">    V, barridos = np.zeros(nS), 0</span>
+<span class="ln">    while True:</span>
+<span class="ln">        nuevo = q_de_v(P, nS, nA, V, gamma).max(axis=1)        # Bellman de optimalidad</span>
+<span class="ln">        barridos += 1</span>
+<span class="ln">        if np.max(np.abs(nuevo - V)) &lt; tol:</span>
+<span class="ln">            return nuevo, np.argmax(q_de_v(P, nS, nA, nuevo, gamma), axis=1), barridos</span>
+<span class="ln">        V = nuevo</span>
+<span class="ln"></span>
+<span class="ln"></span>
+<span class="ln">env = Almacen()</span>
+<span class="ln">terminales = [s for s in range(env.nS) if env.tipo(s) in "#PT"]</span>
+<span class="ln">print("1) Iteracion de politica en el almacen (gamma 0.9, resbalar 0.2)")</span>
+<span class="ln">V, pi, vueltas, total = iteracion_politica(env.P, env.nS, env.nA, env.gamma, terminales)</span>
+<span class="ln">print(f"   estable en {vueltas} vueltas y {total} barridos")</span>
+<span class="ln">print("2) Iteracion de valor")</span>
+<span class="ln">V2, pi2, barridos = iteracion_valor(env.P, env.nS, env.nA, env.gamma)</span>
+<span class="ln">print(f"   {barridos} barridos; mayor diferencia con la de politica: {np.max(np.abs(V - V2)):.1e}")</span>
+<span class="ln">env.dibujar(V=V2)</span>
+<span class="ln">env.dibujar(pi=pi2)</span>
+<span class="ln"></span>
+<span class="ln">print("3) La maldicion de la dimensionalidad: iteracion de valor en lagos de N x N")</span>
+<span class="ln">for n in [8, 16, 32, 64]:</span>
+<span class="ln">    lago = gym.make("FrozenLake-v1", desc=generate_random_map(size=n, p=0.9, seed=1), is_slippery=True)</span>
+<span class="ln">    P = lago.unwrapped.P</span>
+<span class="ln">    t0 = time.time()</span>
+<span class="ln">    V, pi, b = iteracion_valor(P, n * n, 4, 0.99, tol=1e-4)</span>
+<span class="ln">    print(f"   {n:&gt;2} x {n:&lt;2} = {n * n:&gt;5} estados: {b:&gt;4} barridos en {time.time() - t0:6.1f} s; "</span>
+<span class="ln">          f"probabilidad de llegar desde el inicio: {V[0]:.2f}")</span></code></pre><button type="button" class="ver-todo" aria-expanded="false">Ver las 74 líneas</button><button type="button" class="copiar copiar-todo">Copiar</button></div><ol class="steps" start="3" style="counter-reset:st 2"><li><span>Córrelo (la última línea, el lago de 64 × 64, puede tardar un minuto):</span></li></ol><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python programacion_dinamica.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 programacion_dinamica.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps" start="4" style="counter-reset:st 3"><li><span>En <code>Almacen()</code>, cambia la probabilidad de patinar: <code>Almacen(resbalar=0.0)</code> y vuelve a correrlo.</span></li></ol><p><b>Qué observar:</b> la iteración de política, que empieza con «siempre arriba», se estabiliza en 5 vueltas (la primera mejora cambia 17 flechas; la última, ninguna) y la iteración de valor llega a los mismos valores en 55 barridos: V(C5) = 1,75 y las flechas del rodeo. El programa evalúa cada política desde cero, por eso gasta más barridos que el laboratorio, que arranca cada evaluación con el valor anterior. Sin resbalones, la política cambia al atajo junto al foso, como en el capítulo 2. En los lagos congelados de FrozenLake (que traen su modelo en <code>env.unwrapped.P</code>), el tiempo crece mucho más rápido que el lado del lago: 64 estados se resuelven en menos de un segundo y 4.096 en casi un minuto, porque hay más estados y además hacen falta más barridos para que el valor cruce el lago. Los segundos dependen del equipo.</p></div></section>
+<section><h2>La iteración generalizada de política: la idea que reaparece en todo el curso</h2><div class="prose"><p>La iteración de política evalúa hasta el final y después mejora. La iteración de valor evalúa un solo barrido y mejora. Entre los dos extremos caben todas las variantes intermedias: evaluar dos barridos, o cinco, o diez, antes de cada mejora. El laboratorio de la iteración de política lo deja probar con su control de barridos, y los números de la maqueta, siempre desde la política al azar, son estos:</p><div class="tbl"><table><thead><tr><th>Barridos de evaluación por vuelta</th><th>Vueltas</th><th>Barridos en total</th></tr></thead><tbody><tr><td>1 (es la iteración de valor)</td><td>56</td><td>56</td></tr><tr><td>2</td><td>29</td><td>57</td></tr><tr><td>5</td><td>13</td><td>65</td></tr><tr><td>10</td><td>9</td><td>90</td></tr><tr><td>hasta converger (iteración de política)</td><td>6</td><td>363</td></tr></tbody></table></div><p>Todas llegan a la misma política óptima. Lo que cambia es cómo se reparte el trabajo entre evaluar y mejorar.</p></div><div class="analogia"><b>Imagínalo así</b><p>Un cocinero ajusta una receta nueva. Puede probar la sopa con mucho cuidado, anotar todo y recién después cambiar la sal. O puede probar una cucharada, echar una pizca, probar otra cucharada, echar otra pizca. Las dos maneras terminan en la misma sopa. Lo que importa es que nunca deje de hacer las dos cosas: probar para saber cómo va, y corregir según lo que probó.</p></div><div class="prose"><p>Sutton y Barto llaman a esta familia <b>iteración generalizada de política</b> (<i>generalized policy iteration</i>, GPI): dos procesos que interactúan, uno que hace que el valor sea coherente con la política (evaluar) y otro que hace que la política sea codiciosa respecto del valor (mejorar). No importa cuánto avance cada uno antes de ceder el turno, ni si trabajan sobre todas las casillas o solo sobre algunas. Mientras ninguno de los dos deje de actuar, los dos convergen juntos al valor y la política óptimos.</p></div><figure class="fig fig-esquema" id="04-diagrama-3"><div class="lienzo"><svg viewBox="0 0 890 365" style="min-width:700px" role="img" aria-label="Diagrama de la iteración generalizada de política: dos rectas, la de evaluar (el valor de la política) y la de mejorar (la política codiciosa), y un zigzag entre ellas que llega al punto donde se cruzan, el valor y la política óptimos. A la derecha, seis algoritmos del curso que siguen la misma idea">
+<defs><marker id="c4d3-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker><marker id="c4d3-tra" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-tra)"/></marker><marker id="c4d3-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-red)"/></marker></defs>
+<text x="20" y="28" class="t t-xs t-b t-m">ITERACIÓN GENERALIZADA DE POLÍTICA (GPI)</text>
+<path d="M40 70L380 300" class="ln s-red" style="stroke-width:2.5"/>
+<path d="M40 300L380 300" class="ln s-tra" style="stroke-width:2.5"/>
+<text x="70" y="64" class="t t-s t-b k-red">V = valor de π (evaluar)</text>
+<text x="40" y="322" class="t t-s t-b k-tra">π = codiciosa respecto de V (mejorar)</text>
+<path d="M70 300L70 90" class="ln" style="stroke:var(--c-red);stroke-width:1.8" marker-end="url(#c4d3-red)"/>
+<path d="M70 90L188 300" class="ln" style="stroke:var(--c-tra);stroke-width:1.8" marker-end="url(#c4d3-tra)"/>
+<path d="M188 300L188 170" class="ln" style="stroke:var(--c-red);stroke-width:1.8" marker-end="url(#c4d3-red)"/>
+<path d="M188 170L261 300" class="ln" style="stroke:var(--c-tra);stroke-width:1.8" marker-end="url(#c4d3-tra)"/>
+<path d="M261 300L261 219" class="ln" style="stroke:var(--c-red);stroke-width:1.8" marker-end="url(#c4d3-red)"/>
+<path d="M261 219L306 300" class="ln" style="stroke:var(--c-tra);stroke-width:1.8" marker-end="url(#c4d3-tra)"/>
+<path d="M306 300L306 250" class="ln" style="stroke:var(--c-red);stroke-width:1.8" marker-end="url(#c4d3-red)"/>
+<path d="M306 250L334 300" class="ln" style="stroke:var(--c-tra);stroke-width:1.8" marker-end="url(#c4d3-tra)"/>
+<path d="M334 300L334 269" class="ln" style="stroke:var(--c-red);stroke-width:1.8" marker-end="url(#c4d3-red)"/>
+<path d="M334 269L352 300" class="ln" style="stroke:var(--c-tra);stroke-width:1.8" marker-end="url(#c4d3-tra)"/>
+<circle cx="380" cy="300" r="7" style="fill:var(--good)"/>
+<text x="392" y="296" class="t t-s t-b" text-anchor="start" style="fill:var(--good)">V*, π*</text>
+<text x="70" y="350" class="t t-s t-m">Cada flecha acerca a una meta y aleja un poco de la otra; juntas llegan al óptimo.</text>
+<text x="470" y="28" class="t t-xs t-b t-m">LA MISMA IDEA EN TODO EL CURSO</text>
+<rect x="470" y="46" width="400" height="42" rx="8" class="caja"/>
+<text x="484" y="64" class="t t-s t-b">Iteración de política</text>
+<text x="484" y="80" class="t t-xs t-m">evalúa completo, luego mejora</text>
+<text x="858" y="72" class="t t-xs t-b k-tra" text-anchor="end">cap. 4</text>
+<rect x="470" y="96" width="400" height="42" rx="8" class="caja"/>
+<text x="484" y="114" class="t t-s t-b">Iteración de valor</text>
+<text x="484" y="130" class="t t-xs t-m">un barrido de evaluación y mejora</text>
+<text x="858" y="122" class="t t-xs t-b k-tra" text-anchor="end">cap. 4</text>
+<rect x="470" y="146" width="400" height="42" rx="8" class="caja"/>
+<text x="484" y="164" class="t t-s t-b">Monte Carlo</text>
+<text x="484" y="180" class="t t-xs t-m">evalúa con episodios jugados</text>
+<text x="858" y="172" class="t t-xs t-b k-tra" text-anchor="end">cap. 5</text>
+<rect x="470" y="196" width="400" height="42" rx="8" class="caja"/>
+<text x="484" y="214" class="t t-s t-b">SARSA</text>
+<text x="484" y="230" class="t t-xs t-m">evalúa y mejora en cada paso</text>
+<text x="858" y="222" class="t t-xs t-b k-tra" text-anchor="end">cap. 6</text>
+<rect x="470" y="246" width="400" height="42" rx="8" class="caja"/>
+<text x="484" y="264" class="t t-s t-b">Q-learning</text>
+<text x="484" y="280" class="t t-xs t-m">evalúa la mejor acción mientras explora</text>
+<text x="858" y="272" class="t t-xs t-b k-tra" text-anchor="end">cap. 7</text>
+<rect x="470" y="296" width="400" height="42" rx="8" class="caja"/>
+<text x="484" y="314" class="t t-s t-b">Actor-crítico</text>
+<text x="484" y="330" class="t t-xs t-m">el crítico evalúa, el actor mejora</text>
+<text x="858" y="322" class="t t-xs t-b k-tra" text-anchor="end">cap. 9</text>
+</svg></div><figcaption><b>Iteración generalizada de política.</b> A la izquierda, dos rectas: la azul es el conjunto de valores coherentes con la política (lo que deja la evaluación) y la morada, el de las políticas codiciosas respecto del valor (lo que deja la mejora). Cada flecha azul evalúa y lleva hasta la recta azul; cada flecha morada mejora y lleva hasta la morada. Alcanzar una meta aleja un poco de la otra, pero el zigzag se va cerrando hasta el único punto que cumple las dos: el valor y la política óptimos (verde). A la derecha, seis algoritmos del curso que siguen la misma idea, con el capítulo donde aparecen.</figcaption></figure><div class="prose"><p>Esta es la idea más importante del capítulo, y el diagrama anuncia por qué. Monte Carlo (capítulo 5) evalúa promediando episodios jugados en vez de usar el modelo, y mejora igual. SARSA (capítulo 6) evalúa y mejora en cada paso del robot. Q-learning (capítulo 7) y los métodos de actor y crítico (capítulo 9) son otras formas de repartir los mismos dos trabajos. Cuando en un capítulo futuro aparezca un algoritmo nuevo, una buena pregunta para entenderlo es: ¿dónde evalúa y dónde mejora?</p><p>Hay otra libertad que la GPI permite: no hace falta barrer todas las casillas en orden. La <b>programación dinámica asíncrona</b> (<i>asynchronous dynamic programming</i>) actualiza las casillas en cualquier orden, algunas más seguido que otras, por ejemplo las que el robot visita. Mientras ninguna quede abandonada para siempre, el resultado es el mismo. Es lo que hacen los routers del caso real, cada uno a su ritmo.</p></div></section>
+<section><h2>El límite: la maldición de la dimensionalidad</h2><div class="prose"><p>Si la programación dinámica encuentra la política óptima en 55 barridos, ¿por qué no se usa siempre? Por dos razones, y las dos explican la estructura del resto del curso.</p><p>La primera es que necesita el modelo completo: la lista de resultados posibles de cada estado y acción, con sus probabilidades exactas. En la maqueta, Yolanda midió la probabilidad de patinar. En el almacén real, el piso cambia según cuánto se haya lavado, la carga del robot y el desgaste de las ruedas, y nadie tiene esa tabla. Muchas veces sí existe un simulador que genera ejemplos, pero no una fórmula con todas las probabilidades. Ese es el punto de partida del capítulo 5.</p><p>La segunda razón es el tamaño. Cada barrido visita todos los estados, y el número de estados crece de forma explosiva con el número de variables que describen la situación. Bellman le puso nombre: la <b>maldición de la dimensionalidad</b> (<i>curse of dimensionality</i>).</p></div><div class="analogia"><b>Imagínalo así</b><p>Una cerradura de bicicleta con 3 ruedas de 10 dígitos tiene 1.000 combinaciones: un ladrón paciente las prueba todas en una tarde. Con 6 ruedas son un millón; con 12, un billón. Agregar una rueda no suma diez combinaciones: las multiplica por diez. Con los estados pasa lo mismo cada vez que se agrega una variable al problema.</p></div><div class="prose"><p>La maqueta tiene 30 estados porque describe un solo robot por su casilla. Si Noemí quisiera planificar los 12 robots a la vez en las 22 casillas libres, sin dos robots en la misma casilla, el estado sería la posición de los doce: más de <span class="math">3 \times 10^{14}</span> estados. Un barrido a mil millones de estados por segundo tardaría tres días y medio, y harían falta decenas de barridos. Y eso en la maqueta: el almacén real tiene miles de casillas.</p></div><figure class="fig fig-comparacion" id="04-diagrama-4"><div class="lienzo"><svg viewBox="0 0 960 380" style="min-width:760px" role="img" aria-label="Barras en escala logarítmica con el número de estados de seis problemas: la maqueta del almacén con 30, Blackjack con 200, un lago de 64 por 64 con 4.096, los 12 robots a la vez con unos 3 por 10 a la 14, el backgammon con 10 a la 20 y el Go con 2 por 10 a la 170, junto al tiempo de un solo barrido a mil millones de estados por segundo">
+<text x="20" y="28" class="t t-xs t-b t-m">CUÁNTOS ESTADOS TIENE CADA PROBLEMA (ESCALA LOGARÍTMICA)</text>
+<text x="280" y="73" class="t t-s" text-anchor="end">La maqueta del almacén</text>
+<rect x="290" y="60" width="14.8" height="20" rx="3" class="c-red"/>
+<text x="312.8" y="75" class="t t-s t-b t-mono" text-anchor="start">30</text>
+<text x="720" y="75" class="t t-s t-m">instantáneo</text>
+<text x="280" y="119" class="t t-s" text-anchor="end">Blackjack (cap. 5)</text>
+<rect x="290" y="106" width="23" height="20" rx="3" class="c-red"/>
+<text x="321" y="121" class="t t-s t-b t-mono" text-anchor="start">200</text>
+<text x="720" y="121" class="t t-s t-m">instantáneo</text>
+<text x="280" y="165" class="t t-s" text-anchor="end">Un lago congelado de 64 × 64</text>
+<rect x="290" y="152" width="36.1" height="20" rx="3" class="c-red"/>
+<text x="334.1" y="167" class="t t-s t-b t-mono" text-anchor="start">4.096</text>
+<text x="720" y="167" class="t t-s t-m">milisegundos</text>
+<text x="280" y="211" class="t t-s" text-anchor="end">Los 12 robots a la vez en la maqueta</text>
+<rect x="290" y="198" width="145" height="20" rx="3" class="c-red"/>
+<text x="443" y="213" class="t t-s t-b t-mono" text-anchor="start">3 × 10¹⁴</text>
+<text x="720" y="213" class="t t-s t-m">3,6 días</text>
+<text x="280" y="257" class="t t-s" text-anchor="end">Backgammon</text>
+<rect x="290" y="244" width="200" height="20" rx="3" class="c-red"/>
+<text x="498" y="259" class="t t-s t-b t-mono" text-anchor="start">≈ 10²⁰</text>
+<text x="720" y="259" class="t t-s t-m">3.200 años</text>
+<text x="280" y="303" class="t t-s" text-anchor="end">Go en un tablero de 19 × 19</text>
+<rect x="290" y="290" width="400" height="20" rx="3" class="c-red"/>
+<path d="M672 286l8 32M680 286l8 32" style="stroke:var(--card);stroke-width:4"/>
+<text x="660" y="305" class="t t-s t-b t-mono" text-anchor="end">≈ 2 × 10¹⁷⁰ (fuera de escala)</text>
+<text x="720" y="305" class="t t-s t-m">mucho más que la edad del universo</text>
+<text x="720" y="46" class="t t-xs t-b t-m">UN BARRIDO A 10⁹ ESTADOS/S</text>
+<path d="M290 50V330" class="ln" style="opacity:.3"/>
+<text x="290" y="344" class="t t-xs t-m" text-anchor="middle">10⁰</text>
+<path d="M390 50V330" class="ln" style="opacity:.3"/>
+<text x="390" y="344" class="t t-xs t-m" text-anchor="middle">10¹⁰</text>
+<path d="M490 50V330" class="ln" style="opacity:.3"/>
+<text x="490" y="344" class="t t-xs t-m" text-anchor="middle">10²⁰</text>
+<path d="M590 50V330" class="ln" style="opacity:.3"/>
+<text x="590" y="344" class="t t-xs t-m" text-anchor="middle">10³⁰</text>
+<path d="M690 50V330" class="ln" style="opacity:.3"/>
+<text x="690" y="344" class="t t-xs t-m" text-anchor="middle">10⁴⁰</text>
+<text x="20" y="368" class="t t-s t-m">Cada robot o variable que se agrega multiplica los estados: la tabla y los barridos crecen de forma exponencial.</text>
+</svg></div><figcaption><b>Cuántos estados tiene cada problema.</b> Las barras están en escala logarítmica: cada línea vertical multiplica por diez mil millones (10¹⁰). La maqueta del almacén tiene 30 estados, el Blackjack del capítulo 5 tiene 200 y un lago congelado de 64 × 64 tiene 4.096: todos se barren en un instante. Los 12 robots a la vez en la maqueta suman unos 3 × 10¹⁴; el backgammon, unos 10²⁰, y el Go, unos 2 × 10¹⁷⁰, tan lejos que su barra se corta. A la derecha, cuánto tardaría un solo barrido a mil millones de estados por segundo: de instantáneo a tres días y medio, a miles de años y a mucho más que la edad del universo.</figcaption></figure><div class="prose"><p>La programación dinámica no es inútil por eso. Es exacta, es la referencia contra la que se comparan los demás métodos y sigue siendo la herramienta correcta cuando el modelo existe y los estados caben en memoria: la planificación de inventarios, el control de algunas máquinas, la estrategia exacta de juegos pequeños. Pero para problemas grandes, el curso toma dos caminos. Los capítulos 5 a 7 quitan la necesidad del modelo: el agente aprende de su experiencia y concentra su trabajo en los estados que de verdad visita. Los capítulos 8 a 10 quitan la tabla: una red neuronal estima el valor de estados que nunca vio, a partir de los que se parecen.</p></div><div class="ml"><b>En la práctica</b><p><b>El plan de Noemí.</b> Noemí corre la iteración de valor en el simulador de Ulises y le muestra a Teodoro el mapa: el robot debe tomar el rodeo por el pasillo de arriba, llega al muelle el 98,6 % de las veces y tarda 14,2 pasos en promedio. Teodoro vuelve a su pregunta: ¿y en verano? Noemí baja la probabilidad de patinar a 0,1, vuelve a calcular en menos de un segundo y le muestra el atajo junto al foso: con menos resbalones, conviene, y el valor de la base sube de 1,75 a 2,62. «Entonces el plan se recalcula cada temporada con un clic», dice Teodoro. Yolanda agrega un problema: el 0,8 de la maqueta es un promedio, y en el piso real cambia durante el día. Noemí anota la pregunta que abre el capítulo 5: ¿cómo calcular el valor sin una tabla de probabilidades, solo a partir de los viajes que el robot ya hizo?</p></div></section>
+<section><h2>La idea clave</h2><div class="prose"><p>Con un modelo completo del entorno, el mejor camino se calcula sin moverse. La evaluación de política aplica la ecuación de Bellman barrido tras barrido hasta que el valor deja de cambiar. La mejora de política elige en cada estado la acción codiciosa, y el teorema de mejora garantiza que nunca empeora. La iteración de política alterna las dos hasta que ninguna flecha cambia; la iteración de valor funde las dos en un solo barrido con el máximo. Las dos son casos de la iteración generalizada de política: evaluar y mejorar, una y otra vez, hasta que ninguna de las dos cambie nada. Esa idea reaparece en cada capítulo del curso. El límite es doble: hace falta el modelo y el número de estados crece de forma exponencial con las variables del problema.</p></div></section>
+<section><h2>Pruébate</h2><div class="quiz"><h3>Pruébate</h3><details><summary>¿Qué necesita la programación dinámica que no necesitan los métodos de los capítulos 5 a 7?</summary><p>El modelo completo del entorno: la probabilidad de cada estado siguiente y recompensa para cada estado y acción, p(s′, r | s, a).</p></details><details><summary>¿Qué es un barrido y cuándo se detiene la evaluación iterativa de política?</summary><p>Un barrido es una pasada que actualiza el valor de todos los estados con la ecuación de Bellman. Se detiene cuando el cambio más grande de un barrido queda por debajo de una tolerancia pequeña.</p></details><details><summary>Si al mejorar una política ninguna acción cambia, ¿qué se puede concluir?</summary><p>Que la política ya es codiciosa respecto de su propio valor; ese valor cumple la ecuación de optimalidad de Bellman, así que la política es óptima.</p></details><details><summary>¿En qué se diferencia la regla de la iteración de valor de la de la evaluación de política?</summary><p>La evaluación promedia las acciones según la política; la iteración de valor toma el máximo sobre las acciones, es decir, usa la ecuación de optimalidad de Bellman.</p></details><details><summary>En la maqueta, la iteración de política gastó 363 barridos y la de valor 55, y las dos llegaron a la misma política. ¿Dónde se fue la diferencia?</summary><p>En evaluar con mucha precisión políticas intermedias que la mejora iba a cambiar enseguida; la iteración de valor evalúa un solo barrido antes de cada mejora.</p></details><details><summary>¿Por qué planificar 12 robots a la vez es mucho más difícil que planificar uno?</summary><p>Porque el estado pasa a ser la posición de los doce, y el número de combinaciones se multiplica con cada robot: de 30 estados a más de 3 × 10¹⁴. Es la maldición de la dimensionalidad.</p></details></div></section>
+<section><h2>Para investigar</h2><div class="investiga"><h3>Para investigar</h3><p class="hint">Estas preguntas no se responden en el capítulo: búscalas por tu cuenta.</p><ol><li>¿Por qué Richard Bellman eligió el nombre «programación dinámica», que no se refiere a programar computadoras?<small>Pista: busca la autobiografía de Bellman, «Eye of the Hurricane», y la anécdota sobre el secretario de Defensa.</small></li><li>¿Qué es la propiedad de contracción del operador de Bellman y por qué garantiza que la evaluación iterativa converge con γ &lt; 1?<small>Pista: busca «Bellman operator contraction mapping Banach fixed point».</small></li><li>¿Cómo se resuelve un MDP con programación lineal y cuándo conviene frente a la iteración de valor?<small>Pista: busca «linear programming formulation of MDP».</small></li><li>¿Qué es un POMDP y por qué la programación dinámica se complica cuando el robot no sabe con certeza en qué casilla está?<small>Pista: busca «partially observable Markov decision process belief state».</small></li><li>¿Qué es la programación dinámica aproximada y cómo se usa en problemas de logística con millones de estados?<small>Pista: busca el libro de Warren Powell, «Approximate Dynamic Programming».</small></li></ol></div></section>
+<section><h2>Para saber más</h2><div class="vids"><span>Para saber más</span><a class="vid" href="http://incompleteideas.net/book/the-book-2nd.html" target="_blank" rel="noopener">Reinforcement Learning: An Introduction, capítulo 4 <small>el capítulo de programación dinámica del libro de Sutton y Barto (2.ª ed., 2018), gratuito, en inglés</small></a><a class="vid" href="https://gymnasium.farama.org/environments/toy_text/frozen_lake/" target="_blank" rel="noopener">FrozenLake en Gymnasium <small>el entorno de la práctica, con su modelo en <code>P</code>, en inglés</small></a><a class="vid" href="https://www.rfc-editor.org/rfc/rfc2453" target="_blank" rel="noopener">RFC 2453: RIP versión 2 <small>el estándar del protocolo de enrutamiento del caso real, en inglés</small></a><a class="vid" href="https://spinningup.openai.com/en/latest/spinningup/rl_intro2.html" target="_blank" rel="noopener">Spinning Up: tipos de algoritmos de refuerzo <small>la diferencia entre métodos con modelo y sin modelo, en inglés</small></a></div></section>
+<label class="got"><input type="checkbox" id="got"> Lo tengo claro</label>
+<nav class="pager" id="pager" aria-label="Capítulo anterior y siguiente"></nav>
+</main>
+</div>
+<footer><span>Curso abierto de aaramirez.github.io.</span><span>Sitio publicado: <a href="https://github.com/aaramirez/aprendizaje-por-refuerzo" target="_blank" rel="noopener">github.com/aaramirez/aprendizaje-por-refuerzo</a></span></footer>
+</div>
+<script src="assets/lab.js"></script>
+<script>
+(function(){
+/* MundoRL: biblioteca mínima común de los labs del curso «Aprendizaje por refuerzo» (sin dependencias, con semilla).
+   Plantilla: copia este bloque DENTRO de la IIFE de tu lab (el motor solo admite <script> en línea, sin src).
+   Uso típico:
+     const M=MundoRL, m=M.cuadricula('almacen');            // la cuadrícula de referencia del curso
+     const r=M.rnd(42);
+     const {V,pi}=M.iterarValor(m);                         // valores óptimos y política óptima
+     M.dibujar(canvas,m,{raiz,V,pi,numeros:true});          // mapa de calor de V y flechas de la política
+     const ep=M.episodio(m,s=>M.elegir(pi,s,r),r);          // un episodio: ep.G, ep.Gd, ep.pasos, ep.final
+   Acciones: 0 arriba, 1 derecha, 2 abajo, 3 izquierda (el orden de CliffWalking en Gymnasium).
+   Estados: s = fila*cols + columna (fila 0 arriba), como FrozenLake y CliffWalking. Nombre de casilla: 'A5' =
+   columna A (la primera de la izquierda), fila 5 contada desde arriba. */
+const MundoRL=(function(){
+  /* ---------- Azar con semilla (mulberry32) ---------- */
+  function rnd(s){return function(){s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  function gauss(r){let u=0;while(!u)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r());}
+  const entero=(r,n)=>Math.floor(r()*n);
+  function barajar(n,r){const a=Array.from({length:n},(_,i)=>i);for(let i=n-1;i>0;i--){const j=entero(r,i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+  /* ---------- Números en español: punto de miles, coma decimal ---------- */
+  const nf=(n,d=0)=>{if(!isFinite(n))return '—';const s=Math.abs(n).toFixed(d).split('.');s[0]=s[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');return (n<0&&Number(Math.abs(n).toFixed(d))!==0?'−':'')+s.join(',');};
+  const pct=(x,d=1)=>nf(100*x,d)+' %';
+
+  /* ---------- Cuadrículas ---------- */
+  const ACC=['arriba','derecha','abajo','izquierda'],FLECHA=['↑','→','↓','←'],DF=[-1,0,1,0],DC=[0,1,0,-1];
+  /* Caracteres: '.' piso, '#' pared (estantería), 'S' inicio, 'P' premio (termina), 'T' trampa (termina),
+     'C' acantilado (castigo y vuelta al inicio, no termina: CliffWalking). */
+  const MAPAS={
+    almacen:['.....P',
+             '.###.T',
+             '...T..',
+             '.#....',
+             '..S#..'],
+    acantilado:['............','............','............','SCCCCCCCCCCP'],
+    lago4:['S...','.T.T','...T','T..P']
+  };
+  /* Recompensas y dinámica por defecto de la cuadrícula de referencia. */
+  const DEF={paso:-0.1,premio:10,trampa:-10,acantilado:-100,resbalar:0.2,gamma:0.9,maxPasos:100};
+  const PRESET={
+    almacen:{},
+    acantilado:{paso:-1,premio:-1,resbalar:0,gamma:1,maxPasos:200},          // CliffWalking-v1 de Gymnasium
+    lago4:{paso:0,premio:1,trampa:0,resbalar:2/3,gamma:0.99,maxPasos:100}      // FrozenLake-v1 4x4, resbaloso
+  };
+  function cuadricula(mapa,o){
+    const clave=typeof mapa==='string'?mapa:null;
+    const filas=(clave?MAPAS[clave]:mapa).slice();
+    const op=Object.assign({},DEF,clave?PRESET[clave]:{},o||{});
+    const nF=filas.length,nC=filas[0].length,nS=nF*nC,tipo=[];
+    let inicio=0;
+    for(let f=0;f<nF;f++)for(let c=0;c<nC;c++){const t=filas[f][c]||'.';tipo.push(t);if(t==='S')inicio=f*nC+c;}
+    const m={mapa:filas,filas:nF,cols:nC,nS,nA:4,tipo,inicio,gamma:op.gamma,maxPasos:op.maxPasos,op,
+      esPared:s=>tipo[s]==='#',esTerminal:s=>tipo[s]==='P'||tipo[s]==='T',
+      fila:s=>Math.floor(s/nC),col:s=>s%nC,
+      nombre:s=>String.fromCharCode(65+s%nC)+(Math.floor(s/nC)+1)};
+    m.libres=[];for(let s=0;s<nS;s++)if(!m.esPared(s)&&!m.esTerminal(s))m.libres.push(s);
+    /* Adónde lleva moverse en la dirección d desde s (paredes y bordes: se queda). */
+    function mover(s,d){const f=m.fila(s)+DF[d],c=m.col(s)+DC[d];if(f<0||f>=nF||c<0||c>=nC)return s;const s2=f*nC+c;return tipo[s2]==='#'?s:s2;}
+    function resultado(s2){const t=tipo[s2];
+      if(t==='P')return {s2,r:op.premio,fin:true};
+      if(t==='T')return {s2,r:op.trampa,fin:true};
+      if(t==='C')return {s2:inicio,r:op.acantilado,fin:false,cayo:true};
+      return {s2,r:op.paso,fin:false};}
+    /* P[s][a]: lista de {p,s2,r,fin} (como env.unwrapped.P de Gymnasium). Con probabilidad 1−resbalar va adonde
+       quiere; con resbalar/2 se desvía a cada lado (nunca hacia atrás). */
+    m.reconstruir=function(){
+      m.P=[];
+      for(let s=0;s<nS;s++){const fila=[];
+        for(let a=0;a<4;a++){const lista=[];
+          if(m.esPared(s)||m.esTerminal(s)){fila.push([{p:1,s2:s,r:0,fin:true}]);continue;}
+          const q=op.resbalar,opciones=[[a,1-q],[(a+1)%4,q/2],[(a+3)%4,q/2]];
+          for(const [d,p] of opciones){if(p<=0)continue;const res=resultado(mover(s,d));
+            const ya=lista.find(x=>x.s2===res.s2&&x.r===res.r);if(ya)ya.p+=p;else lista.push(Object.assign({p},res));}
+          fila.push(lista);}
+        m.P.push(fila);}
+    };
+    m.reconstruir();
+    /* Cambia una casilla (para labs donde el lector arma la cuadrícula) o una opción, y recalcula P. */
+    m.poner=function(s,t){tipo[s]=t;if(t==='S'){for(let i=0;i<nS;i++)if(i!==s&&tipo[i]==='S')tipo[i]='.';inicio=s;m.inicio=s;}
+      m.libres=[];for(let i=0;i<nS;i++)if(!m.esPared(i)&&!m.esTerminal(i))m.libres.push(i);m.reconstruir();};
+    m.opcion=function(k,v){op[k]=v;if(k==='gamma')m.gamma=v;if(k==='maxPasos')m.maxPasos=v;m.reconstruir();};
+    /* Un paso con azar: {s2, r, fin, cayo}. */
+    m.paso=function(s,a,r){const L=m.P[s][a];let u=r(),k=0;while(k<L.length-1&&u>=L[k].p){u-=L[k].p;k++;}
+      const x=L[k];return {s2:x.s2,r:x.r,fin:x.fin,cayo:tipo[s]!=='C'&&x.s2===inicio&&x.r===op.acantilado};};
+    return m;
+  }
+
+  /* ---------- Políticas: Float64Array de nS*4 probabilidades (pi[s*4+a]) ---------- */
+  function politicaAlAzar(m){const pi=new Float64Array(m.nS*4).fill(0.25);return pi;}
+  function politicaDe(m,acciones){const pi=new Float64Array(m.nS*4);for(let s=0;s<m.nS;s++)pi[s*4+(acciones[s]??0)]=1;return pi;}
+  function accionDe(pi,s){let k=0;for(let a=1;a<4;a++)if(pi[s*4+a]>pi[s*4+k]+1e-12)k=a;return k;}
+  function elegir(pi,s,r){let u=r();for(let a=0;a<3;a++){u-=pi[s*4+a];if(u<0)return a;}return 3;}
+  /* Política codiciosa respecto de Q (nS*4). empates: 'primero' (determinista) o 'repartir'. */
+  function codiciosa(m,Q,empates){const pi=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++){let mx=-Infinity;for(let a=0;a<4;a++)mx=Math.max(mx,Q[s*4+a]);
+      const mejores=[];for(let a=0;a<4;a++)if(Q[s*4+a]>=mx-1e-9)mejores.push(a);
+      if(empates==='repartir')mejores.forEach(a=>pi[s*4+a]=1/mejores.length);else pi[s*4+mejores[0]]=1;}
+    return pi;}
+  function egreedy(m,Q,eps){const pi=codiciosa(m,Q);for(let i=0;i<pi.length;i++)pi[i]=pi[i]*(1-eps)+eps/4;return pi;}
+
+  /* ---------- Bellman ---------- */
+  function g_(m,o){return o&&o.gamma!==undefined?o.gamma:m.gamma;}
+  /* Q a partir de V: q(s,a) = Σ p·(r + γ·V(s')) */
+  function qDeV(m,V,gamma){const Q=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++)for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));Q[s*4+a]=(m.esPared(s)||m.esTerminal(s))?0:q;}
+    return Q;}
+  /* Un barrido de evaluación (síncrono): V'(s) = Σ_a π(a|s) Σ p·(r + γ·V(s')). Devuelve {V, delta}. */
+  function barridoEval(m,pi,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let v=0;for(let a=0;a<4;a++){const w=pi[s*4+a];if(!w)continue;let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));v+=w*q;}
+      W[s]=v;delta=Math.max(delta,Math.abs(v-V[s]));}
+    return {V:W,delta};}
+  /* Un barrido de optimalidad: V'(s) = max_a Σ p·(r + γ·V(s')). */
+  function barridoValor(m,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let mx=-Infinity;for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));if(q>mx)mx=q;}
+      W[s]=mx;delta=Math.max(delta,Math.abs(mx-V[s]));}
+    return {V:W,delta};}
+  /* Evaluación de política hasta que el cambio máximo baje de tol. */
+  function evaluar(m,pi,o={}){let V=o.V0?Float64Array.from(o.V0):new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoEval(m,pi,V,o);V=x.V;delta=x.delta;b++;}
+    return {V,barridos:b,delta};}
+  function iterarValor(m,o={}){let V=new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoValor(m,V,o);V=x.V;delta=x.delta;b++;}
+    const Q=qDeV(m,V,g_(m,o));return {V,Q,pi:codiciosa(m,Q),barridos:b};}
+  function iterarPolitica(m,o={}){let pi=o.pi0?Float64Array.from(o.pi0):politicaAlAzar(m),vueltas=0,V,historia=[];
+    for(;vueltas<100;vueltas++){V=evaluar(m,pi,o).V;const nuevo=codiciosa(m,qDeV(m,V,g_(m,o)));historia.push({V,pi});
+      let igual=true;for(const s of m.libres)if(accionDe(nuevo,s)!==accionDe(pi,s)||pi[s*4+accionDe(pi,s)]<1){igual=false;break;}
+      pi=nuevo;if(igual)break;}
+    return {V,pi,vueltas:vueltas+1,historia};}
+
+  /* ---------- Experiencia ---------- */
+  /* Un episodio desde el inicio (o desde o.desde). elegir(s) -> acción. Devuelve estados, acciones, recompensas,
+     G (suma), Gd (suma descontada con γ), pasos y final: 'premio', 'trampa' o 'tope'. */
+  function episodio(m,elegirA,r,o={}){const S=[],A=[],R=[];let s=o.desde??m.inicio,fin=false,final='tope',G=0,Gd=0,d=1;const max=o.max??m.maxPasos;
+    for(let t=0;t<max&&!fin;t++){const a=elegirA(s);const x=m.paso(s,a,r);S.push(s);A.push(a);R.push(x.r);G+=x.r;Gd+=d*x.r;d*=m.gamma;s=x.s2;fin=x.fin;
+      if(fin)final=m.tipo[s]==='P'?'premio':'trampa';}
+    S.push(s);return {S,A,R,G,Gd,pasos:A.length,final};}
+  /* Retorno medio de una política (pi) en n episodios. */
+  function retornoMedio(m,pi,r,n=1000){let G=0,Gd=0,P=0,ex=0;for(let i=0;i<n;i++){const e=episodio(m,s=>elegir(pi,s,r),r);G+=e.G;Gd+=e.Gd;P+=e.pasos;if(e.final==='premio')ex++;}
+    return {G:G/n,Gd:Gd/n,pasos:P/n,exito:ex/n};}
+
+  /* ---------- Bandido multibrazo (cap. 01) ---------- */
+  const BANDIDO=[0.25,0.40,0.55,0.50,0.30];   // máquinas A-E: probabilidad de pagar 1 ficha
+  function bandido(probs,r){probs=probs||BANDIDO;let mejor=0;probs.forEach((p,i)=>{if(p>probs[mejor])mejor=i;});
+    return {k:probs.length,probs,mejor,tirar:a=>r()<probs[a]?1:0};}
+  /* Agente de bandido. metodo: 'egreedy' (ε, promedio de la muestra), 'optimista' (codicioso con Q inicial q0 y
+     paso constante alfa) o 'ucb' (cota superior de confianza con c). */
+  function agenteBandido(k,o={}){const met=o.metodo||'egreedy',q0=o.q0??0,r=o.r||rnd(42);
+    const Q=new Float64Array(k).fill(met==='optimista'?q0:0),N=new Float64Array(k);let t=0;
+    function arg(f){let mx=-Infinity,L=[];for(let a=0;a<k;a++){const v=f(a);if(v>mx+1e-12){mx=v;L=[a];}else if(Math.abs(v-mx)<=1e-12)L.push(a);}return L[entero(r,L.length)];}
+    /* epsilon, alfa y c se pueden cambiar en vivo (ag.epsilon = 0.2). exploro: si la última elección fue al azar. */
+    return {Q,N,metodo:met,epsilon:o.epsilon??0.1,alfa:o.alfa??0.1,c:o.c??2,exploro:false,
+      elegir(){t++;this.exploro=false;
+        if(met==='ucb'){for(let a=0;a<k;a++)if(N[a]===0)return a;const c=this.c;return arg(a=>Q[a]+c*Math.sqrt(Math.log(t)/N[a]));}
+        if(met==='egreedy'&&r()<this.epsilon){this.exploro=true;return entero(r,k);}
+        return arg(a=>Q[a]);},
+      aprender(a,R){N[a]++;Q[a]+=(met==='optimista'?this.alfa:1/N[a])*(R-Q[a]);}};}
+
+  /* ---------- CartPole (Barto, Sutton y Anderson, 1983; constantes de Gymnasium CartPole-v1) ---------- */
+  function cartpole(r){const g=9.8,mc=1.0,mp=0.1,mt=mc+mp,l=0.5,pml=mp*l,F=10,tau=0.02,thMax=12*2*Math.PI/360,xMax=2.4;
+    const e={x:0,v:0,th:0,w:0,t:0,fin:false,
+      reiniciar(){this.x=(r()-.5)*.1;this.v=(r()-.5)*.1;this.th=(r()-.5)*.1;this.w=(r()-.5)*.1;this.t=0;this.fin=false;return this.obs();},
+      obs(){return [this.x,this.v,this.th,this.w];},
+      /* a: 0 empuja a la izquierda, 1 a la derecha. Recompensa 1 por paso; termina si |θ|>12° o |x|>2,4; trunca a 500. */
+      paso(a){const f=a===1?F:-F,ct=Math.cos(this.th),st=Math.sin(this.th);
+        const tmp=(f+pml*this.w*this.w*st)/mt,ta=(g*st-ct*tmp)/(l*(4/3-mp*ct*ct/mt)),xa=tmp-pml*ta*ct/mt;
+        this.x+=tau*this.v;this.v+=tau*xa;this.th+=tau*this.w;this.w+=tau*ta;this.t++;
+        const termina=Math.abs(this.x)>xMax||Math.abs(this.th)>thMax,trunca=this.t>=500;this.fin=termina||trunca;
+        return {obs:this.obs(),r:1,termina,trunca};}};
+    e.reiniciar();return e;}
+
+  /* ---------- Dibujo ---------- */
+  function color(raiz,n){return getComputedStyle(raiz).getPropertyValue(n).trim();}
+  function rgb(c){if(!c)return [128,128,128];if(c[0]==='#'){if(c.length===4)c='#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];return [1,3,5].map(i=>parseInt(c.substr(i,2),16));}
+    const m=c.match(/[\d.]+/g);return m?m.slice(0,3).map(Number):[128,128,128];}
+  function mezcla(a,b,t){const A=rgb(a),B=rgb(b);return 'rgb('+A.map((x,i)=>Math.round(x+(B[i]-x)*t)).join(',')+')';}
+  /* Prepara un canvas con devicePixelRatio. Alto = ancho * data-prop (o o.prop). Devuelve {c,w,h}. */
+  function lienzo(cv,prop){const w=Math.max(120,cv.clientWidth||cv.parentNode.clientWidth||300),p=prop??parseFloat(cv.dataset.prop||'0.6'),h=Math.round(w*p),k=window.devicePixelRatio||1;
+    cv.style.height=h+'px';cv.width=Math.round(w*k);cv.height=Math.round(h*k);const c=cv.getContext('2d');c.setTransform(k,0,0,k,0,0);return {c,w,h};}
+  function flecha(c,x,y,a,L,col,ancho){const dx=DC[a],dy=DF[a];c.strokeStyle=col;c.fillStyle=col;c.lineWidth=ancho||2;
+    const x0=x-dx*L*.45,y0=y-dy*L*.45,x1=x+dx*L*.45,y1=y+dy*L*.45;c.beginPath();c.moveTo(x0,y0);c.lineTo(x1-dx*L*.18,y1-dy*L*.18);c.stroke();
+    const px=-dy,py=dx;c.beginPath();c.moveTo(x1,y1);c.lineTo(x1-dx*L*.3+px*L*.2,y1-dy*L*.3+py*L*.2);c.lineTo(x1-dx*L*.3-px*L*.2,y1-dy*L*.3-py*L*.2);c.closePath();c.fill();}
+  /* Dibuja la cuadrícula. o: {raiz, V (mapa de calor), rango (|V| que satura el color), pi (flechas: probabilidades),
+     numeros (escribe V), ruta (lista de estados), agente (estado), resaltar (estado), Q (cuatro triángulos por casilla),
+     visitas (Float64Array: opacidad de exploración), prop}. Devuelve {lado, x0, y0, casilla(px,py) -> s o -1}. */
+  function dibujar(cv,m,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),prop=o.prop??(m.filas/m.cols);
+    const {c,w,h}=lienzo(cv,prop),lado=Math.min((w-2)/m.cols,(h-2)/m.filas),x0=(w-lado*m.cols)/2,y0=(h-lado*m.filas)/2;
+    const card=C('--card'),azul=C('--c-red'),rojo=C('--warm'),ink=C('--ink'),muted=C('--muted'),good=C('--good'),line=C('--line');
+    c.clearRect(0,0,w,h);
+    let rango=o.rango;if(!rango&&(o.V||o.Q)){rango=1e-9;const src=o.V||o.Q;for(let i=0;i<src.length;i++)rango=Math.max(rango,Math.abs(src[i]));}
+    const tinte=v=>v>=0?mezcla(card,azul,Math.min(1,v/rango)*.85):mezcla(card,rojo,Math.min(1,-v/rango)*.85);
+    const fuente=Math.max(9,Math.min(14,lado*.24));
+    for(let s=0;s<m.nS;s++){const x=x0+m.col(s)*lado,y=y0+m.fila(s)*lado,t=m.tipo[s],cx=x+lado/2,cy=y+lado/2;
+      c.fillStyle=card;
+      if(t==='#'){c.fillStyle=mezcla(card,muted,.55);c.fillRect(x,y,lado,lado);
+        c.strokeStyle=mezcla(card,muted,.8);c.lineWidth=1;c.beginPath();for(let k=1;k<4;k++){c.moveTo(x+3,y+lado*k/4);c.lineTo(x+lado-3,y+lado*k/4);}c.stroke();continue;}
+      if(t==='P'){c.fillStyle=mezcla(card,good,.28);c.fillRect(x,y,lado,lado);}
+      else if(t==='T'||t==='C'){c.fillStyle=mezcla(card,rojo,.28);c.fillRect(x,y,lado,lado);}
+      else if(o.Q){const q=k=>o.Q[s*4+k];const P=[[cx,cy],[x,y],[x+lado,y],[x+lado,y+lado],[x,y+lado]];
+        const tri=[[1,2],[2,3],[3,4],[4,1]];for(let a=0;a<4;a++){c.fillStyle=tinte(q(a));c.beginPath();c.moveTo(cx,cy);c.lineTo(...P[tri[a][0]]);c.lineTo(...P[tri[a][1]]);c.closePath();c.fill();}
+        c.strokeStyle=line;c.lineWidth=.6;c.beginPath();c.moveTo(x,y);c.lineTo(x+lado,y+lado);c.moveTo(x+lado,y);c.lineTo(x,y+lado);c.stroke();}
+      else if(o.V){c.fillStyle=tinte(o.V[s]);c.fillRect(x,y,lado,lado);}
+      else c.fillRect(x,y,lado,lado);
+      if(o.visitas&&!m.esTerminal(s)){const vmax=Math.max(1,...o.visitas);c.fillStyle=C('--c-apl');c.globalAlpha=.45*Math.sqrt(o.visitas[s]/vmax);c.fillRect(x,y,lado,lado);c.globalAlpha=1;}
+      c.textAlign='center';c.textBaseline='middle';
+      if(t==='P'||t==='T'||t==='C'){c.fillStyle=t==='P'?good:rojo;c.font='700 '+Math.round(fuente*1.05)+'px '+C('--f-display');
+        const val=t==='P'?m.op.premio:t==='T'?m.op.trampa:m.op.acantilado;
+        c.fillText(t==='P'?'Premio':t==='T'?'Trampa':'',cx,cy-(lado>44?fuente*.55:0));if(lado>44||t==='C'){c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText((val>0?'+':'')+nf(val,Number.isInteger(val)?0:1),cx,t==='C'?cy:cy+fuente*.65);}
+        continue;}
+      if(o.pi&&!o.Q){const ps=[0,1,2,3].map(a=>o.pi[s*4+a]),mx=Math.max(...ps);
+        for(let a=0;a<4;a++)if(ps[a]>0.01){const L=lado*(o.numeros?.42:.6)*(0.45+0.55*ps[a]/mx);flecha(c,cx,cy-(o.numeros?lado*.14:0),a,L,ink,ps[a]>=mx-1e-9?2.2:1.2);}}
+      if(o.numeros&&o.V){c.fillStyle=ink;c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText(nf(o.V[s],1),cx,o.pi?y+lado*.78:cy);}
+      if(t==='S'&&!o.V&&!o.Q){c.fillStyle=muted;c.font='700 '+Math.round(fuente*.85)+'px '+C('--f-display');c.fillText('Inicio',cx,y+lado*.82);}
+    }
+    c.strokeStyle=line;c.lineWidth=1;for(let i=0;i<=m.cols;i++){c.beginPath();c.moveTo(x0+i*lado,y0);c.lineTo(x0+i*lado,y0+m.filas*lado);c.stroke();}
+    for(let j=0;j<=m.filas;j++){c.beginPath();c.moveTo(x0,y0+j*lado);c.lineTo(x0+m.cols*lado,y0+j*lado);c.stroke();}
+    const ini=m.inicio,xi=x0+m.col(ini)*lado,yi=y0+m.fila(ini)*lado;c.strokeStyle=C('--accent');c.setLineDash([4,3]);c.lineWidth=2;c.strokeRect(xi+2,yi+2,lado-4,lado-4);c.setLineDash([]);
+    if(o.resaltar!==undefined&&o.resaltar>=0){const xr=x0+m.col(o.resaltar)*lado,yr=y0+m.fila(o.resaltar)*lado;c.strokeStyle=C('--c-tra');c.lineWidth=3;c.strokeRect(xr+1.5,yr+1.5,lado-3,lado-3);}
+    if(o.ruta&&o.ruta.length>1){c.strokeStyle=C('--c-fis');c.lineWidth=Math.max(2,lado*.07);c.lineJoin='round';c.globalAlpha=.85;c.beginPath();
+      o.ruta.forEach((s,i)=>{const px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado;i?c.lineTo(px,py):c.moveTo(px,py);});c.stroke();c.globalAlpha=1;}
+    if(o.agente!==undefined&&o.agente>=0){const s=o.agente,px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado,R=lado*.26;
+      c.fillStyle=C('--d-casa');c.strokeStyle=card;c.lineWidth=2;c.beginPath();c.arc(px,py,R,0,7);c.fill();c.stroke();
+      c.fillStyle=card;c.beginPath();c.arc(px-R*.38,py-R*.15,R*.16,0,7);c.arc(px+R*.38,py-R*.15,R*.16,0,7);c.fill();}
+    return {lado,x0,y0,casilla(px,py){const cc=Math.floor((px-x0)/lado),ff=Math.floor((py-y0)/lado);return (cc<0||ff<0||cc>=m.cols||ff>=m.filas)?-1:ff*m.cols+cc;}};
+  }
+  /* Curvas. series: [{y:[...], color:'--c-tra', nombre, punteada, tenue, ancho}]. o: {raiz, media (ventana de la
+     media móvil; la serie cruda se dibuja tenue), ymin, ymax, xmax, ejeX, ejeY, lineas:[{y, color, nombre}], prop}. */
+  function media(y,k){const out=new Array(y.length);let s=0;for(let i=0;i<y.length;i++){s+=y[i];if(i>=k)s-=y[i-k];out[i]=s/Math.min(i+1,k);}return out;}
+  function curva(cv,series,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),{c,w,h}=lienzo(cv,o.prop);
+    const iz=46,de=10,ar=10,ab=26,W=w-iz-de,H=h-ar-ab;
+    let n=o.xmax||1,lo=o.ymin,hi=o.ymax;series.forEach(S=>{n=Math.max(n,S.y.length);});
+    if(lo===undefined||hi===undefined){let a=Infinity,b=-Infinity;series.forEach(S=>S.y.forEach(v=>{if(isFinite(v)){a=Math.min(a,v);b=Math.max(b,v);}}));(o.lineas||[]).forEach(L=>{a=Math.min(a,L.y);b=Math.max(b,L.y);});
+      if(!isFinite(a)){a=0;b=1;}if(a===b){a-=1;b+=1;}const pad=(b-a)*.06;if(lo===undefined)lo=a-pad;if(hi===undefined)hi=b+pad;}
+    const X=i=>iz+(n>1?i/(n-1):0)*W,Y=v=>ar+H-(Math.min(hi,Math.max(lo,v))-lo)/(hi-lo)*H;
+    c.clearRect(0,0,w,h);c.fillStyle=C('--card');c.fillRect(0,0,w,h);
+    c.strokeStyle=C('--grid');c.lineWidth=1;c.fillStyle=C('--muted');c.font='10px '+C('--f-mono');c.textAlign='right';c.textBaseline='middle';
+    for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4,y=Y(v);c.beginPath();c.moveTo(iz,y);c.lineTo(iz+W,y);c.stroke();c.fillText(nf(v,o.decimales??(Math.abs(hi-lo)<0.5?2:Math.abs(hi-lo)<5?1:0)),iz-4,y);}
+    c.textAlign='center';c.textBaseline='top';for(let k=0;k<=4;k++){const i=Math.round((n-1)*k/4);if(k&&i===Math.round((n-1)*(k-1)/4))continue;const ul=n>1&&i===n-1;c.textAlign=ul?'right':'center';c.fillText(nf(i+(o.desde1?1:0)),ul?X(i)+de-1:X(i),ar+H+5);}
+    if(o.ejeX){c.textAlign='right';c.fillText(o.ejeX,iz+W,ar+H+15);}
+    if(o.ejeY){c.save();c.translate(10,ar+H/2);c.rotate(-Math.PI/2);c.textAlign='center';c.fillText(o.ejeY,0,0);c.restore();}
+    (o.lineas||[]).forEach(L=>{c.strokeStyle=C(L.color||'--muted');c.setLineDash([5,4]);c.lineWidth=1.4;c.beginPath();c.moveTo(iz,Y(L.y));c.lineTo(iz+W,Y(L.y));c.stroke();c.setLineDash([]);
+      if(L.nombre){c.fillStyle=C(L.color||'--muted');c.textAlign='right';c.textBaseline='bottom';c.fillText(L.nombre,iz+W-4,Y(L.y)-2);}});
+    const traza=(y,col,anch,alfa,punt)=>{if(!y.length)return;c.strokeStyle=col;c.lineWidth=anch;c.globalAlpha=alfa;c.setLineDash(punt?[5,4]:[]);c.beginPath();
+      y.forEach((v,i)=>{i?c.lineTo(X(i),Y(v)):c.moveTo(X(i),Y(v));});c.stroke();c.globalAlpha=1;c.setLineDash([]);};
+    series.forEach(S=>{const col=C(S.color||'--accent');if(o.media&&S.y.length>1){if(o.crudo!==false&&!S.sinCrudo)traza(S.y,col,1,.22,false);traza(media(S.y,o.media),col,S.ancho||2.2,1,S.punteada);}else traza(S.y,col,S.ancho||2,S.tenue?.35:1,S.punteada);});
+    c.strokeStyle=C('--line');c.strokeRect(iz+.5,ar+.5,W,H);
+    return {X,Y};
+  }
+  /* Redibuja al cambiar el tema o el ancho. */
+  function tema(raiz,fn){let t;const re=()=>{clearTimeout(t);t=setTimeout(fn,60);};
+    if(window.ResizeObserver)new ResizeObserver(re).observe(raiz);
+    new MutationObserver(re).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme','class']});
+    if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',re);}
+  const quieto=()=>!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+  /* Entrenar por tramos sin congelar la página: trabajo() hace una unidad (un episodio, un paso) y devuelve false
+     cuando ya no hay más; cada cuadro trabaja o.ms milisegundos (24 por defecto) y llama a o.cuadro(). */
+  function bucle(trabajo,o={}){const ms=o.ms??24;let vivo=false,id=0;
+    function cuadro(){if(!vivo)return;const t0=performance.now();let sigue=true;
+      do{sigue=trabajo()!==false;}while(sigue&&performance.now()-t0<ms&&!o.unoPorCuadro);
+      if(o.cuadro)o.cuadro();if(!sigue){vivo=false;if(o.fin)o.fin();return;}
+      id=o.pausa?setTimeout(cuadro,o.pausa):requestAnimationFrame(cuadro);}
+    return {iniciar(){if(vivo)return;vivo=true;cuadro();},parar(){vivo=false;cancelAnimationFrame(id);clearTimeout(id);},get corriendo(){return vivo;}};}
+
+  return {rnd,gauss,entero,barajar,nf,pct,ACC,FLECHA,MAPAS,DEF,cuadricula,
+    politicaAlAzar,politicaDe,accionDe,elegir,codiciosa,egreedy,qDeV,barridoEval,barridoValor,evaluar,iterarValor,iterarPolitica,
+    episodio,retornoMedio,BANDIDO,bandido,agenteBandido,cartpole,
+    color,rgb,mezcla,lienzo,flecha,dibujar,media,curva,tema,quieto,bucle};
+})();
+  const M=MundoRL,$=s=>document.querySelector(s),raiz=document.querySelector('[id="04-lab-2"]'),nf=M.nf;
+  const m=M.cuadricula('almacen');
+  const KS=[1,2,3,5,10,20,Infinity],TOL=1e-6;
+  const opt=M.iterarValor(m,{tol:TOL});
+  let ini='azar',pi,V,vuelta,barridos,total,filas,fase,cambiosUlt,terminado;
+  const kEval=()=>KS[parseInt($('#c4l2-k').value,10)];
+  function inicial(){if(ini==='azar')return M.politicaAlAzar(m);const a=parseInt(ini,10);return M.politicaDe(m,new Array(m.nS).fill(a));}
+  function reiniciar(){pi=inicial();V=new Float64Array(m.nS);vuelta=1;barridos=0;total=0;filas=[];fase='evaluar';cambiosUlt=null;terminado=false;dibujar();}
+  function evaluar(){
+    if(terminado||fase!=='evaluar')return;
+    const k=kEval();let b=0,d=Infinity;
+    while(b<k&&d>TOL&&b<5000){const x=M.barridoEval(m,pi,V);V=x.V;d=x.delta;b++;}
+    barridos=b;total+=b;fase='mejorar';
+    filas.push({vuelta,barridos:b,cambios:null,v:V[m.inicio],delta:d});
+  }
+  function mejorar(){
+    if(terminado||fase!=='mejorar')return;
+    const nuevo=M.codiciosa(m,M.qDeV(m,V,m.gamma));let c=0;
+    for(const s of m.libres)if(M.accionDe(nuevo,s)!==M.accionDe(pi,s)||pi[s*4+M.accionDe(pi,s)]<1)c++;
+    pi=nuevo;cambiosUlt=c;filas[filas.length-1].cambios=c;
+    const ultima=filas[filas.length-1];
+    if(c===0&&ultima.delta<=TOL)terminado=true;else{vuelta++;fase='evaluar';}
+  }
+  function dibujar(){
+    M.dibujar($('#c4l2-c'),m,{raiz,V,pi,numeros:true,rango:Math.max(1,m.op.premio)});
+    $('#c4l2-tit').textContent='Vuelta '+vuelta+(terminado?' · política estable':fase==='evaluar'?' · política lista para evaluar':' · valor evaluado, falta mejorar');
+    $('#c4l2-tb').innerHTML=filas.map((f,i)=>'<tr'+(i<filas.length-1?' class="c4l2-ya"':'')+'><td>'+f.vuelta+'</td><td>'+f.barridos+'</td><td>'+(f.cambios==null?'…':f.cambios)+'</td><td>'+nf(f.v,2)+'</td></tr>').join('')||'<tr><td colspan="4" style="text-align:left">Todavía nada: pulsa «1. Evaluar».</td></tr>';
+    $('#c4l2-ev').disabled=terminado||fase!=='evaluar';$('#c4l2-me').disabled=terminado||fase!=='mejorar';
+    const k=kEval();
+    $('#c4l2-fase').textContent=terminado?'Terminado: la política ya no cambia.':(fase==='evaluar'?'Paso 1: evaluar la política (aplicar Bellman '+(k===Infinity?'hasta que el valor no cambie':k+(k===1?' vez':' veces'))+').':'Paso 2: mejorar (en cada casilla, la flecha hacia la acción de mayor valor).');
+    let t;
+    if(terminado){
+      let dif=0;for(const s of m.libres)dif=Math.max(dif,Math.abs(V[s]-opt.V[s]));
+      t='<span class="big">Estable en '+vuelta+(vuelta===1?' vuelta':' vueltas')+' y '+total+' barridos · V('+m.nombre(m.inicio)+') = '+nf(V[m.inicio],2)+'</span><span><b class="ok">La política ya no cambia.</b> La mayor diferencia con el valor óptimo es '+(dif<0.001?'menor que 0,001':nf(dif,3))+'. La iteración de valor, con la misma tolerancia, necesita '+opt.barridos+' barridos.</span>';
+    } else if(!filas.length)t='<span class="big">Vuelta 1 · sin evaluar</span>La política de partida es '+(ini==='azar'?'al azar: cada flecha vale un cuarto.':'la misma flecha en todas las casillas.')+' Evalúala para saber cuánto vale cada casilla si el robot la sigue.';
+    else if(fase==='mejorar')t='<span class="big">Vuelta '+vuelta+' · V('+m.nombre(m.inicio)+') = '+nf(V[m.inicio],2)+'</span>La evaluación usó '+barridos+(barridos===1?' barrido':' barridos')+'. Con esta política, V(inicio) = '+nf(V[m.inicio],2)+'. Ahora mejora: cada casilla mira el valor de sus vecinas y apunta a la mejor.';
+    else t='<span class="big">'+cambiosUlt+(cambiosUlt===1?' flecha cambió':' flechas cambiaron')+'</span>La mejora cambió '+cambiosUlt+(cambiosUlt===1?' flecha':' flechas')+'. '+(cambiosUlt?'La política nueva es al menos tan buena como la anterior en todas las casillas: vuelve a evaluarla.':'Ninguna flecha cambió, pero el valor todavía no terminó de converger: evalúa otra vez.');
+    $('#c4l2-out').innerHTML=t;
+  }
+  $('#c4l2-ev').addEventListener('click',()=>{evaluar();dibujar();});
+  $('#c4l2-me').addEventListener('click',()=>{mejorar();dibujar();});
+  $('#c4l2-vu').addEventListener('click',()=>{if(fase==='evaluar')evaluar();mejorar();dibujar();});
+  $('#c4l2-fin').addEventListener('click',()=>{let g=0;while(!terminado&&g<2000){if(fase==='evaluar')evaluar();mejorar();g++;}dibujar();});
+  $('#c4l2-cero').addEventListener('click',reiniciar);
+  $('#c4l2-ini').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+    $('#c4l2-ini').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));ini=b.dataset.p;reiniciar();});
+  const ko=()=>{const k=kEval();$('#c4l2-k-o').textContent=k===Infinity?'hasta converger':String(k);};
+  $('#c4l2-k').addEventListener('input',()=>{ko();reiniciar();});ko();
+  M.tema(raiz,dibujar);
+  reiniciar();
+})();
+</script>
+<script>
+(function(){
+/* MundoRL: biblioteca mínima común de los labs del curso «Aprendizaje por refuerzo» (sin dependencias, con semilla).
+   Plantilla: copia este bloque DENTRO de la IIFE de tu lab (el motor solo admite <script> en línea, sin src).
+   Uso típico:
+     const M=MundoRL, m=M.cuadricula('almacen');            // la cuadrícula de referencia del curso
+     const r=M.rnd(42);
+     const {V,pi}=M.iterarValor(m);                         // valores óptimos y política óptima
+     M.dibujar(canvas,m,{raiz,V,pi,numeros:true});          // mapa de calor de V y flechas de la política
+     const ep=M.episodio(m,s=>M.elegir(pi,s,r),r);          // un episodio: ep.G, ep.Gd, ep.pasos, ep.final
+   Acciones: 0 arriba, 1 derecha, 2 abajo, 3 izquierda (el orden de CliffWalking en Gymnasium).
+   Estados: s = fila*cols + columna (fila 0 arriba), como FrozenLake y CliffWalking. Nombre de casilla: 'A5' =
+   columna A (la primera de la izquierda), fila 5 contada desde arriba. */
+const MundoRL=(function(){
+  /* ---------- Azar con semilla (mulberry32) ---------- */
+  function rnd(s){return function(){s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  function gauss(r){let u=0;while(!u)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r());}
+  const entero=(r,n)=>Math.floor(r()*n);
+  function barajar(n,r){const a=Array.from({length:n},(_,i)=>i);for(let i=n-1;i>0;i--){const j=entero(r,i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+  /* ---------- Números en español: punto de miles, coma decimal ---------- */
+  const nf=(n,d=0)=>{if(!isFinite(n))return '—';const s=Math.abs(n).toFixed(d).split('.');s[0]=s[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');return (n<0&&Number(Math.abs(n).toFixed(d))!==0?'−':'')+s.join(',');};
+  const pct=(x,d=1)=>nf(100*x,d)+' %';
+
+  /* ---------- Cuadrículas ---------- */
+  const ACC=['arriba','derecha','abajo','izquierda'],FLECHA=['↑','→','↓','←'],DF=[-1,0,1,0],DC=[0,1,0,-1];
+  /* Caracteres: '.' piso, '#' pared (estantería), 'S' inicio, 'P' premio (termina), 'T' trampa (termina),
+     'C' acantilado (castigo y vuelta al inicio, no termina: CliffWalking). */
+  const MAPAS={
+    almacen:['.....P',
+             '.###.T',
+             '...T..',
+             '.#....',
+             '..S#..'],
+    acantilado:['............','............','............','SCCCCCCCCCCP'],
+    lago4:['S...','.T.T','...T','T..P']
+  };
+  /* Recompensas y dinámica por defecto de la cuadrícula de referencia. */
+  const DEF={paso:-0.1,premio:10,trampa:-10,acantilado:-100,resbalar:0.2,gamma:0.9,maxPasos:100};
+  const PRESET={
+    almacen:{},
+    acantilado:{paso:-1,premio:-1,resbalar:0,gamma:1,maxPasos:200},          // CliffWalking-v1 de Gymnasium
+    lago4:{paso:0,premio:1,trampa:0,resbalar:2/3,gamma:0.99,maxPasos:100}      // FrozenLake-v1 4x4, resbaloso
+  };
+  function cuadricula(mapa,o){
+    const clave=typeof mapa==='string'?mapa:null;
+    const filas=(clave?MAPAS[clave]:mapa).slice();
+    const op=Object.assign({},DEF,clave?PRESET[clave]:{},o||{});
+    const nF=filas.length,nC=filas[0].length,nS=nF*nC,tipo=[];
+    let inicio=0;
+    for(let f=0;f<nF;f++)for(let c=0;c<nC;c++){const t=filas[f][c]||'.';tipo.push(t);if(t==='S')inicio=f*nC+c;}
+    const m={mapa:filas,filas:nF,cols:nC,nS,nA:4,tipo,inicio,gamma:op.gamma,maxPasos:op.maxPasos,op,
+      esPared:s=>tipo[s]==='#',esTerminal:s=>tipo[s]==='P'||tipo[s]==='T',
+      fila:s=>Math.floor(s/nC),col:s=>s%nC,
+      nombre:s=>String.fromCharCode(65+s%nC)+(Math.floor(s/nC)+1)};
+    m.libres=[];for(let s=0;s<nS;s++)if(!m.esPared(s)&&!m.esTerminal(s))m.libres.push(s);
+    /* Adónde lleva moverse en la dirección d desde s (paredes y bordes: se queda). */
+    function mover(s,d){const f=m.fila(s)+DF[d],c=m.col(s)+DC[d];if(f<0||f>=nF||c<0||c>=nC)return s;const s2=f*nC+c;return tipo[s2]==='#'?s:s2;}
+    function resultado(s2){const t=tipo[s2];
+      if(t==='P')return {s2,r:op.premio,fin:true};
+      if(t==='T')return {s2,r:op.trampa,fin:true};
+      if(t==='C')return {s2:inicio,r:op.acantilado,fin:false,cayo:true};
+      return {s2,r:op.paso,fin:false};}
+    /* P[s][a]: lista de {p,s2,r,fin} (como env.unwrapped.P de Gymnasium). Con probabilidad 1−resbalar va adonde
+       quiere; con resbalar/2 se desvía a cada lado (nunca hacia atrás). */
+    m.reconstruir=function(){
+      m.P=[];
+      for(let s=0;s<nS;s++){const fila=[];
+        for(let a=0;a<4;a++){const lista=[];
+          if(m.esPared(s)||m.esTerminal(s)){fila.push([{p:1,s2:s,r:0,fin:true}]);continue;}
+          const q=op.resbalar,opciones=[[a,1-q],[(a+1)%4,q/2],[(a+3)%4,q/2]];
+          for(const [d,p] of opciones){if(p<=0)continue;const res=resultado(mover(s,d));
+            const ya=lista.find(x=>x.s2===res.s2&&x.r===res.r);if(ya)ya.p+=p;else lista.push(Object.assign({p},res));}
+          fila.push(lista);}
+        m.P.push(fila);}
+    };
+    m.reconstruir();
+    /* Cambia una casilla (para labs donde el lector arma la cuadrícula) o una opción, y recalcula P. */
+    m.poner=function(s,t){tipo[s]=t;if(t==='S'){for(let i=0;i<nS;i++)if(i!==s&&tipo[i]==='S')tipo[i]='.';inicio=s;m.inicio=s;}
+      m.libres=[];for(let i=0;i<nS;i++)if(!m.esPared(i)&&!m.esTerminal(i))m.libres.push(i);m.reconstruir();};
+    m.opcion=function(k,v){op[k]=v;if(k==='gamma')m.gamma=v;if(k==='maxPasos')m.maxPasos=v;m.reconstruir();};
+    /* Un paso con azar: {s2, r, fin, cayo}. */
+    m.paso=function(s,a,r){const L=m.P[s][a];let u=r(),k=0;while(k<L.length-1&&u>=L[k].p){u-=L[k].p;k++;}
+      const x=L[k];return {s2:x.s2,r:x.r,fin:x.fin,cayo:tipo[s]!=='C'&&x.s2===inicio&&x.r===op.acantilado};};
+    return m;
+  }
+
+  /* ---------- Políticas: Float64Array de nS*4 probabilidades (pi[s*4+a]) ---------- */
+  function politicaAlAzar(m){const pi=new Float64Array(m.nS*4).fill(0.25);return pi;}
+  function politicaDe(m,acciones){const pi=new Float64Array(m.nS*4);for(let s=0;s<m.nS;s++)pi[s*4+(acciones[s]??0)]=1;return pi;}
+  function accionDe(pi,s){let k=0;for(let a=1;a<4;a++)if(pi[s*4+a]>pi[s*4+k]+1e-12)k=a;return k;}
+  function elegir(pi,s,r){let u=r();for(let a=0;a<3;a++){u-=pi[s*4+a];if(u<0)return a;}return 3;}
+  /* Política codiciosa respecto de Q (nS*4). empates: 'primero' (determinista) o 'repartir'. */
+  function codiciosa(m,Q,empates){const pi=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++){let mx=-Infinity;for(let a=0;a<4;a++)mx=Math.max(mx,Q[s*4+a]);
+      const mejores=[];for(let a=0;a<4;a++)if(Q[s*4+a]>=mx-1e-9)mejores.push(a);
+      if(empates==='repartir')mejores.forEach(a=>pi[s*4+a]=1/mejores.length);else pi[s*4+mejores[0]]=1;}
+    return pi;}
+  function egreedy(m,Q,eps){const pi=codiciosa(m,Q);for(let i=0;i<pi.length;i++)pi[i]=pi[i]*(1-eps)+eps/4;return pi;}
+
+  /* ---------- Bellman ---------- */
+  function g_(m,o){return o&&o.gamma!==undefined?o.gamma:m.gamma;}
+  /* Q a partir de V: q(s,a) = Σ p·(r + γ·V(s')) */
+  function qDeV(m,V,gamma){const Q=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++)for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));Q[s*4+a]=(m.esPared(s)||m.esTerminal(s))?0:q;}
+    return Q;}
+  /* Un barrido de evaluación (síncrono): V'(s) = Σ_a π(a|s) Σ p·(r + γ·V(s')). Devuelve {V, delta}. */
+  function barridoEval(m,pi,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let v=0;for(let a=0;a<4;a++){const w=pi[s*4+a];if(!w)continue;let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));v+=w*q;}
+      W[s]=v;delta=Math.max(delta,Math.abs(v-V[s]));}
+    return {V:W,delta};}
+  /* Un barrido de optimalidad: V'(s) = max_a Σ p·(r + γ·V(s')). */
+  function barridoValor(m,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let mx=-Infinity;for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));if(q>mx)mx=q;}
+      W[s]=mx;delta=Math.max(delta,Math.abs(mx-V[s]));}
+    return {V:W,delta};}
+  /* Evaluación de política hasta que el cambio máximo baje de tol. */
+  function evaluar(m,pi,o={}){let V=o.V0?Float64Array.from(o.V0):new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoEval(m,pi,V,o);V=x.V;delta=x.delta;b++;}
+    return {V,barridos:b,delta};}
+  function iterarValor(m,o={}){let V=new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoValor(m,V,o);V=x.V;delta=x.delta;b++;}
+    const Q=qDeV(m,V,g_(m,o));return {V,Q,pi:codiciosa(m,Q),barridos:b};}
+  function iterarPolitica(m,o={}){let pi=o.pi0?Float64Array.from(o.pi0):politicaAlAzar(m),vueltas=0,V,historia=[];
+    for(;vueltas<100;vueltas++){V=evaluar(m,pi,o).V;const nuevo=codiciosa(m,qDeV(m,V,g_(m,o)));historia.push({V,pi});
+      let igual=true;for(const s of m.libres)if(accionDe(nuevo,s)!==accionDe(pi,s)||pi[s*4+accionDe(pi,s)]<1){igual=false;break;}
+      pi=nuevo;if(igual)break;}
+    return {V,pi,vueltas:vueltas+1,historia};}
+
+  /* ---------- Experiencia ---------- */
+  /* Un episodio desde el inicio (o desde o.desde). elegir(s) -> acción. Devuelve estados, acciones, recompensas,
+     G (suma), Gd (suma descontada con γ), pasos y final: 'premio', 'trampa' o 'tope'. */
+  function episodio(m,elegirA,r,o={}){const S=[],A=[],R=[];let s=o.desde??m.inicio,fin=false,final='tope',G=0,Gd=0,d=1;const max=o.max??m.maxPasos;
+    for(let t=0;t<max&&!fin;t++){const a=elegirA(s);const x=m.paso(s,a,r);S.push(s);A.push(a);R.push(x.r);G+=x.r;Gd+=d*x.r;d*=m.gamma;s=x.s2;fin=x.fin;
+      if(fin)final=m.tipo[s]==='P'?'premio':'trampa';}
+    S.push(s);return {S,A,R,G,Gd,pasos:A.length,final};}
+  /* Retorno medio de una política (pi) en n episodios. */
+  function retornoMedio(m,pi,r,n=1000){let G=0,Gd=0,P=0,ex=0;for(let i=0;i<n;i++){const e=episodio(m,s=>elegir(pi,s,r),r);G+=e.G;Gd+=e.Gd;P+=e.pasos;if(e.final==='premio')ex++;}
+    return {G:G/n,Gd:Gd/n,pasos:P/n,exito:ex/n};}
+
+  /* ---------- Bandido multibrazo (cap. 01) ---------- */
+  const BANDIDO=[0.25,0.40,0.55,0.50,0.30];   // máquinas A-E: probabilidad de pagar 1 ficha
+  function bandido(probs,r){probs=probs||BANDIDO;let mejor=0;probs.forEach((p,i)=>{if(p>probs[mejor])mejor=i;});
+    return {k:probs.length,probs,mejor,tirar:a=>r()<probs[a]?1:0};}
+  /* Agente de bandido. metodo: 'egreedy' (ε, promedio de la muestra), 'optimista' (codicioso con Q inicial q0 y
+     paso constante alfa) o 'ucb' (cota superior de confianza con c). */
+  function agenteBandido(k,o={}){const met=o.metodo||'egreedy',q0=o.q0??0,r=o.r||rnd(42);
+    const Q=new Float64Array(k).fill(met==='optimista'?q0:0),N=new Float64Array(k);let t=0;
+    function arg(f){let mx=-Infinity,L=[];for(let a=0;a<k;a++){const v=f(a);if(v>mx+1e-12){mx=v;L=[a];}else if(Math.abs(v-mx)<=1e-12)L.push(a);}return L[entero(r,L.length)];}
+    /* epsilon, alfa y c se pueden cambiar en vivo (ag.epsilon = 0.2). exploro: si la última elección fue al azar. */
+    return {Q,N,metodo:met,epsilon:o.epsilon??0.1,alfa:o.alfa??0.1,c:o.c??2,exploro:false,
+      elegir(){t++;this.exploro=false;
+        if(met==='ucb'){for(let a=0;a<k;a++)if(N[a]===0)return a;const c=this.c;return arg(a=>Q[a]+c*Math.sqrt(Math.log(t)/N[a]));}
+        if(met==='egreedy'&&r()<this.epsilon){this.exploro=true;return entero(r,k);}
+        return arg(a=>Q[a]);},
+      aprender(a,R){N[a]++;Q[a]+=(met==='optimista'?this.alfa:1/N[a])*(R-Q[a]);}};}
+
+  /* ---------- CartPole (Barto, Sutton y Anderson, 1983; constantes de Gymnasium CartPole-v1) ---------- */
+  function cartpole(r){const g=9.8,mc=1.0,mp=0.1,mt=mc+mp,l=0.5,pml=mp*l,F=10,tau=0.02,thMax=12*2*Math.PI/360,xMax=2.4;
+    const e={x:0,v:0,th:0,w:0,t:0,fin:false,
+      reiniciar(){this.x=(r()-.5)*.1;this.v=(r()-.5)*.1;this.th=(r()-.5)*.1;this.w=(r()-.5)*.1;this.t=0;this.fin=false;return this.obs();},
+      obs(){return [this.x,this.v,this.th,this.w];},
+      /* a: 0 empuja a la izquierda, 1 a la derecha. Recompensa 1 por paso; termina si |θ|>12° o |x|>2,4; trunca a 500. */
+      paso(a){const f=a===1?F:-F,ct=Math.cos(this.th),st=Math.sin(this.th);
+        const tmp=(f+pml*this.w*this.w*st)/mt,ta=(g*st-ct*tmp)/(l*(4/3-mp*ct*ct/mt)),xa=tmp-pml*ta*ct/mt;
+        this.x+=tau*this.v;this.v+=tau*xa;this.th+=tau*this.w;this.w+=tau*ta;this.t++;
+        const termina=Math.abs(this.x)>xMax||Math.abs(this.th)>thMax,trunca=this.t>=500;this.fin=termina||trunca;
+        return {obs:this.obs(),r:1,termina,trunca};}};
+    e.reiniciar();return e;}
+
+  /* ---------- Dibujo ---------- */
+  function color(raiz,n){return getComputedStyle(raiz).getPropertyValue(n).trim();}
+  function rgb(c){if(!c)return [128,128,128];if(c[0]==='#'){if(c.length===4)c='#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];return [1,3,5].map(i=>parseInt(c.substr(i,2),16));}
+    const m=c.match(/[\d.]+/g);return m?m.slice(0,3).map(Number):[128,128,128];}
+  function mezcla(a,b,t){const A=rgb(a),B=rgb(b);return 'rgb('+A.map((x,i)=>Math.round(x+(B[i]-x)*t)).join(',')+')';}
+  /* Prepara un canvas con devicePixelRatio. Alto = ancho * data-prop (o o.prop). Devuelve {c,w,h}. */
+  function lienzo(cv,prop){const w=Math.max(120,cv.clientWidth||cv.parentNode.clientWidth||300),p=prop??parseFloat(cv.dataset.prop||'0.6'),h=Math.round(w*p),k=window.devicePixelRatio||1;
+    cv.style.height=h+'px';cv.width=Math.round(w*k);cv.height=Math.round(h*k);const c=cv.getContext('2d');c.setTransform(k,0,0,k,0,0);return {c,w,h};}
+  function flecha(c,x,y,a,L,col,ancho){const dx=DC[a],dy=DF[a];c.strokeStyle=col;c.fillStyle=col;c.lineWidth=ancho||2;
+    const x0=x-dx*L*.45,y0=y-dy*L*.45,x1=x+dx*L*.45,y1=y+dy*L*.45;c.beginPath();c.moveTo(x0,y0);c.lineTo(x1-dx*L*.18,y1-dy*L*.18);c.stroke();
+    const px=-dy,py=dx;c.beginPath();c.moveTo(x1,y1);c.lineTo(x1-dx*L*.3+px*L*.2,y1-dy*L*.3+py*L*.2);c.lineTo(x1-dx*L*.3-px*L*.2,y1-dy*L*.3-py*L*.2);c.closePath();c.fill();}
+  /* Dibuja la cuadrícula. o: {raiz, V (mapa de calor), rango (|V| que satura el color), pi (flechas: probabilidades),
+     numeros (escribe V), ruta (lista de estados), agente (estado), resaltar (estado), Q (cuatro triángulos por casilla),
+     visitas (Float64Array: opacidad de exploración), prop}. Devuelve {lado, x0, y0, casilla(px,py) -> s o -1}. */
+  function dibujar(cv,m,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),prop=o.prop??(m.filas/m.cols);
+    const {c,w,h}=lienzo(cv,prop),lado=Math.min((w-2)/m.cols,(h-2)/m.filas),x0=(w-lado*m.cols)/2,y0=(h-lado*m.filas)/2;
+    const card=C('--card'),azul=C('--c-red'),rojo=C('--warm'),ink=C('--ink'),muted=C('--muted'),good=C('--good'),line=C('--line');
+    c.clearRect(0,0,w,h);
+    let rango=o.rango;if(!rango&&(o.V||o.Q)){rango=1e-9;const src=o.V||o.Q;for(let i=0;i<src.length;i++)rango=Math.max(rango,Math.abs(src[i]));}
+    const tinte=v=>v>=0?mezcla(card,azul,Math.min(1,v/rango)*.85):mezcla(card,rojo,Math.min(1,-v/rango)*.85);
+    const fuente=Math.max(9,Math.min(14,lado*.24));
+    for(let s=0;s<m.nS;s++){const x=x0+m.col(s)*lado,y=y0+m.fila(s)*lado,t=m.tipo[s],cx=x+lado/2,cy=y+lado/2;
+      c.fillStyle=card;
+      if(t==='#'){c.fillStyle=mezcla(card,muted,.55);c.fillRect(x,y,lado,lado);
+        c.strokeStyle=mezcla(card,muted,.8);c.lineWidth=1;c.beginPath();for(let k=1;k<4;k++){c.moveTo(x+3,y+lado*k/4);c.lineTo(x+lado-3,y+lado*k/4);}c.stroke();continue;}
+      if(t==='P'){c.fillStyle=mezcla(card,good,.28);c.fillRect(x,y,lado,lado);}
+      else if(t==='T'||t==='C'){c.fillStyle=mezcla(card,rojo,.28);c.fillRect(x,y,lado,lado);}
+      else if(o.Q){const q=k=>o.Q[s*4+k];const P=[[cx,cy],[x,y],[x+lado,y],[x+lado,y+lado],[x,y+lado]];
+        const tri=[[1,2],[2,3],[3,4],[4,1]];for(let a=0;a<4;a++){c.fillStyle=tinte(q(a));c.beginPath();c.moveTo(cx,cy);c.lineTo(...P[tri[a][0]]);c.lineTo(...P[tri[a][1]]);c.closePath();c.fill();}
+        c.strokeStyle=line;c.lineWidth=.6;c.beginPath();c.moveTo(x,y);c.lineTo(x+lado,y+lado);c.moveTo(x+lado,y);c.lineTo(x,y+lado);c.stroke();}
+      else if(o.V){c.fillStyle=tinte(o.V[s]);c.fillRect(x,y,lado,lado);}
+      else c.fillRect(x,y,lado,lado);
+      if(o.visitas&&!m.esTerminal(s)){const vmax=Math.max(1,...o.visitas);c.fillStyle=C('--c-apl');c.globalAlpha=.45*Math.sqrt(o.visitas[s]/vmax);c.fillRect(x,y,lado,lado);c.globalAlpha=1;}
+      c.textAlign='center';c.textBaseline='middle';
+      if(t==='P'||t==='T'||t==='C'){c.fillStyle=t==='P'?good:rojo;c.font='700 '+Math.round(fuente*1.05)+'px '+C('--f-display');
+        const val=t==='P'?m.op.premio:t==='T'?m.op.trampa:m.op.acantilado;
+        c.fillText(t==='P'?'Premio':t==='T'?'Trampa':'',cx,cy-(lado>44?fuente*.55:0));if(lado>44||t==='C'){c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText((val>0?'+':'')+nf(val,Number.isInteger(val)?0:1),cx,t==='C'?cy:cy+fuente*.65);}
+        continue;}
+      if(o.pi&&!o.Q){const ps=[0,1,2,3].map(a=>o.pi[s*4+a]),mx=Math.max(...ps);
+        for(let a=0;a<4;a++)if(ps[a]>0.01){const L=lado*(o.numeros?.42:.6)*(0.45+0.55*ps[a]/mx);flecha(c,cx,cy-(o.numeros?lado*.14:0),a,L,ink,ps[a]>=mx-1e-9?2.2:1.2);}}
+      if(o.numeros&&o.V){c.fillStyle=ink;c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText(nf(o.V[s],1),cx,o.pi?y+lado*.78:cy);}
+      if(t==='S'&&!o.V&&!o.Q){c.fillStyle=muted;c.font='700 '+Math.round(fuente*.85)+'px '+C('--f-display');c.fillText('Inicio',cx,y+lado*.82);}
+    }
+    c.strokeStyle=line;c.lineWidth=1;for(let i=0;i<=m.cols;i++){c.beginPath();c.moveTo(x0+i*lado,y0);c.lineTo(x0+i*lado,y0+m.filas*lado);c.stroke();}
+    for(let j=0;j<=m.filas;j++){c.beginPath();c.moveTo(x0,y0+j*lado);c.lineTo(x0+m.cols*lado,y0+j*lado);c.stroke();}
+    const ini=m.inicio,xi=x0+m.col(ini)*lado,yi=y0+m.fila(ini)*lado;c.strokeStyle=C('--accent');c.setLineDash([4,3]);c.lineWidth=2;c.strokeRect(xi+2,yi+2,lado-4,lado-4);c.setLineDash([]);
+    if(o.resaltar!==undefined&&o.resaltar>=0){const xr=x0+m.col(o.resaltar)*lado,yr=y0+m.fila(o.resaltar)*lado;c.strokeStyle=C('--c-tra');c.lineWidth=3;c.strokeRect(xr+1.5,yr+1.5,lado-3,lado-3);}
+    if(o.ruta&&o.ruta.length>1){c.strokeStyle=C('--c-fis');c.lineWidth=Math.max(2,lado*.07);c.lineJoin='round';c.globalAlpha=.85;c.beginPath();
+      o.ruta.forEach((s,i)=>{const px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado;i?c.lineTo(px,py):c.moveTo(px,py);});c.stroke();c.globalAlpha=1;}
+    if(o.agente!==undefined&&o.agente>=0){const s=o.agente,px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado,R=lado*.26;
+      c.fillStyle=C('--d-casa');c.strokeStyle=card;c.lineWidth=2;c.beginPath();c.arc(px,py,R,0,7);c.fill();c.stroke();
+      c.fillStyle=card;c.beginPath();c.arc(px-R*.38,py-R*.15,R*.16,0,7);c.arc(px+R*.38,py-R*.15,R*.16,0,7);c.fill();}
+    return {lado,x0,y0,casilla(px,py){const cc=Math.floor((px-x0)/lado),ff=Math.floor((py-y0)/lado);return (cc<0||ff<0||cc>=m.cols||ff>=m.filas)?-1:ff*m.cols+cc;}};
+  }
+  /* Curvas. series: [{y:[...], color:'--c-tra', nombre, punteada, tenue, ancho}]. o: {raiz, media (ventana de la
+     media móvil; la serie cruda se dibuja tenue), ymin, ymax, xmax, ejeX, ejeY, lineas:[{y, color, nombre}], prop}. */
+  function media(y,k){const out=new Array(y.length);let s=0;for(let i=0;i<y.length;i++){s+=y[i];if(i>=k)s-=y[i-k];out[i]=s/Math.min(i+1,k);}return out;}
+  function curva(cv,series,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),{c,w,h}=lienzo(cv,o.prop);
+    const iz=46,de=10,ar=10,ab=26,W=w-iz-de,H=h-ar-ab;
+    let n=o.xmax||1,lo=o.ymin,hi=o.ymax;series.forEach(S=>{n=Math.max(n,S.y.length);});
+    if(lo===undefined||hi===undefined){let a=Infinity,b=-Infinity;series.forEach(S=>S.y.forEach(v=>{if(isFinite(v)){a=Math.min(a,v);b=Math.max(b,v);}}));(o.lineas||[]).forEach(L=>{a=Math.min(a,L.y);b=Math.max(b,L.y);});
+      if(!isFinite(a)){a=0;b=1;}if(a===b){a-=1;b+=1;}const pad=(b-a)*.06;if(lo===undefined)lo=a-pad;if(hi===undefined)hi=b+pad;}
+    const X=i=>iz+(n>1?i/(n-1):0)*W,Y=v=>ar+H-(Math.min(hi,Math.max(lo,v))-lo)/(hi-lo)*H;
+    c.clearRect(0,0,w,h);c.fillStyle=C('--card');c.fillRect(0,0,w,h);
+    c.strokeStyle=C('--grid');c.lineWidth=1;c.fillStyle=C('--muted');c.font='10px '+C('--f-mono');c.textAlign='right';c.textBaseline='middle';
+    for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4,y=Y(v);c.beginPath();c.moveTo(iz,y);c.lineTo(iz+W,y);c.stroke();c.fillText(nf(v,o.decimales??(Math.abs(hi-lo)<0.5?2:Math.abs(hi-lo)<5?1:0)),iz-4,y);}
+    c.textAlign='center';c.textBaseline='top';for(let k=0;k<=4;k++){const i=Math.round((n-1)*k/4);if(k&&i===Math.round((n-1)*(k-1)/4))continue;const ul=n>1&&i===n-1;c.textAlign=ul?'right':'center';c.fillText(nf(i+(o.desde1?1:0)),ul?X(i)+de-1:X(i),ar+H+5);}
+    if(o.ejeX){c.textAlign='right';c.fillText(o.ejeX,iz+W,ar+H+15);}
+    if(o.ejeY){c.save();c.translate(10,ar+H/2);c.rotate(-Math.PI/2);c.textAlign='center';c.fillText(o.ejeY,0,0);c.restore();}
+    (o.lineas||[]).forEach(L=>{c.strokeStyle=C(L.color||'--muted');c.setLineDash([5,4]);c.lineWidth=1.4;c.beginPath();c.moveTo(iz,Y(L.y));c.lineTo(iz+W,Y(L.y));c.stroke();c.setLineDash([]);
+      if(L.nombre){c.fillStyle=C(L.color||'--muted');c.textAlign='right';c.textBaseline='bottom';c.fillText(L.nombre,iz+W-4,Y(L.y)-2);}});
+    const traza=(y,col,anch,alfa,punt)=>{if(!y.length)return;c.strokeStyle=col;c.lineWidth=anch;c.globalAlpha=alfa;c.setLineDash(punt?[5,4]:[]);c.beginPath();
+      y.forEach((v,i)=>{i?c.lineTo(X(i),Y(v)):c.moveTo(X(i),Y(v));});c.stroke();c.globalAlpha=1;c.setLineDash([]);};
+    series.forEach(S=>{const col=C(S.color||'--accent');if(o.media&&S.y.length>1){if(o.crudo!==false&&!S.sinCrudo)traza(S.y,col,1,.22,false);traza(media(S.y,o.media),col,S.ancho||2.2,1,S.punteada);}else traza(S.y,col,S.ancho||2,S.tenue?.35:1,S.punteada);});
+    c.strokeStyle=C('--line');c.strokeRect(iz+.5,ar+.5,W,H);
+    return {X,Y};
+  }
+  /* Redibuja al cambiar el tema o el ancho. */
+  function tema(raiz,fn){let t;const re=()=>{clearTimeout(t);t=setTimeout(fn,60);};
+    if(window.ResizeObserver)new ResizeObserver(re).observe(raiz);
+    new MutationObserver(re).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme','class']});
+    if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',re);}
+  const quieto=()=>!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+  /* Entrenar por tramos sin congelar la página: trabajo() hace una unidad (un episodio, un paso) y devuelve false
+     cuando ya no hay más; cada cuadro trabaja o.ms milisegundos (24 por defecto) y llama a o.cuadro(). */
+  function bucle(trabajo,o={}){const ms=o.ms??24;let vivo=false,id=0;
+    function cuadro(){if(!vivo)return;const t0=performance.now();let sigue=true;
+      do{sigue=trabajo()!==false;}while(sigue&&performance.now()-t0<ms&&!o.unoPorCuadro);
+      if(o.cuadro)o.cuadro();if(!sigue){vivo=false;if(o.fin)o.fin();return;}
+      id=o.pausa?setTimeout(cuadro,o.pausa):requestAnimationFrame(cuadro);}
+    return {iniciar(){if(vivo)return;vivo=true;cuadro();},parar(){vivo=false;cancelAnimationFrame(id);clearTimeout(id);},get corriendo(){return vivo;}};}
+
+  return {rnd,gauss,entero,barajar,nf,pct,ACC,FLECHA,MAPAS,DEF,cuadricula,
+    politicaAlAzar,politicaDe,accionDe,elegir,codiciosa,egreedy,qDeV,barridoEval,barridoValor,evaluar,iterarValor,iterarPolitica,
+    episodio,retornoMedio,BANDIDO,bandido,agenteBandido,cartpole,
+    color,rgb,mezcla,lienzo,flecha,dibujar,media,curva,tema,quieto,bucle};
+})();
+  const M=MundoRL,$=s=>document.querySelector(s),raiz=document.querySelector('[id="04-lab-1"]'),nf=M.nf;
+  const m=M.cuadricula('almacen');
+  let V,k,hist,histD,optimo,piAnt,estable,flechas=true,marca=-1,lazo=null;
+  function opciones(){m.opcion('gamma',parseFloat($('#c4l1-g').value));m.opcion('resbalar',parseFloat($('#c4l1-r').value));m.opcion('paso',parseFloat($('#c4l1-p').value));}
+  function reiniciar(){
+    parar();opciones();V=new Float64Array(m.nS);k=0;hist=[0];histD=[];marca=-1;estable=0;
+    optimo=M.iterarValor(m,{tol:1e-10}).V;piAnt=M.codiciosa(m,M.qDeV(m,V,m.gamma));dibujar();
+  }
+  function barrido(){
+    const x=M.barridoValor(m,V);let mx=0;marca=-1;
+    for(const s of m.libres){const d=Math.abs(x.V[s]-V[s]);if(d>mx){mx=d;marca=s;}}
+    V=x.V;k++;hist.push(V[m.inicio]);histD.push(Math.log10(Math.max(x.delta,1e-12)));
+    const pi=M.codiciosa(m,M.qDeV(m,V,m.gamma));let cambios=0;for(const s of m.libres)if(M.accionDe(pi,s)!==M.accionDe(piAnt,s))cambios++;
+    if(cambios)estable=k;piAnt=pi;
+    return x.delta;
+  }
+  function dibujar(){
+    const pi=flechas&&k>0?piAnt:null;
+    M.dibujar($('#c4l1-c'),m,{raiz,V,pi,numeros:true,rango:Math.max(1,m.op.premio),resaltar:marca});
+    M.curva($('#c4l1-v'),[{y:hist,color:'--c-red'}],{raiz,lineas:[{y:optimo[m.inicio],color:'--good',nombre:'V* = '+nf(optimo[m.inicio],2)}],ymax:optimo[m.inicio]+1,ejeX:'barridos'});
+    M.curva($('#c4l1-d'),[{y:histD.length?histD:[0],color:'--c-red'}],{raiz,ejeX:'barridos',ejeY:'log₁₀ Δ',desde1:true});
+    $('#c4l1-tit').textContent='Valor de cada casilla tras '+k+(k===1?' barrido':' barridos');
+    const d=histD.length?Math.pow(10,histD[histD.length-1]):NaN;
+    let t;
+    if(k===0)t='<span class="big">0 barridos · V = 0 en todas las casillas</span><span>El robot todavía no sabe nada. Pulsa «Un barrido»: cada casilla mira a sus vecinas y se queda con el valor de la mejor acción.</span>';
+    else{
+      let lejos=0;for(const s of m.libres)if(Math.abs(V[s]-optimo[s])>0.01)lejos++;
+      t='<span class="big">Barrido '+k+' · V('+m.nombre(m.inicio)+') = '+nf(V[m.inicio],2)+' (óptimo '+nf(optimo[m.inicio],2)+')</span><span>Cambio máximo Δ = '+(d<0.001?d.toExponential(1).replace('.',','):nf(d,3))+(marca>=0?', en '+m.nombre(marca)+' (borde morado)':'')+'. ';
+      t+=lejos?'Todavía hay '+lejos+' de '+m.libres.length+' casillas a más de 0,01 de su valor óptimo. ':'<b class="ok">Todas las casillas están a menos de 0,01 de su valor óptimo.</b> ';
+      t+='Las flechas codiciosas no cambian desde el barrido '+estable+'.</span>';
+    }
+    $('#c4l1-out').innerHTML=t;
+  }
+  function parar(){if(lazo){lazo.parar();lazo=null;}$('#c4l1-go').textContent='Correr';}
+  /* Sin prefers-reduced-motion: un barrido por cuadro, despacio para verlo. Con él: todos los barridos de una vez. */
+  function correr(){
+    if(lazo){parar();return;}
+    if(M.quieto()){let d=1;while(d>1e-6&&k<1000)d=barrido();dibujar();return;}
+    $('#c4l1-go').textContent='Pausa';
+    lazo=M.bucle(()=>barrido()>1e-6&&k<1000,{unoPorCuadro:true,pausa:300,cuadro:dibujar,fin:()=>{lazo=null;parar();}});
+    lazo.iniciar();
+  }
+  $('#c4l1-uno').addEventListener('click',()=>{parar();barrido();dibujar();});
+  $('#c4l1-go').addEventListener('click',correr);
+  $('#c4l1-cero').addEventListener('click',reiniciar);
+  $('#c4l1-fl').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+    $('#c4l1-fl').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));flechas=b.dataset.f==='si';dibujar();});
+  [['g',2],['r',2],['p',2]].forEach(([id,d])=>{const el=$('#c4l1-'+id),o=$('#c4l1-'+id+'-o');
+    const u=()=>{o.textContent=nf(parseFloat(el.value),d);};el.addEventListener('input',()=>{u();reiniciar();});u();});
+  M.tema(raiz,dibujar);
+  reiniciar();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1456 @@
+<!doctype html>
+<html lang="es">
+<head>
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-KX76XF8R');</script>
+<!-- End Google Tag Manager -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Monte Carlo · Aprendizaje por refuerzo · Aprendizaje por refuerzo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Agentes que aprenden por prueba y error a partir de una recompensa, de los procesos de decisión de Markov a Q-learning, DQN, PPO y el ajuste de los modelos de lenguaje con retroalimentación humana.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,600&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous" referrerpolicy="no-referrer">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KX76XF8R"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+<div class="wrap" data-page="monte-carlo">
+<header class="topbar"><a class="brand" href="index.html">Aprendizaje por <b>refuerzo</b></a><span class="eyebrow">Curso visual e interactivo · Datos e inteligencia artificial</span><a class="al-sitio" href="https://aaramirez.github.io/">← Todos los cursos</a></header>
+<div class="layout">
+<nav class="toc" id="toc" aria-label="Ruta de aprendizaje"></nav>
+<main>
+<header class="page-head"><span class="num">CAPÍTULO 05 DE 12</span><h1>Métodos de Monte Carlo</h1><p class="lede">Cuando nadie tiene la tabla de probabilidades del mundo, el agente todavía puede aprender: juega episodios completos y promedia lo que le pasó. Este capítulo presenta los métodos de Monte Carlo, con el Blackjack como banco de pruebas, el problema de explorar sin modelo y la forma de aprender de lo que hace otro.</p></header>
+<section><h2>Aprender sin modelo: jugar y promediar</h2><div class="prose"><p>Yolanda Pinto revisó los registros de la zona de lavado y le trajo a Noemí Ferrer una mala noticia: el 0,8 de la maqueta es un promedio. A primera hora, con el piso recién lavado, los robots patinan mucho más; a media tarde, casi nada; y un robot cargado patina menos que uno vacío. Ulises Robles puede hacer que el simulador reproduzca todo eso, viaje por viaje, pero no puede escribir la tabla de probabilidades que necesita la programación dinámica del capítulo 4: son demasiados casos y nadie los conoce con exactitud.</p><p>Noemí necesita un método que aprenda el valor de cada casilla sin esa tabla, solo con viajes: los del simulador o los que los robots ya hicieron en el piso. Esos métodos existen y el más directo de todos tiene un nombre de casino.</p></div><div class="analogia"><b>Imagínalo así</b><p>Si quieres saber cuánto tardas en llegar al trabajo, no hace falta modelar cada semáforo y cada embotellamiento de la ciudad. Anotas cuánto tardaste cada día durante un mes y sacas el promedio. Cuantos más días anotes, mejor es la estimación. No sabes por qué un día tardaste 50 minutos y otro 30: no hace falta saberlo para conocer el promedio.</p></div><div class="prose"><p>Los <b>métodos de Monte Carlo</b> (<i>Monte Carlo methods</i>) estiman una cantidad promediando muchas muestras al azar. El nombre lo eligieron Stanislaw Ulam, John von Neumann y Nicholas Metropolis en los años cuarenta, por el casino de Mónaco, cuando usaban simulaciones con números aleatorios para calcular lo que no podían resolver con fórmulas. En refuerzo, la muestra es un <b>episodio completo</b> y la cantidad que se promedia es el <b>retorno</b> <span class="math">G</span> del capítulo 2: la suma descontada de las recompensas desde un estado hasta el final.</p><p>La justificación es la <b>ley de los grandes números</b> (<i>law of large numbers</i>): el promedio de muchas muestras independientes se acerca al valor esperado. Y el valor de un estado, <span class="math">V_\pi(s)</span>, es justamente el retorno esperado desde <span class="math">s</span> siguiendo <span class="math">\pi</span>. Si el robot pasa muchas veces por C5 siguiendo la misma política y se anota el retorno de cada vez, el promedio de esos retornos converge a <span class="math">V_\pi(\text{C5})</span>. Donde la ecuación de Bellman promediaba sobre todos los destinos posibles, pesados con las probabilidades del modelo, Monte Carlo promedia sobre viajes completos que de verdad ocurrieron: el azar de los viajes hace el trabajo de las probabilidades. La ley de los grandes números está en <a href="https://aaramirez.github.io/mate-probabilidad/temario.html" target="_blank" rel="noopener">Probabilidad</a>, y el uso de simulaciones para estimar en <a href="https://aaramirez.github.io/mate-simulacion/temario.html" target="_blank" rel="noopener">Simulación</a>.</p></div><figure class="fig fig-esquema" id="05-diagrama-1"><div class="lienzo"><svg viewBox="0 0 960 400" style="min-width:740px" role="img" aria-label="Dos diagramas de respaldo: a la izquierda, la programación dinámica mira desde una casilla todas las acciones y todos los resultados un solo paso adelante y necesita el modelo; a la derecha, Monte Carlo sigue una sola trayectoria real hasta el final del episodio y promedia el retorno completo, sin modelo">
+<defs><marker id="c5d1-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker></defs>
+<text x="20" y="28" class="t t-xs t-b t-m">DE DÓNDE SALE CADA ESTIMACIÓN</text>
+<text x="40" y="58" class="t t-b k-red">Programación dinámica (cap. 4)</text>
+<circle cx="200" cy="90" r="13" class="c-red"/>
+<path d="M200 103L80 140" class="ln" style=""/>
+<circle cx="80" cy="144" r="5" style="fill:var(--c-tra)"/>
+<path d="M80 149L58 186" class="ln" style=""/>
+<circle cx="58" cy="194" r="8" class="c-red"/>
+<path d="M80 149L80 186" class="ln" style=""/>
+<circle cx="80" cy="194" r="8" class="c-red"/>
+<path d="M80 149L102 186" class="ln" style=""/>
+<circle cx="102" cy="194" r="8" class="c-red"/>
+<path d="M200 103L160 140" class="ln" style=""/>
+<circle cx="160" cy="144" r="5" style="fill:var(--c-tra)"/>
+<path d="M160 149L138 186" class="ln" style=""/>
+<circle cx="138" cy="194" r="8" class="c-red"/>
+<path d="M160 149L160 186" class="ln" style=""/>
+<circle cx="160" cy="194" r="8" class="c-red"/>
+<path d="M160 149L182 186" class="ln" style=""/>
+<circle cx="182" cy="194" r="8" class="c-red"/>
+<path d="M200 103L240 140" class="ln" style=""/>
+<circle cx="240" cy="144" r="5" style="fill:var(--c-tra)"/>
+<path d="M240 149L218 186" class="ln" style=""/>
+<circle cx="218" cy="194" r="8" class="c-red"/>
+<path d="M240 149L240 186" class="ln" style=""/>
+<circle cx="240" cy="194" r="8" class="c-red"/>
+<path d="M240 149L262 186" class="ln" style=""/>
+<circle cx="262" cy="194" r="8" class="c-red"/>
+<path d="M200 103L320 140" class="ln" style=""/>
+<circle cx="320" cy="144" r="5" style="fill:var(--c-tra)"/>
+<path d="M320 149L298 186" class="ln" style=""/>
+<circle cx="298" cy="194" r="8" class="c-red"/>
+<path d="M320 149L320 186" class="ln" style=""/>
+<circle cx="320" cy="194" r="8" class="c-red"/>
+<path d="M320 149L342 186" class="ln" style=""/>
+<circle cx="342" cy="194" r="8" class="c-red"/>
+<text x="40" y="232" class="t t-s">• todas las acciones y todos los resultados</text>
+<text x="40" y="252" class="t t-s">• un solo paso: usa V de la casilla siguiente</text>
+<text x="40" y="272" class="t t-s">• necesita el modelo P(s′, r | s, a)</text>
+<text x="450" y="58" class="t t-b k-fis">Monte Carlo (este capítulo)</text>
+<circle cx="560" cy="90" r="13" class="c-red"/>
+<path d="M560 103L560 117" class="ln" style=""/>
+<circle cx="560" cy="122" r="5" style="fill:var(--c-tra)"/>
+<path d="M560 127L560 139" class="ln" style=""/>
+<circle cx="560" cy="147" r="8" class="c-red"/>
+<text x="578" y="137" class="t t-xs t-mono k-fis">R1</text>
+<path d="M560 147L560 161" class="ln" style=""/>
+<circle cx="560" cy="166" r="5" style="fill:var(--c-tra)"/>
+<path d="M560 171L560 183" class="ln" style=""/>
+<circle cx="560" cy="191" r="8" class="c-red"/>
+<text x="578" y="181" class="t t-xs t-mono k-fis">R2</text>
+<path d="M560 191L560 205" class="ln" style=""/>
+<circle cx="560" cy="210" r="5" style="fill:var(--c-tra)"/>
+<path d="M560 215L560 227" class="ln" style=""/>
+<circle cx="560" cy="235" r="8" class="c-red"/>
+<text x="578" y="225" class="t t-xs t-mono k-fis">R3</text>
+<path d="M560 235L560 249" class="ln" style=""/>
+<circle cx="560" cy="254" r="5" style="fill:var(--c-tra)"/>
+<path d="M560 259L560 271" class="ln" style=""/>
+<circle cx="560" cy="279" r="8" class="c-red"/>
+<text x="578" y="269" class="t t-xs t-mono k-fis">R4</text>
+<path d="M560 279L560 293" class="ln" style=""/>
+<circle cx="560" cy="298" r="5" style="fill:var(--c-tra)"/>
+<path d="M560 303L560 315" class="ln" style=""/>
+<circle cx="560" cy="323" r="8" class="c-red"/>
+<text x="578" y="313" class="t t-xs t-mono k-fis">R5</text>
+<path d="M560 323L560 337" class="ln" style=""/>
+<circle cx="560" cy="342" r="5" style="fill:var(--c-tra)"/>
+<path d="M560 347L560 359" class="ln" style=""/>
+<text x="578" y="357" class="t t-xs t-mono k-fis">R6</text>
+<rect x="551.0" y="360.0" width="18" height="18" style="fill:var(--good-soft);stroke:var(--good)"/>
+<text x="580" y="370" class="t t-xs t-m">fin del episodio</text>
+<text x="640" y="120" class="t t-s">• una sola trayectoria, la que de verdad ocurrió</text>
+<text x="640" y="140" class="t t-s">• hasta el final: usa el retorno completo</text>
+<text x="652" y="160" class="t t-s t-mono k-fis">G = R1 + γ·R2 + γ²·R3 + …</text>
+<text x="640" y="180" class="t t-s">• no necesita el modelo: basta con jugar</text>
+<text x="640" y="214" class="t t-s t-m">Promedia muchos retornos como ese:</text>
+<text x="640" y="232" class="t t-s t-mono">V(s) ← V(s) + (G − V(s)) / N(s)</text>
+</svg></div><figcaption><b>De dónde sale cada estimación.</b> Dos diagramas de respaldo (<i>backup diagrams</i>), que muestran qué información usa un método para actualizar el valor de un estado (círculo azul de arriba). Los puntos morados son acciones y los círculos, estados. A la izquierda, la programación dinámica del capítulo 4: mira todas las acciones y todos los resultados posibles, un solo paso adelante, y por eso necesita el modelo. A la derecha, Monte Carlo: sigue una sola trayectoria, la que de verdad ocurrió, hasta el final del episodio (cuadro verde), suma las recompensas de todo el camino (ámbar) y promedia ese retorno con los de otros episodios.</figcaption></figure><div class="prose"><p>Para ver la diferencia en un problema donde el modelo existe pero es incómodo, este capítulo usa un juego de cartas: el <b>Blackjack</b> (también llamado veintiuno). El jugador quiere sumar con sus cartas lo más cerca posible de 21 sin pasarse; las figuras valen 10 y el as vale 1 u 11, lo que convenga. Juega contra el <b>crupier</b> (<i>dealer</i>), que muestra una de sus dos cartas. El jugador puede <b>pedir</b> carta (<i>hit</i>) o <b>plantarse</b> (<i>stick</i>); si pasa de 21, pierde. Cuando se planta, el crupier juega con una regla fija: pide hasta sumar 17 o más. Gana quien quede más cerca de 21 sin pasarse.</p><p>Como en el libro de Sutton y Barto, cada mano es un episodio con recompensa +1 si gana, 0 si empata y −1 si pierde, sin descuento (<span class="math">\gamma = 1</span>). Las cartas salen de un mazo infinito (con reposición), así que contar las cartas que ya salieron no sirve. El estado tiene tres partes: la suma del jugador (de 12 a 21; con menos siempre conviene pedir), la carta visible del crupier (del as al 10) y si el jugador tiene un <b>as utilizable</b> (<i>usable ace</i>), un as que cuenta 11 sin pasarse. Son <span class="math">10 \times 10 \times 2 = 200</span> estados.</p><p>Con el modelo, la programación dinámica resolvería el Blackjack. Pero escribir el modelo es un trabajo serio: para saber qué pasa si el jugador se planta con 14 y el crupier muestra un 6, hay que calcular la probabilidad de cada mano final del crupier, que depende de cuántas cartas pide y de cómo cuenta sus ases. En cambio, simular una mano es trivial: repartir cartas al azar y seguir las reglas. Esa es la ventaja de Monte Carlo incluso cuando el modelo existe: le basta un simulador.</p></div></section>
+<section><h2>Predicción de Monte Carlo: primera visita y toda visita</h2><div class="prose"><p>El primer problema, como en el capítulo 4, es la predicción: estimar <span class="math">V_\pi</span> para una política fija. La receta es jugar un episodio completo siguiendo <span class="math">\pi</span>, calcular el retorno que siguió a cada estado visitado y sumarlo al promedio de ese estado.</p><p>El retorno se calcula mejor de atrás hacia adelante, desde el final del episodio, con la relación del capítulo 2:</p><div class="math-display">G_t = R_{t+1} + \gamma\, G_{t+1}</div><p>En la última transición, <span class="math">G</span> es solo la última recompensa. En la anterior, la recompensa de ese paso más γ veces el retorno siguiente, y así hasta el principio. Un solo recorrido hacia atrás da el retorno de todos los pasos.</p><p>Para promediar no hace falta guardar todos los retornos. Si un estado ya tiene <span class="math">N</span> retornos promediados en <span class="math">V</span> y llega uno nuevo, <span class="math">G</span>, el promedio nuevo es:</p><div class="math-display">V(s) \leftarrow V(s) + \frac{1}{N(s)}\,\big[G - V(s)\big]</div><p>Es el <b>promedio incremental</b> (<i>incremental mean</i>) del bandido del capítulo 1, con su patrón de siempre: nueva estimación = vieja + paso × (objetivo − vieja). Aquí el objetivo es el retorno y el paso, <span class="math">1/N</span>. La diferencia <span class="math">G - V(s)</span> es el error de la estimación en esa visita.</p><p>Queda un detalle. En la maqueta, un robot puede pasar dos veces por la misma casilla en un episodio: sale de C5, patina, vuelve a C5. ¿Qué retorno se promedia? Hay dos respuestas. El <b>Monte Carlo de primera visita</b> (<i>first-visit Monte Carlo</i>) usa solo el retorno que siguió a la primera visita del episodio. El <b>Monte Carlo de toda visita</b> (<i>every-visit Monte Carlo</i>) usa los retornos de todas las visitas. Los dos convergen al valor verdadero con suficientes episodios; el de primera visita tiene propiedades estadísticas más simples, porque sus muestras son independientes entre episodios, y es el que se usa en este capítulo.</p></div><figure class="fig fig-esquema" id="05-diagrama-2"><div class="lienzo"><svg viewBox="0 0 960 290" style="min-width:760px" role="img" aria-label="Un episodio de diez casillas que pasa por C5 en el tiempo 0 y otra vez en el tiempo 2 y termina en el premio; debajo de cada casilla, su retorno calculado hacia atrás. Primera visita le da a C5 solo el retorno del tiempo 0, 3,74; toda visita promedia los dos, 3,74 y 4,85">
+<defs><marker id="c5d2-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker><marker id="c5d2-fis" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-fis)"/></marker></defs>
+<text x="20" y="28" class="t t-xs t-b t-m">UN EPISODIO QUE PASA DOS VECES POR C5 (γ = 0,9)</text>
+<rect x="40" y="60" width="60" height="44" rx="8" class="c-tra"/>
+<text x="70" y="88" class="t t-b k-tra" text-anchor="middle">C5</text>
+<text x="70" y="50" class="t t-xs t-m" text-anchor="middle">t = 0</text>
+<path d="M100 82H130" class="ln" style="stroke-width:1.6" marker-end="url(#c5d2-muted)"/>
+<text x="116" y="74" class="t t-xs t-mono k-fis" text-anchor="middle">−0,1</text>
+<text x="70" y="130" class="t t-s t-mono k-fis" text-anchor="middle">G = 3,74</text>
+<rect x="132" y="60" width="60" height="44" rx="8" class="caja"/>
+<text x="162" y="88" class="t t-b" text-anchor="middle">B5</text>
+<text x="162" y="50" class="t t-xs t-m" text-anchor="middle">t = 1</text>
+<path d="M192 82H222" class="ln" style="stroke-width:1.6" marker-end="url(#c5d2-muted)"/>
+<text x="208" y="74" class="t t-xs t-mono k-fis" text-anchor="middle">−0,1</text>
+<text x="162" y="130" class="t t-s t-mono k-fis" text-anchor="middle">G = 4,26</text>
+<rect x="224" y="60" width="60" height="44" rx="8" class="c-tra"/>
+<text x="254" y="88" class="t t-b k-tra" text-anchor="middle">C5</text>
+<text x="254" y="50" class="t t-xs t-m" text-anchor="middle">t = 2</text>
+<path d="M284 82H314" class="ln" style="stroke-width:1.6" marker-end="url(#c5d2-muted)"/>
+<text x="300" y="74" class="t t-xs t-mono k-fis" text-anchor="middle">−0,1</text>
+<text x="254" y="130" class="t t-s t-mono k-fis" text-anchor="middle">G = 4,85</text>
+<rect x="316" y="60" width="60" height="44" rx="8" class="caja"/>
+<text x="346" y="88" class="t t-b" text-anchor="middle">C4</text>
+<text x="346" y="50" class="t t-xs t-m" text-anchor="middle">t = 3</text>
+<path d="M376 82H406" class="ln" style="stroke-width:1.6" marker-end="url(#c5d2-muted)"/>
+<text x="392" y="74" class="t t-xs t-mono k-fis" text-anchor="middle">−0,1</text>
+<text x="346" y="130" class="t t-s t-mono k-fis" text-anchor="middle">G = 5,50</text>
+<rect x="408" y="60" width="60" height="44" rx="8" class="caja"/>
+<text x="438" y="88" class="t t-b" text-anchor="middle">D4</text>
+<text x="438" y="50" class="t t-xs t-m" text-anchor="middle">t = 4</text>
+<path d="M468 82H498" class="ln" style="stroke-width:1.6" marker-end="url(#c5d2-muted)"/>
+<text x="484" y="74" class="t t-xs t-mono k-fis" text-anchor="middle">−0,1</text>
+<text x="438" y="130" class="t t-s t-mono k-fis" text-anchor="middle">G = 6,22</text>
+<rect x="500" y="60" width="60" height="44" rx="8" class="caja"/>
+<text x="530" y="88" class="t t-b" text-anchor="middle">E4</text>
+<text x="530" y="50" class="t t-xs t-m" text-anchor="middle">t = 5</text>
+<path d="M560 82H590" class="ln" style="stroke-width:1.6" marker-end="url(#c5d2-muted)"/>
+<text x="576" y="74" class="t t-xs t-mono k-fis" text-anchor="middle">−0,1</text>
+<text x="530" y="130" class="t t-s t-mono k-fis" text-anchor="middle">G = 7,02</text>
+<rect x="592" y="60" width="60" height="44" rx="8" class="caja"/>
+<text x="622" y="88" class="t t-b" text-anchor="middle">E3</text>
+<text x="622" y="50" class="t t-xs t-m" text-anchor="middle">t = 6</text>
+<path d="M652 82H682" class="ln" style="stroke-width:1.6" marker-end="url(#c5d2-muted)"/>
+<text x="668" y="74" class="t t-xs t-mono k-fis" text-anchor="middle">−0,1</text>
+<text x="622" y="130" class="t t-s t-mono k-fis" text-anchor="middle">G = 7,91</text>
+<rect x="684" y="60" width="60" height="44" rx="8" class="caja"/>
+<text x="714" y="88" class="t t-b" text-anchor="middle">E2</text>
+<text x="714" y="50" class="t t-xs t-m" text-anchor="middle">t = 7</text>
+<path d="M744 82H774" class="ln" style="stroke-width:1.6" marker-end="url(#c5d2-muted)"/>
+<text x="760" y="74" class="t t-xs t-mono k-fis" text-anchor="middle">−0,1</text>
+<text x="714" y="130" class="t t-s t-mono k-fis" text-anchor="middle">G = 8,90</text>
+<rect x="776" y="60" width="60" height="44" rx="8" class="caja"/>
+<text x="806" y="88" class="t t-b" text-anchor="middle">E1</text>
+<text x="806" y="50" class="t t-xs t-m" text-anchor="middle">t = 8</text>
+<path d="M836 82H866" class="ln" style="stroke-width:1.6" marker-end="url(#c5d2-muted)"/>
+<text x="852" y="74" class="t t-xs t-mono k-fis" text-anchor="middle">+10</text>
+<text x="806" y="130" class="t t-s t-mono k-fis" text-anchor="middle">G = 10,00</text>
+<rect x="868" y="60" width="60" height="44" rx="8" style="fill:var(--good-soft);stroke:var(--good)"/>
+<text x="898" y="88" class="t t-b" text-anchor="middle" style="fill:var(--good)">F1</text>
+<text x="898" y="50" class="t t-xs t-m" text-anchor="middle">t = 9</text>
+<text x="40" y="162" class="t t-s t-m">Los retornos se calculan hacia atrás, desde el final: G de t = R siguiente + 0,9 × G de t + 1.</text>
+<rect x="40" y="182" width="420" height="92" rx="10" class="caja"/>
+<text x="56" y="206" class="t t-b k-tra">Primera visita</text>
+<text x="56" y="228" class="t t-s">C5 recibe un solo retorno: el de t = 0.</text>
+<text x="56" y="250" class="t t-s t-mono">Promedio de este episodio: 3,74</text>
+<rect x="500" y="182" width="420" height="92" rx="10" class="caja"/>
+<text x="516" y="206" class="t t-b k-tra">Toda visita</text>
+<text x="516" y="228" class="t t-s">C5 recibe los dos: el de t = 0 y el de t = 2.</text>
+<text x="516" y="250" class="t t-s t-mono">Promedio de este episodio: (3,74 + 4,85) / 2 = 4,30</text>
+</svg></div><figcaption><b>Primera visita y toda visita.</b> Un episodio de la maqueta que pasa dos veces por la base: sale de C5, va a B5, el robot vuelve a C5 y después sigue por el atajo hasta el muelle. Arriba, las diez casillas en orden de tiempo, con la recompensa de cada paso (ámbar). Debajo de cada casilla, su retorno, calculado de atrás hacia adelante con γ = 0,9: 10 en E1, 8,90 en E2, y así hasta 3,74 en la primera visita a C5. La primera visita le da a C5 un solo retorno, 3,74. Toda visita promedia los dos retornos que siguieron a C5: 3,74 y 4,85.</figcaption></figure><div class="prose"><p>En el Blackjack la distinción no importa: la suma del jugador solo sube, así que un estado nunca se repite en una mano. El laboratorio siguiente evalúa la política que se planta solo con 20 o 21, la misma que usan Sutton y Barto: es una política mala a propósito, para que el mapa de valor tenga relieve.</p></div><div class="lab" id="05-lab-1"><div class="lab-title"><span class="tag">Laboratorio</span><h3>Blackjack: el agente juega miles de manos y el mapa de valor se va llenando</h3></div><p class="hint">En el modo «Predicción», pulsa «Jugar 1 mano» varias veces: lee las cartas, los estados que visitó el jugador y el retorno que se suma a cada uno (borde grueso en el mapa). Pulsa «Jugar 1.000 manos» y luego «Entrenar» hasta 500.000. Toca una casilla para ver su valor y cuántas visitas tiene. Después pasa a «Control con arranques exploratorios» y a «Control ε-suave», entrena de nuevo y mira la política aprendida.</p><style>
+[id="05-lab-1"] .c5l1-rot{font:700 .7rem var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+[id="05-lab-1"] .btns{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}
+[id="05-lab-1"] .c5l1-mapas{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:12px;margin-top:6px}
+[id="05-lab-1"] canvas{width:100%;display:block;background:var(--card);border:1px solid var(--line);border-radius:8px;cursor:crosshair}
+[id="05-lab-1"] .c5l1-mano{font:.85rem var(--f-mono);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:8px 0;overflow-wrap:anywhere;min-height:2.6em}
+[id="05-lab-1"] .c5l1-ley{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font:.76rem var(--f-display);color:var(--muted);margin:4px 0}
+[id="05-lab-1"] .c5l1-barra{display:inline-block;width:110px;height:10px;border-radius:3px;vertical-align:middle;margin:0 4px}
+[id="05-lab-1"] .c5l1-cua{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:middle;margin-right:4px;border:1px solid var(--line)}
+[id="05-lab-1"] .c5l1-oc[hidden]{display:none}
+</style>
+<div class="btns" role="group" aria-label="Qué hace el agente" id="c5l1-modo"><span class="c5l1-rot">Modo</span>
+  <button type="button" data-m="pred" aria-pressed="true">Predicción: se planta con 20 o 21</button>
+  <button type="button" data-m="es" aria-pressed="false">Control con arranques exploratorios</button>
+  <button type="button" data-m="eps" aria-pressed="false">Control ε-suave</button>
+</div>
+<div class="ctls c5l1-oc" id="c5l1-ctl-eps" hidden>
+  <div class="ctl"><label for="c5l1-e">ε: probabilidad de jugar al azar</label>
+    <input type="range" id="c5l1-e" min="0.01" max="0.5" value="0.1" step="0.01"><output id="c5l1-e-o"></output></div>
+</div>
+<div class="btns">
+  <button type="button" id="c5l1-una">Jugar 1 mano</button>
+  <button type="button" id="c5l1-mil">Jugar 1.000 manos</button>
+  <button type="button" id="c5l1-go">Entrenar</button>
+  <button type="button" id="c5l1-cero">Reiniciar</button>
+</div>
+<div class="btns c5l1-oc" role="group" aria-label="Qué mapa mostrar" id="c5l1-ver" hidden><span class="c5l1-rot">Mostrar</span>
+  <button type="button" data-v="pol" aria-pressed="true">Política aprendida</button>
+  <button type="button" data-v="val" aria-pressed="false">Valor</button>
+</div>
+<div class="c5l1-mano" id="c5l1-mano" aria-live="polite">Pulsa «Jugar 1 mano» para ver un episodio completo: las cartas, los estados que visita el jugador y el retorno que se promedia en cada uno.</div>
+<div class="c5l1-ley" id="c5l1-ley"></div>
+<div class="c5l1-mapas">
+  <div><span class="c5l1-rot" id="c5l1-t0">Sin as utilizable</span>
+    <canvas id="c5l1-c0" role="img" aria-label="Mapa de los 100 estados sin as utilizable: suma del jugador de 12 a 21 en el eje vertical y carta visible del crupier en el horizontal"></canvas></div>
+  <div><span class="c5l1-rot" id="c5l1-t1">Con as utilizable</span>
+    <canvas id="c5l1-c1" role="img" aria-label="Mapa de los 100 estados con as utilizable: suma del jugador de 12 a 21 en el eje vertical y carta visible del crupier en el horizontal"></canvas></div>
+</div>
+<div class="readout texto" id="c5l1-out" aria-live="polite"></div></div><div class="prose"><p>Con 500.000 manos, el mapa de la izquierda (sin as utilizable) queda casi parejo: rojo en todas las sumas de 12 a 19, porque la política insiste en pedir carta y se pasa muy seguido, y azul en 20 y 21, donde se planta. Con 13 contra un 10 del crupier, el valor es −0,60: perder es mucho más probable que ganar. Con 20 contra un 10, el valor es 0,43. El mapa de la derecha (con as utilizable) es más claro y más irregular: con un as que puede bajar de 11 a 1, pedir carta es menos peligroso, y como esos estados son menos frecuentes, sus promedios tienen más ruido. Esa es otra propiedad de Monte Carlo: cada estado se estima con sus propias visitas, independiente de los demás, y los estados poco visitados quedan con estimaciones inseguras.</p><p>Lo mismo se puede hacer en la maqueta del almacén, donde además el valor verdadero se conoce gracias a la programación dinámica, y se puede medir el error.</p></div><div class="lab" id="05-lab-2"><div class="lab-title"><span class="tag">Laboratorio</span><h3>Episodios en la cuadrícula: mira cómo la estimación del valor se acerca al valor real con más episodios</h3></div><p class="hint">A la izquierda, la estimación de Monte Carlo con el recorrido del último episodio (ámbar); a la derecha, el valor real de la misma política, calculado con el modelo. Pulsa «Un episodio» varias veces, luego «Entrenar» hasta 5.000 y mira bajar la curva del error. Repite con «Toda visita». Después cambia a «La óptima del capítulo 4»: ¿qué casillas se quedan sin estimar? Prueba entonces «En una casilla al azar».</p><style>
+[id="05-lab-2"] .c5l2-rot{font:700 .7rem var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+[id="05-lab-2"] .btns{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}
+[id="05-lab-2"] canvas{width:100%;display:block;background:var(--card);border:1px solid var(--line);border-radius:8px}
+[id="05-lab-2"] .c5l2-graf{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px;margin-top:6px;align-items:start}
+[id="05-lab-2"] .c5l2-ep{font:.82rem var(--f-mono);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:8px 0;overflow-wrap:anywhere;min-height:2.6em}
+</style>
+<div class="btns" role="group" aria-label="Política que se evalúa" id="c5l2-pol"><span class="c5l2-rot">Política</span>
+  <button type="button" data-v="azar" aria-pressed="true">Al azar</button>
+  <button type="button" data-v="opt" aria-pressed="false">La óptima del capítulo 4</button>
+</div>
+<div class="btns" role="group" aria-label="Desde dónde empieza cada episodio" id="c5l2-ini"><span class="c5l2-rot">Cada episodio empieza</span>
+  <button type="button" data-v="inicio" aria-pressed="true">En el inicio</button>
+  <button type="button" data-v="azar" aria-pressed="false">En una casilla al azar</button>
+</div>
+<div class="btns" role="group" aria-label="Qué visitas se promedian" id="c5l2-vis"><span class="c5l2-rot">Promediar</span>
+  <button type="button" data-v="primera" aria-pressed="true">Primera visita</button>
+  <button type="button" data-v="toda" aria-pressed="false">Toda visita</button>
+</div>
+<div class="btns">
+  <button type="button" id="c5l2-uno">Un episodio</button>
+  <button type="button" id="c5l2-cien">100 episodios</button>
+  <button type="button" id="c5l2-go">Entrenar</button>
+  <button type="button" id="c5l2-cero">Reiniciar</button>
+</div>
+<div class="c5l2-ep" id="c5l2-ep" aria-live="polite">Pulsa «1 episodio»: el robot recorre el almacén hasta el premio o una trampa, y al final cada casilla visitada recibe el retorno que siguió a su visita.</div>
+<div class="c5l2-graf">
+  <div><span class="c5l2-rot" id="c5l2-t1">Estimación de Monte Carlo</span>
+    <canvas id="c5l2-c" role="img" aria-label="La cuadrícula con el valor estimado por Monte Carlo en cada casilla y el recorrido del último episodio"></canvas></div>
+  <div><span class="c5l2-rot">Valor real (programación dinámica)</span>
+    <canvas id="c5l2-r" role="img" aria-label="La cuadrícula con el valor real de la política, calculado con el modelo"></canvas></div>
+</div>
+<span class="c5l2-rot">Error frente al valor real, por episodio</span>
+<canvas id="c5l2-e" data-prop="0.36" role="img" aria-label="Curva del error cuadrático medio entre la estimación y el valor real a medida que se juegan episodios"></canvas>
+<div class="readout texto" id="c5l2-out" aria-live="polite"></div></div><div class="prose"><p>Con la política al azar y episodios que salen siempre de la base, el error cuadrático medio frente al valor real baja de 2,08 tras 10 episodios a 0,99 tras 100, 0,21 tras 1.000 y 0,08 tras 5.000. La estimación de la base termina en −2,74, contra un valor real de −2,71. Con toda visita, el error final es algo mayor (0,13): en esta maqueta, con un robot que va y viene, las visitas repetidas de un mismo episodio están muy correlacionadas.</p><p>Con la política óptima pasa algo instructivo. El robot sigue casi siempre el rodeo, y hay casillas, como E5 y F5, a las que no llega nunca: tras 5.000 episodios, 2 de las 22 casillas siguen sin una sola visita y el error se queda en 0,68. Monte Carlo no puede estimar lo que no vive. Si cada episodio empieza en una casilla al azar, todas reciben visitas y el error baja a 0,31.</p></div></section>
+<section><h2>Control de Monte Carlo con exploración</h2><div class="prose"><p>Predecir no es suficiente: Noemí quiere la mejor política. La idea es la iteración generalizada de política del capítulo 4: evaluar, mejorar, repetir. Pero aparece un obstáculo.</p><p>En el capítulo 4, la mejora elegía en cada estado la acción de mayor <span class="math">q_\pi(s, a)</span>, y ese <span class="math">q</span> se calculaba con el modelo a partir de <span class="math">V_\pi</span>. Sin modelo, conocer <span class="math">V</span> no sirve para decidir: saber que la casilla D4 vale 1,18 no dice qué acción lleva hacia las casillas buenas, porque no se sabe adónde lleva cada acción. Por eso, sin modelo, lo que se estima es directamente <span class="math">Q_\pi(s, a)</span>: el retorno promedio después de tomar la acción <span class="math">a</span> en el estado <span class="math">s</span>. Se calcula igual que <span class="math">V</span>, pero se promedia por cada par de estado y acción. Con <span class="math">Q</span> en la mano, mejorar es fácil: en cada estado, la acción de mayor <span class="math">Q</span>.</p></div><div class="analogia"><b>Imagínalo así</b><p>Un turista que llega a una ciudad desconocida sabe qué barrios le gustan, pero no sabe qué bus lleva a cada uno. Saber que el barrio del puerto es lindo no le dice qué bus tomar en la esquina. Lo que le sirve es otra libreta: «en esta parada, el bus 12 me dejó en un lugar lindo; el 40, en uno feo». Esa libreta, con una calificación por parada y por bus, es Q.</p></div><div class="prose"><p>El obstáculo es la <b>exploración</b>. Si la política es determinista y en un estado siempre toma la misma acción, el agente nunca prueba las otras y nunca sabrá si eran mejores: sus <span class="math">Q</span> se quedan sin datos. Es el dilema de explorar o explotar del capítulo 1, ahora en cada uno de los estados.</p><p>La primera solución es teórica pero clara: los <b>arranques exploratorios</b> (<i>exploring starts</i>). Cada episodio empieza en un estado elegido al azar y con una primera acción elegida al azar; de ahí en adelante sigue la política actual. Así, cada par de estado y acción tiene probabilidad de ser el punto de partida, y con suficientes episodios todos reciben visitas. El algoritmo <b>Monte Carlo con arranques exploratorios</b> (<i>Monte Carlo ES</i>) alterna: juega un episodio, actualiza los promedios de <span class="math">Q</span> de los pares visitados y, en cada estado visitado, pasa a la acción de mayor <span class="math">Q</span>.</p><p>En el Blackjack, un arranque exploratorio es fácil: se reparte una mano con una suma, una carta del crupier y un as elegidos al azar, y la primera decisión se toma tirando una moneda. En el laboratorio, con 500.000 manos, la política aprendida sin as utilizable queda así: con 17 o más, plantarse siempre; con 13 a 16, plantarse casi siempre si el crupier muestra de 2 a 6 y pedir si muestra 7 o más o un as; con 12, pedir salvo contra un 4, un 5 o un 6. La idea detrás es razonable: con una carta baja visible, el crupier tiene que pedir y es probable que se pase, así que conviene no arriesgarse. Es muy parecida a la política óptima que publican Sutton y Barto, y a la <b>estrategia básica</b> (<i>basic strategy</i>) que se enseña en los casinos.</p></div></section>
+<section><h2>Políticas ε-suaves</h2><div class="prose"><p>Los arranques exploratorios funcionan en un simulador, pero no en el almacén: no se puede teletransportar un robot real a una casilla al azar con una acción al azar. La alternativa es que la exploración esté dentro de la política misma.</p><p>Una <b>política suave</b> (<i>soft policy</i>) le da probabilidad mayor que cero a todas las acciones en todos los estados. La más usada es la <b>ε-codiciosa</b> (<i>ε-greedy</i>) del capítulo 1: con probabilidad <span class="math">1 - \varepsilon</span> toma la acción de mayor <span class="math">Q</span>, y con probabilidad <span class="math">\varepsilon</span> (épsilon) elige una acción al azar. Pertenece a una familia más general, las <b>políticas ε-suaves</b> (<i>ε-soft policies</i>), las que dan a cada acción al menos <span class="math">\varepsilon / |\mathcal{A}|</span> de probabilidad, donde <span class="math">|\mathcal{A}|</span> es el número de acciones.</p></div><div class="analogia"><b>Imagínalo así</b><p>Un cliente fiel pide casi siempre su plato favorito, pero una vez de cada diez pide algo al azar de la carta. La mayoría de las noches come bien; de vez en cuando descubre que el plato nuevo era mejor y cambia de favorito. Si nunca pidiera otra cosa, nunca lo sabría.</p></div><div class="prose"><p>El <b>control de Monte Carlo con política ε-suave</b> (<i>on-policy first-visit Monte Carlo control</i>) hace lo mismo que el de arranques exploratorios, con una diferencia: todos los episodios empiezan normalmente y la política que juega es ε-codiciosa respecto de <span class="math">Q</span>. La mejora ya no lleva a la política óptima a secas, sino a la mejor de las políticas ε-suaves: la que explora una fracción ε del tiempo y, el resto, elige bien. Es un precio que se paga por seguir explorando.</p><p>En el laboratorio del Blackjack, con ε = 0,1, la política aprendida en 500.000 manos se parece mucho a la de los arranques exploratorios: pide carta en 27 de los 100 estados sin as utilizable y se planta, en promedio, desde 14,7. Mueve ε y mira cómo cambia.</p></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Monte Carlo en el Blackjack de Gymnasium</h3></div><p>Vas a estimar el valor de la política que se planta con 20 o 21, a aprender una política mejor con control ε-suave y a comparar cuánto gana cada una en 50.000 manos. Usa el entorno <code>Blackjack-v1</code> de Gymnasium con <code>sab=True</code>, que aplica exactamente las reglas del libro de Sutton y Barto.</p><ol class="steps"><li><span>Entra a la carpeta <code>refuerzo</code> y activa el entorno:</span></li></ol><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>cd $HOME\refuerzo</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>.venv\Scripts\activate</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>cd ~/refuerzo</code><button type="button" class="copiar">Copiar</button></div><div class="cmd-l"><code>source .venv/bin/activate</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps" start="2" style="counter-reset:st 1"><li><span>Guarda este programa como <code>blackjack_mc.py</code>:</span></li></ol><div class="code-copia code-lineas"><pre tabindex="0"><code><span class="ln">"""Monte Carlo en el Blackjack de Gymnasium: predicción de primera visita y control con una política ε-suave."""</span>
+<span class="ln">import time</span>
+<span class="ln">from collections import defaultdict</span>
+<span class="ln">import numpy as np</span>
+<span class="ln">import gymnasium as gym</span>
+<span class="ln"></span>
+<span class="ln">env = gym.make("Blackjack-v1", sab=True)   # sab=True: las reglas exactas de Sutton y Barto</span>
+<span class="ln">rng = np.random.default_rng(42)</span>
+<span class="ln"></span>
+<span class="ln"></span>
+<span class="ln">def jugar(politica, semilla=None):</span>
+<span class="ln">    """Juega una mano completa. Devuelve la lista de (estado, acción) y la recompensa final (+1, 0 o −1)."""</span>
+<span class="ln">    s, _ = env.reset(seed=semilla)</span>
+<span class="ln">    pasos, fin, r = [], False, 0</span>
+<span class="ln">    while not fin:</span>
+<span class="ln">        a = politica(s)</span>
+<span class="ln">        pasos.append((s, a))</span>
+<span class="ln">        s, r, termina, trunca, _ = env.step(a)</span>
+<span class="ln">        fin = termina or trunca</span>
+<span class="ln">    return pasos, r</span>
+<span class="ln"></span>
+<span class="ln"></span>
+<span class="ln"># 1) Predicción: el valor de "plantarse solo con 20 o 21". Acciones: 0 plantarse, 1 pedir carta.</span>
+<span class="ln">fija = lambda s: 0 if s[0] &gt;= 20 else 1</span>
+<span class="ln">V, N = defaultdict(float), defaultdict(int)</span>
+<span class="ln">t0 = time.time()</span>
+<span class="ln">env.reset(seed=42)</span>
+<span class="ln">for k in range(50_000):</span>
+<span class="ln">    pasos, G = jugar(fija)                  # sin recompensas intermedias y γ = 1: el retorno es G</span>
+<span class="ln">    vistos = set()</span>
+<span class="ln">    for s, _ in pasos:</span>
+<span class="ln">        if s in vistos:                     # primera visita (en Blackjack un estado no se repite)</span>
+<span class="ln">            continue</span>
+<span class="ln">        vistos.add(s)</span>
+<span class="ln">        N[s] += 1</span>
+<span class="ln">        V[s] += (G - V[s]) / N[s]           # promedio incremental</span>
+<span class="ln">print(f"1) Prediccion, 50.000 manos ({time.time() - t0:.0f} s)")</span>
+<span class="ln">print("   V(20, crupier 10, sin as) =", round(V[(20, 10, 0)], 3))</span>
+<span class="ln">print("   V(13, crupier 10, sin as) =", round(V[(13, 10, 0)], 3))</span>
+<span class="ln">print("   V(21, crupier A, con as)  =", round(V[(21, 1, 1)], 3))</span>
+<span class="ln"></span>
+<span class="ln"># 2) Control: Monte Carlo de primera visita con una política ε-suave (ε = 0,1).</span>
+<span class="ln">EPS = 0.1</span>
+<span class="ln">Q = defaultdict(lambda: np.zeros(2))</span>
+<span class="ln">NQ = defaultdict(lambda: np.zeros(2))</span>
+<span class="ln"></span>
+<span class="ln"></span>
+<span class="ln">def suave(s):</span>
+<span class="ln">    if rng.random() &lt; EPS:</span>
+<span class="ln">        return int(rng.integers(2))</span>
+<span class="ln">    q = Q[s]</span>
+<span class="ln">    return int(rng.integers(2)) if q[0] == q[1] else int(np.argmax(q))</span>
+<span class="ln"></span>
+<span class="ln"></span>
+<span class="ln">t0 = time.time()</span>
+<span class="ln">for k in range(200_000):</span>
+<span class="ln">    pasos, G = jugar(suave)</span>
+<span class="ln">    vistos = set()</span>
+<span class="ln">    for s, a in pasos:</span>
+<span class="ln">        if (s, a) in vistos:</span>
+<span class="ln">            continue</span>
+<span class="ln">        vistos.add((s, a))</span>
+<span class="ln">        NQ[s][a] += 1</span>
+<span class="ln">        Q[s][a] += (G - Q[s][a]) / NQ[s][a]</span>
+<span class="ln">print(f"2) Control epsilon-suave, 200.000 manos ({time.time() - t0:.0f} s)")</span>
+<span class="ln"></span>
+<span class="ln">codiciosa = lambda s: int(np.argmax(Q[s])) if s in Q else (0 if s[0] &gt;= 20 else 1)</span>
+<span class="ln">print("   Politica aprendida sin as utilizable (P = pide carta, . = se planta)")</span>
+<span class="ln">print("   suma  A 2 3 4 5 6 7 8 9 10")</span>
+<span class="ln">for suma in range(21, 11, -1):</span>
+<span class="ln">    fila = " ".join("P" if codiciosa((suma, d, 0)) else "." for d in range(1, 11))</span>
+<span class="ln">    print(f"   {suma:&gt;4}  {fila}")</span>
+<span class="ln"></span>
+<span class="ln"></span>
+<span class="ln">def evaluar(politica, n=50_000):</span>
+<span class="ln">    env.reset(seed=7)</span>
+<span class="ln">    res = np.array([jugar(politica)[1] for _ in range(n)])</span>
+<span class="ln">    return (res &gt; 0).mean(), (res == 0).mean(), res.mean()</span>
+<span class="ln"></span>
+<span class="ln"></span>
+<span class="ln">for nombre, pol in [("plantarse con 20 o 21", fija),</span>
+<span class="ln">                    ("plantarse con 17 o mas", lambda s: 0 if s[0] &gt;= 17 else 1),</span>
+<span class="ln">                    ("aprendida (sin explorar)", codiciosa)]:</span>
+<span class="ln">    g, e, m = evaluar(pol)</span>
+<span class="ln">    print(f"   {nombre:&lt;26} gana {g:.1%}  empata {e:.1%}  ganancia media por mano {m:+.3f}")</span></code></pre><button type="button" class="ver-todo" aria-expanded="false">Ver las 85 líneas</button><button type="button" class="copiar copiar-todo">Copiar</button></div><ol class="steps" start="3" style="counter-reset:st 2"><li><span>Córrelo. Juega 350.000 manos en total y tarda unos minutos (en el equipo de prueba, unos seis):</span></li></ol><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python blackjack_mc.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 blackjack_mc.py</code><button type="button" class="copiar">Copiar</button></div></div></div><p><b>Qué observar:</b> la predicción da valores cercanos a los del laboratorio: unos 0,42 para 20 contra un 10 y unos −0,56 para 13 contra un 10. La política aprendida sin as utilizable se planta con 17 o más, pide con 12 a 16 contra un 7, 8, 9, 10 o as, y casi siempre se planta con 13 a 16 contra un 2 a 6; alguna casilla puede salir distinta, porque 200.000 manos todavía dejan ruido en los estados poco frecuentes. Al jugar sin explorar, la política que se planta con 20 o 21 gana el 30,0 % de las manos y pierde en promedio 0,345 fichas por mano; plantarse con 17 o más mejora a −0,077, y la aprendida llega a −0,049, con 43,1 % de manos ganadas. Ni la mejor política le gana a la casa: el Blackjack está diseñado para que el crupier tenga ventaja. Las cifras exactas cambian con otra versión de Gymnasium o numpy.</p></div></section>
+<section><h2><i>On-policy</i> y <i>off-policy</i>: aprender de lo que hace otro</h2><div class="prose"><p>El control ε-suave tiene una incomodidad: la política que aprende es la misma que explora. Lo que se obtiene es la mejor política que todavía juega al azar una vez de cada diez, no la mejor política a secas. Sería mejor separar los dos papeles: una política que explora y genera los datos, y otra que se evalúa y se mejora.</p><p>Los métodos donde la política que actúa es la misma que se aprende se llaman <b>dentro de política</b> u <b><i>on-policy</b></i>. Los métodos que aprenden una política a partir de datos generados por otra se llaman <b>fuera de política</b> u <b><i>off-policy</b></i>. En estos, la que genera los datos es la <b>política de comportamiento</b> (<i>behavior policy</i>), <span class="math">b</span>, y la que se quiere evaluar o mejorar es la <b>política objetivo</b> (<i>target policy</i>), <span class="math">\pi</span>.</p></div><div class="analogia"><b>Imagínalo así</b><p>Un aprendiz de cocina quiere saber cómo saldría el menú si lo preparara la chef con sus recetas exactas, pero solo tiene las notas de las noches en que cocinó un ayudante que improvisaba. Las noches en que el ayudante hizo justo lo que habría hecho la chef sirven, y mucho; las noches en que hizo algo que la chef nunca haría no dicen nada sobre ella.</p></div><div class="prose"><p>Hay una condición mínima: todo lo que <span class="math">\pi</span> podría hacer, <span class="math">b</span> tiene que hacerlo al menos de vez en cuando. Si en algún estado la política objetivo toma una acción que la de comportamiento nunca toma, los datos no dicen nada sobre esa acción. Se llama <b>supuesto de cobertura</b> (<i>coverage assumption</i>).</p><p>La herramienta para corregir la diferencia entre las dos políticas es el <b>muestreo de importancia</b> (<i>importance sampling</i>). Cada episodio recibe un peso: el producto, a lo largo de sus decisiones, de la probabilidad de cada acción según <span class="math">\pi</span> dividida por su probabilidad según <span class="math">b</span>. Ese peso, la <b>razón de muestreo de importancia</b> (<i>importance sampling ratio</i>), se escribe <span class="math">\rho</span> (ro):</p><div class="math-display">\rho = \prod_{t} \frac{\pi(A_t \mid S_t)}{b(A_t \mid S_t)}</div><p>Un episodio que <span class="math">\pi</span> habría jugado más seguido que <span class="math">b</span> pesa más de 1; uno que <span class="math">\pi</span> nunca jugaría pesa 0. Hay dos formas de promediar. El <b>muestreo de importancia ordinario</b> (<i>ordinary importance sampling</i>) suma <span class="math">\rho \cdot G</span> de todos los episodios y divide por la cantidad de episodios. El <b>muestreo de importancia ponderado</b> (<i>weighted importance sampling</i>) divide por la suma de los pesos. El ordinario no tiene sesgo, pero su varianza puede ser enorme; el ponderado tiene un sesgo pequeño que desaparece con más datos y una varianza mucho menor. En la práctica se prefiere el ponderado.</p></div><figure class="fig fig-flujo" id="05-diagrama-3"><div class="lienzo"><svg viewBox="0 0 960 340" style="min-width:760px" role="img" aria-label="Esquema del aprendizaje fuera de política: la política de comportamiento juega manos al azar, cada mano recibe un peso igual al producto de los cocientes entre la probabilidad de la política objetivo y la de comportamiento, y con esos pesos se estima el valor de la política objetivo. Debajo, dos manos de ejemplo: una con peso 8 y otra con peso 0">
+<defs><marker id="c5d3-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker><marker id="c5d3-apl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-apl)"/></marker><marker id="c5d3-tra" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-tra)"/></marker></defs>
+<text x="20" y="28" class="t t-xs t-b t-m">APRENDER DE LO QUE HACE OTRO: MUESTREO DE IMPORTANCIA</text>
+<rect x="20" y="46" width="260" height="92" rx="10" class="c-apl"/>
+<text x="36" y="70" class="t t-b k-apl">Política de comportamiento b</text>
+<text x="36" y="92" class="t t-s">la que juega: pide o se planta</text>
+<text x="36" y="110" class="t t-s">al azar (1/2 y 1/2)</text>
+<path d="M280 92H340" class="ln" style="stroke:var(--c-apl);stroke-width:1.6" marker-end="url(#c5d3-apl)"/>
+<text x="310" y="84" class="t t-xs t-m" text-anchor="middle">manos</text>
+<rect x="344" y="46" width="260" height="92" rx="10" class="caja"/>
+<text x="360" y="70" class="t t-b">Peso de cada mano</text>
+<text x="360" y="92" class="t t-s t-mono">ρ = producto de π(a|s) / b(a|s)</text>
+<text x="360" y="112" class="t t-s t-m">en cada decisión de la mano</text>
+<path d="M604 92H664" class="ln" style="stroke:var(--c-tra);stroke-width:1.6" marker-end="url(#c5d3-tra)"/>
+<rect x="668" y="46" width="270" height="92" rx="10" class="c-tra"/>
+<text x="684" y="70" class="t t-b k-tra">Política objetivo π</text>
+<text x="684" y="92" class="t t-s">la que se quiere evaluar:</text>
+<text x="684" y="110" class="t t-s">se planta solo con 20 o 21</text>
+<text x="20" y="172" class="t t-xs t-b t-m">DOS MANOS DESDE EL MISMO ESTADO: JUGADOR 13 CON AS, CRUPIER MUESTRA UN 2</text>
+<rect x="20" y="186" width="450" height="110" rx="10" class="caja"/>
+<text x="36" y="210" class="t t-s">b pide (con 13) y pide otra vez (con 16), luego se planta con 20</text>
+<text x="36" y="230" class="t t-s t-m">π habría hecho lo mismo en las tres decisiones</text>
+<text x="36" y="256" class="t t-s t-mono">ρ = (1 / 0,5) × (1 / 0,5) × (1 / 0,5) = 8</text>
+<text x="36" y="278" class="t t-s k-tra">la mano cuenta 8 veces: π la jugaría mucho más que b</text>
+<rect x="490" y="186" width="450" height="110" rx="10" class="caja"/>
+<text x="506" y="210" class="t t-s">b se planta con 13</text>
+<text x="506" y="230" class="t t-s t-m">π habría pedido carta</text>
+<text x="506" y="256" class="t t-s t-mono">ρ = 0 / 0,5 = 0</text>
+<text x="506" y="278" class="t t-s k-tra">la mano no dice nada sobre π: no cuenta</text>
+<text x="20" y="324" class="t t-s t-m">Ordinario: promedio de ρ·G entre todas las manos. Ponderado: suma de ρ·G dividida por la suma de los ρ.</text>
+</svg></div><figcaption><b>Aprender de lo que hace otro.</b> Arriba, de izquierda a derecha: la política de comportamiento (rosa, la que explora) juega manos pidiendo o plantándose al azar; cada mano recibe un peso ρ; con esos pesos se estima el valor de la política objetivo (morado), que se planta solo con 20 o 21. Abajo, dos manos desde el mismo estado. En la de la izquierda, las tres decisiones al azar coinciden con las de la política objetivo, y cada una aporta un factor 1 / 0,5 = 2: la mano pesa 8. En la de la derecha, la primera decisión ya es distinta (plantarse con 13), así que el peso es 0 y la mano no cuenta.</figcaption></figure><div class="prose"><p>El laboratorio siguiente repite un experimento clásico de Sutton y Barto. Se evalúa un solo estado del Blackjack (el jugador suma 13 con un as utilizable y el crupier muestra un 2) con la política que se planta con 20 o 21, pero con manos jugadas por una política al azar. El valor verdadero, calculado con cien millones de manos, es −0,277.</p></div><div class="lab" id="05-lab-3"><div class="lab-title"><span class="tag">Laboratorio</span><h3>Muestreo de importancia ordinario y ponderado: la misma información, dos promedios</h3></div><p class="hint">A la izquierda, la estimación de las dos variantes en una sola corrida de 10.000 manos, con el eje de manos en escala logarítmica. Pulsa «Otra corrida» varias veces y mira cuál salta más al principio. A la derecha, pulsa «Promediar 100 corridas» para ver el error cuadrático medio de cada una.</p><style>
+[id="05-lab-3"] .c5l3-rot{font:700 .7rem var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+[id="05-lab-3"] .btns{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}
+[id="05-lab-3"] canvas{width:100%;display:block;background:var(--card);border:1px solid var(--line);border-radius:8px}
+[id="05-lab-3"] .c5l3-graf{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;margin-top:6px;align-items:start}
+[id="05-lab-3"] .c5l3-ley{display:flex;flex-wrap:wrap;gap:6px 14px;font:.76rem var(--f-display);color:var(--muted);margin:4px 0}
+[id="05-lab-3"] .c5l3-ley i{display:inline-block;width:22px;height:0;vertical-align:middle;margin-right:4px;border-top:3px solid}
+</style>
+<div class="btns">
+  <button type="button" id="c5l3-una">Otra corrida</button>
+  <button type="button" id="c5l3-go">Promediar 100 corridas</button>
+</div>
+<div class="c5l3-ley"><span><i style="border-color:var(--c-tra)"></i>muestreo de importancia ordinario</span><span><i style="border-color:var(--c-apl)"></i>muestreo de importancia ponderado</span><span><i style="border-color:var(--good);border-top-style:dashed"></i>valor real ≈ −0,277</span></div>
+<div class="c5l3-graf">
+  <div><span class="c5l3-rot" id="c5l3-t1">Estimación en una corrida</span>
+    <canvas id="c5l3-a" role="img" aria-label="Estimación del valor del estado con los dos métodos a lo largo de 10.000 manos de una sola corrida, en escala logarítmica"></canvas></div>
+  <div><span class="c5l3-rot" id="c5l3-t2">Error cuadrático medio</span>
+    <canvas id="c5l3-b" role="img" aria-label="Error cuadrático medio de los dos métodos, promediado sobre 100 corridas, en escala logarítmica de manos"></canvas></div>
+</div>
+<div class="readout texto" id="c5l3-out" aria-live="polite"></div></div><div class="prose"><p>Los números confirman la teoría. Con 10 manos, el error cuadrático medio del ordinario es 1,21 y el del ponderado, 0,51. Con 100 manos, 0,110 y 0,095. Con 10.000, los dos bajan a 0,001. En una corrida suelta, el ordinario puede dar valores imposibles, como −2, porque un solo episodio con peso 4 u 8 domina el promedio; el ponderado siempre queda entre −1 y +1.</p><p>Los métodos <i>off-policy</i> son más generales que los <i>on-policy</i>: estos son el caso particular donde <span class="math">b = \pi</span>. Permiten aprender la política codiciosa mientras se explora, aprender de los registros de un sistema anterior o de las demostraciones de una persona. A cambio, convergen más lento y con más varianza. El capítulo 7 presenta Q-learning, un método <i>off-policy</i> que no necesita pesos.</p></div></section>
+<section><h2>El costo: esperar al final del episodio</h2><div class="prose"><p>Monte Carlo tiene virtudes claras: no necesita modelo, estima cada estado con sus propias visitas (un error en un estado no contamina a otros), puede concentrarse en los estados que importan y no supone que el estado cumpla perfectamente la propiedad de Markov, porque usa retornos reales.</p><p>Pero tiene un costo que el título de esta sección anticipa: <b>solo aprende cuando el episodio termina</b>. El retorno de un estado no se conoce hasta el final, y hasta entonces no hay nada que promediar.</p></div><div class="analogia"><b>Imagínalo así</b><p>Un estudiante que solo se entera de su nota al final del semestre no sabe, durante el semestre, qué temas lleva bien y cuáles mal. Si el semestre es corto, no importa mucho. Si dura años, o si no termina nunca, esperar la nota final para corregir es un pésimo plan.</p></div><div class="prose"><p>En la maqueta, un episodio de la política al azar dura en promedio 37 pasos, y alguno llega al tope de 100. Durante todos esos pasos, el robot no corrige nada. En problemas donde los episodios duran miles de pasos, la espera es enorme. En las <b>tareas continuas</b> (<i>continuing tasks</i>) del capítulo 2, que no terminan nunca, como mantener un centro de datos frío o administrar el tráfico de una red, Monte Carlo directamente no se puede usar.</p><p>Hay un segundo costo, menos visible: la <b>varianza</b> (<i>variance</i>). El retorno de un episodio suma muchas recompensas, y cada una depende del azar de muchos pasos: un resbalón al principio cambia todo lo que sigue. Por eso los retornos de un mismo estado varían mucho de un episodio a otro, y hacen falta muchos episodios para que el promedio se estabilice.</p></div><div class="caso"><b>Un caso real</b><p>El Blackjack fue uno de los primeros juegos resueltos con simulación por computadora. En 1956, cuatro ingenieros del ejército de los Estados Unidos (Roger Baldwin, Wilbert Cantey, Herbert Maisel y James McDermott) publicaron una estrategia casi óptima calculada a mano con calculadoras de escritorio durante meses. En 1962, el matemático Edward Thorp publicó «Beat the Dealer», con estrategias refinadas gracias a simulaciones en una computadora IBM 704 que jugaba millones de manos, y además mostró que con un mazo finito, contando las cartas que ya salieron, el jugador puede tener ventaja. La estrategia que aprende el laboratorio con 500.000 manos simuladas es, en lo esencial, la que aquellos pioneros tardaron años en calcular.</p></div><div class="ml"><b>En la práctica</b><p><b>Los registros de los robots.</b> Noemí tiene un tesoro: los registros de dos años de viajes de los doce robots, con cada casilla, cada orden y cada resbalón. Con Monte Carlo podría estimar el valor de cada casilla sin modelo. Pero se topa con el supuesto de cobertura: los robots siguen rutas programadas a mano, siempre las mismas, así que hay pasillos que ningún robot recorrió jamás y acciones que nunca se tomaron. Para la política actual, los registros sirven; para evaluar una política distinta, no. Le propone a Teodoro dos cosas: que los robots varíen un poco sus rutas en las horas de poco movimiento, para empezar a cubrir los demás caminos, y seguir probando políticas en el simulador de Ulises. Ulises le pregunta si hace falta esperar a que termine cada viaje para aprender. Esa pregunta es el capítulo 6.</p></div></section>
+<section><h2>La idea clave</h2><div class="prose"><p>Sin modelo, el valor se estima con muestras: se juegan episodios completos y se promedia el retorno que siguió a cada estado. No hace falta conocer el mundo, basta con vivirlo muchas veces. El promedio puede usar la primera visita a cada estado o todas. Para controlar, se estima Q en vez de V, porque sin modelo V no dice qué acción tomar, y se sigue la iteración generalizada de política. Hace falta explorar: con arranques exploratorios, con políticas ε-suaves o con una política de comportamiento distinta de la política objetivo y muestreo de importancia. El costo de Monte Carlo es esperar al final de cada episodio y tolerar la varianza de los retornos completos.</p></div></section>
+<section><h2>Pruébate</h2><div class="quiz"><h3>Pruébate</h3><details><summary>¿Qué necesita un método de Monte Carlo en lugar del modelo del entorno?</summary><p>Episodios completos de experiencia, reales o simulados: con eso promedia los retornos que siguieron a cada estado.</p></details><details><summary>¿Por qué, sin modelo, conviene estimar Q en vez de V para mejorar la política?</summary><p>Porque para elegir una acción a partir de V hay que saber adónde lleva cada acción, y eso es el modelo; con Q, basta con elegir la acción de mayor valor en cada estado.</p></details><details><summary>En un episodio, el robot pasa por C5 en el paso 0 y en el paso 2. ¿Qué retornos usa el Monte Carlo de primera visita para C5 y cuáles el de toda visita?</summary><p>El de primera visita usa solo el retorno desde el paso 0; el de toda visita usa los dos, el del paso 0 y el del paso 2.</p></details><details><summary>¿Para qué sirven los arranques exploratorios y por qué no se pueden usar con un robot real?</summary><p>Para que todos los pares de estado y acción tengan probabilidad de ser visitados, empezando cada episodio en un estado y una acción al azar. Con un robot real no se puede empezar en cualquier casilla con cualquier acción a voluntad.</p></details><details><summary>Una mano jugada por la política al azar tiene tres decisiones, y las tres coinciden con las de la política objetivo determinista. ¿Cuánto vale su peso de muestreo de importancia?</summary><p>Cada decisión aporta 1 / 0,5 = 2, así que el peso es 2 × 2 × 2 = 8.</p></details><details><summary>¿Por qué Monte Carlo no sirve para una tarea continua?</summary><p>Porque solo aprende cuando el episodio termina y calcula el retorno completo; en una tarea que no termina, ese momento nunca llega.</p></details></div></section>
+<section><h2>Para investigar</h2><div class="investiga"><h3>Para investigar</h3><p class="hint">Estas preguntas no se responden en el capítulo: búscalas por tu cuenta.</p><ol><li>¿Por qué el error de un promedio de Monte Carlo baja como uno sobre la raíz del número de muestras, y qué significa eso para el costo de ganar un decimal de precisión?<small>Pista: busca «Monte Carlo error 1/sqrt(n) standard error».</small></li><li>¿Qué es la búsqueda de árbol de Monte Carlo (MCTS) y cómo la combinó AlphaGo con redes neuronales?<small>Pista: busca «Monte Carlo tree search UCT AlphaGo».</small></li><li>¿Por qué el muestreo de importancia ordinario puede tener varianza infinita, aunque su promedio sea correcto?<small>Pista: busca el ejemplo 5.5 del libro de Sutton y Barto, «infinite variance».</small></li><li>¿Por qué con un mazo finito el estado de tres partes del Blackjack deja de cumplir la propiedad de Markov?<small>Pista: piensa en qué información adicional usa un contador de cartas.</small></li><li>¿Qué son los métodos de reducción de varianza en simulación, como las variables de control o las variables antitéticas?<small>Pista: busca «variance reduction control variates antithetic variates».</small></li></ol></div></section>
+<section><h2>Para saber más</h2><div class="vids"><span>Para saber más</span><a class="vid" href="http://incompleteideas.net/book/the-book-2nd.html" target="_blank" rel="noopener">Reinforcement Learning: An Introduction, capítulo 5 <small>los métodos de Monte Carlo en el libro de Sutton y Barto (2.ª ed., 2018), con el Blackjack, gratuito, en inglés</small></a><a class="vid" href="https://gymnasium.farama.org/environments/toy_text/blackjack/" target="_blank" rel="noopener">Blackjack en Gymnasium <small>el entorno de la práctica, sus reglas y la opción <code>sab</code>, en inglés</small></a><a class="vid" href="https://spinningup.openai.com/en/latest/spinningup/rl_intro.html" target="_blank" rel="noopener">Spinning Up: conceptos clave <small>políticas, retornos y funciones de valor, en inglés</small></a><a class="vid" href="https://es.wikipedia.org/wiki/M%C3%A9todo_de_Montecarlo" target="_blank" rel="noopener">Método de Monte Carlo <small>la historia y los usos del método fuera del refuerzo, en español</small></a></div></section>
+<label class="got"><input type="checkbox" id="got"> Lo tengo claro</label>
+<nav class="pager" id="pager" aria-label="Capítulo anterior y siguiente"></nav>
+</main>
+</div>
+<footer><span>Curso abierto de aaramirez.github.io.</span><span>Sitio publicado: <a href="https://github.com/aaramirez/aprendizaje-por-refuerzo" target="_blank" rel="noopener">github.com/aaramirez/aprendizaje-por-refuerzo</a></span></footer>
+</div>
+<script src="assets/lab.js"></script>
+<script>
+(function(){
+/* MundoRL: biblioteca mínima común de los labs del curso «Aprendizaje por refuerzo» (sin dependencias, con semilla).
+   Plantilla: copia este bloque DENTRO de la IIFE de tu lab (el motor solo admite <script> en línea, sin src).
+   Uso típico:
+     const M=MundoRL, m=M.cuadricula('almacen');            // la cuadrícula de referencia del curso
+     const r=M.rnd(42);
+     const {V,pi}=M.iterarValor(m);                         // valores óptimos y política óptima
+     M.dibujar(canvas,m,{raiz,V,pi,numeros:true});          // mapa de calor de V y flechas de la política
+     const ep=M.episodio(m,s=>M.elegir(pi,s,r),r);          // un episodio: ep.G, ep.Gd, ep.pasos, ep.final
+   Acciones: 0 arriba, 1 derecha, 2 abajo, 3 izquierda (el orden de CliffWalking en Gymnasium).
+   Estados: s = fila*cols + columna (fila 0 arriba), como FrozenLake y CliffWalking. Nombre de casilla: 'A5' =
+   columna A (la primera de la izquierda), fila 5 contada desde arriba. */
+const MundoRL=(function(){
+  /* ---------- Azar con semilla (mulberry32) ---------- */
+  function rnd(s){return function(){s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  function gauss(r){let u=0;while(!u)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r());}
+  const entero=(r,n)=>Math.floor(r()*n);
+  function barajar(n,r){const a=Array.from({length:n},(_,i)=>i);for(let i=n-1;i>0;i--){const j=entero(r,i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+  /* ---------- Números en español: punto de miles, coma decimal ---------- */
+  const nf=(n,d=0)=>{if(!isFinite(n))return '—';const s=Math.abs(n).toFixed(d).split('.');s[0]=s[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');return (n<0&&Number(Math.abs(n).toFixed(d))!==0?'−':'')+s.join(',');};
+  const pct=(x,d=1)=>nf(100*x,d)+' %';
+
+  /* ---------- Cuadrículas ---------- */
+  const ACC=['arriba','derecha','abajo','izquierda'],FLECHA=['↑','→','↓','←'],DF=[-1,0,1,0],DC=[0,1,0,-1];
+  /* Caracteres: '.' piso, '#' pared (estantería), 'S' inicio, 'P' premio (termina), 'T' trampa (termina),
+     'C' acantilado (castigo y vuelta al inicio, no termina: CliffWalking). */
+  const MAPAS={
+    almacen:['.....P',
+             '.###.T',
+             '...T..',
+             '.#....',
+             '..S#..'],
+    acantilado:['............','............','............','SCCCCCCCCCCP'],
+    lago4:['S...','.T.T','...T','T..P']
+  };
+  /* Recompensas y dinámica por defecto de la cuadrícula de referencia. */
+  const DEF={paso:-0.1,premio:10,trampa:-10,acantilado:-100,resbalar:0.2,gamma:0.9,maxPasos:100};
+  const PRESET={
+    almacen:{},
+    acantilado:{paso:-1,premio:-1,resbalar:0,gamma:1,maxPasos:200},          // CliffWalking-v1 de Gymnasium
+    lago4:{paso:0,premio:1,trampa:0,resbalar:2/3,gamma:0.99,maxPasos:100}      // FrozenLake-v1 4x4, resbaloso
+  };
+  function cuadricula(mapa,o){
+    const clave=typeof mapa==='string'?mapa:null;
+    const filas=(clave?MAPAS[clave]:mapa).slice();
+    const op=Object.assign({},DEF,clave?PRESET[clave]:{},o||{});
+    const nF=filas.length,nC=filas[0].length,nS=nF*nC,tipo=[];
+    let inicio=0;
+    for(let f=0;f<nF;f++)for(let c=0;c<nC;c++){const t=filas[f][c]||'.';tipo.push(t);if(t==='S')inicio=f*nC+c;}
+    const m={mapa:filas,filas:nF,cols:nC,nS,nA:4,tipo,inicio,gamma:op.gamma,maxPasos:op.maxPasos,op,
+      esPared:s=>tipo[s]==='#',esTerminal:s=>tipo[s]==='P'||tipo[s]==='T',
+      fila:s=>Math.floor(s/nC),col:s=>s%nC,
+      nombre:s=>String.fromCharCode(65+s%nC)+(Math.floor(s/nC)+1)};
+    m.libres=[];for(let s=0;s<nS;s++)if(!m.esPared(s)&&!m.esTerminal(s))m.libres.push(s);
+    /* Adónde lleva moverse en la dirección d desde s (paredes y bordes: se queda). */
+    function mover(s,d){const f=m.fila(s)+DF[d],c=m.col(s)+DC[d];if(f<0||f>=nF||c<0||c>=nC)return s;const s2=f*nC+c;return tipo[s2]==='#'?s:s2;}
+    function resultado(s2){const t=tipo[s2];
+      if(t==='P')return {s2,r:op.premio,fin:true};
+      if(t==='T')return {s2,r:op.trampa,fin:true};
+      if(t==='C')return {s2:inicio,r:op.acantilado,fin:false,cayo:true};
+      return {s2,r:op.paso,fin:false};}
+    /* P[s][a]: lista de {p,s2,r,fin} (como env.unwrapped.P de Gymnasium). Con probabilidad 1−resbalar va adonde
+       quiere; con resbalar/2 se desvía a cada lado (nunca hacia atrás). */
+    m.reconstruir=function(){
+      m.P=[];
+      for(let s=0;s<nS;s++){const fila=[];
+        for(let a=0;a<4;a++){const lista=[];
+          if(m.esPared(s)||m.esTerminal(s)){fila.push([{p:1,s2:s,r:0,fin:true}]);continue;}
+          const q=op.resbalar,opciones=[[a,1-q],[(a+1)%4,q/2],[(a+3)%4,q/2]];
+          for(const [d,p] of opciones){if(p<=0)continue;const res=resultado(mover(s,d));
+            const ya=lista.find(x=>x.s2===res.s2&&x.r===res.r);if(ya)ya.p+=p;else lista.push(Object.assign({p},res));}
+          fila.push(lista);}
+        m.P.push(fila);}
+    };
+    m.reconstruir();
+    /* Cambia una casilla (para labs donde el lector arma la cuadrícula) o una opción, y recalcula P. */
+    m.poner=function(s,t){tipo[s]=t;if(t==='S'){for(let i=0;i<nS;i++)if(i!==s&&tipo[i]==='S')tipo[i]='.';inicio=s;m.inicio=s;}
+      m.libres=[];for(let i=0;i<nS;i++)if(!m.esPared(i)&&!m.esTerminal(i))m.libres.push(i);m.reconstruir();};
+    m.opcion=function(k,v){op[k]=v;if(k==='gamma')m.gamma=v;if(k==='maxPasos')m.maxPasos=v;m.reconstruir();};
+    /* Un paso con azar: {s2, r, fin, cayo}. */
+    m.paso=function(s,a,r){const L=m.P[s][a];let u=r(),k=0;while(k<L.length-1&&u>=L[k].p){u-=L[k].p;k++;}
+      const x=L[k];return {s2:x.s2,r:x.r,fin:x.fin,cayo:tipo[s]!=='C'&&x.s2===inicio&&x.r===op.acantilado};};
+    return m;
+  }
+
+  /* ---------- Políticas: Float64Array de nS*4 probabilidades (pi[s*4+a]) ---------- */
+  function politicaAlAzar(m){const pi=new Float64Array(m.nS*4).fill(0.25);return pi;}
+  function politicaDe(m,acciones){const pi=new Float64Array(m.nS*4);for(let s=0;s<m.nS;s++)pi[s*4+(acciones[s]??0)]=1;return pi;}
+  function accionDe(pi,s){let k=0;for(let a=1;a<4;a++)if(pi[s*4+a]>pi[s*4+k]+1e-12)k=a;return k;}
+  function elegir(pi,s,r){let u=r();for(let a=0;a<3;a++){u-=pi[s*4+a];if(u<0)return a;}return 3;}
+  /* Política codiciosa respecto de Q (nS*4). empates: 'primero' (determinista) o 'repartir'. */
+  function codiciosa(m,Q,empates){const pi=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++){let mx=-Infinity;for(let a=0;a<4;a++)mx=Math.max(mx,Q[s*4+a]);
+      const mejores=[];for(let a=0;a<4;a++)if(Q[s*4+a]>=mx-1e-9)mejores.push(a);
+      if(empates==='repartir')mejores.forEach(a=>pi[s*4+a]=1/mejores.length);else pi[s*4+mejores[0]]=1;}
+    return pi;}
+  function egreedy(m,Q,eps){const pi=codiciosa(m,Q);for(let i=0;i<pi.length;i++)pi[i]=pi[i]*(1-eps)+eps/4;return pi;}
+
+  /* ---------- Bellman ---------- */
+  function g_(m,o){return o&&o.gamma!==undefined?o.gamma:m.gamma;}
+  /* Q a partir de V: q(s,a) = Σ p·(r + γ·V(s')) */
+  function qDeV(m,V,gamma){const Q=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++)for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));Q[s*4+a]=(m.esPared(s)||m.esTerminal(s))?0:q;}
+    return Q;}
+  /* Un barrido de evaluación (síncrono): V'(s) = Σ_a π(a|s) Σ p·(r + γ·V(s')). Devuelve {V, delta}. */
+  function barridoEval(m,pi,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let v=0;for(let a=0;a<4;a++){const w=pi[s*4+a];if(!w)continue;let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));v+=w*q;}
+      W[s]=v;delta=Math.max(delta,Math.abs(v-V[s]));}
+    return {V:W,delta};}
+  /* Un barrido de optimalidad: V'(s) = max_a Σ p·(r + γ·V(s')). */
+  function barridoValor(m,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let mx=-Infinity;for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));if(q>mx)mx=q;}
+      W[s]=mx;delta=Math.max(delta,Math.abs(mx-V[s]));}
+    return {V:W,delta};}
+  /* Evaluación de política hasta que el cambio máximo baje de tol. */
+  function evaluar(m,pi,o={}){let V=o.V0?Float64Array.from(o.V0):new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoEval(m,pi,V,o);V=x.V;delta=x.delta;b++;}
+    return {V,barridos:b,delta};}
+  function iterarValor(m,o={}){let V=new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoValor(m,V,o);V=x.V;delta=x.delta;b++;}
+    const Q=qDeV(m,V,g_(m,o));return {V,Q,pi:codiciosa(m,Q),barridos:b};}
+  function iterarPolitica(m,o={}){let pi=o.pi0?Float64Array.from(o.pi0):politicaAlAzar(m),vueltas=0,V,historia=[];
+    for(;vueltas<100;vueltas++){V=evaluar(m,pi,o).V;const nuevo=codiciosa(m,qDeV(m,V,g_(m,o)));historia.push({V,pi});
+      let igual=true;for(const s of m.libres)if(accionDe(nuevo,s)!==accionDe(pi,s)||pi[s*4+accionDe(pi,s)]<1){igual=false;break;}
+      pi=nuevo;if(igual)break;}
+    return {V,pi,vueltas:vueltas+1,historia};}
+
+  /* ---------- Experiencia ---------- */
+  /* Un episodio desde el inicio (o desde o.desde). elegir(s) -> acción. Devuelve estados, acciones, recompensas,
+     G (suma), Gd (suma descontada con γ), pasos y final: 'premio', 'trampa' o 'tope'. */
+  function episodio(m,elegirA,r,o={}){const S=[],A=[],R=[];let s=o.desde??m.inicio,fin=false,final='tope',G=0,Gd=0,d=1;const max=o.max??m.maxPasos;
+    for(let t=0;t<max&&!fin;t++){const a=elegirA(s);const x=m.paso(s,a,r);S.push(s);A.push(a);R.push(x.r);G+=x.r;Gd+=d*x.r;d*=m.gamma;s=x.s2;fin=x.fin;
+      if(fin)final=m.tipo[s]==='P'?'premio':'trampa';}
+    S.push(s);return {S,A,R,G,Gd,pasos:A.length,final};}
+  /* Retorno medio de una política (pi) en n episodios. */
+  function retornoMedio(m,pi,r,n=1000){let G=0,Gd=0,P=0,ex=0;for(let i=0;i<n;i++){const e=episodio(m,s=>elegir(pi,s,r),r);G+=e.G;Gd+=e.Gd;P+=e.pasos;if(e.final==='premio')ex++;}
+    return {G:G/n,Gd:Gd/n,pasos:P/n,exito:ex/n};}
+
+  /* ---------- Bandido multibrazo (cap. 01) ---------- */
+  const BANDIDO=[0.25,0.40,0.55,0.50,0.30];   // máquinas A-E: probabilidad de pagar 1 ficha
+  function bandido(probs,r){probs=probs||BANDIDO;let mejor=0;probs.forEach((p,i)=>{if(p>probs[mejor])mejor=i;});
+    return {k:probs.length,probs,mejor,tirar:a=>r()<probs[a]?1:0};}
+  /* Agente de bandido. metodo: 'egreedy' (ε, promedio de la muestra), 'optimista' (codicioso con Q inicial q0 y
+     paso constante alfa) o 'ucb' (cota superior de confianza con c). */
+  function agenteBandido(k,o={}){const met=o.metodo||'egreedy',q0=o.q0??0,r=o.r||rnd(42);
+    const Q=new Float64Array(k).fill(met==='optimista'?q0:0),N=new Float64Array(k);let t=0;
+    function arg(f){let mx=-Infinity,L=[];for(let a=0;a<k;a++){const v=f(a);if(v>mx+1e-12){mx=v;L=[a];}else if(Math.abs(v-mx)<=1e-12)L.push(a);}return L[entero(r,L.length)];}
+    /* epsilon, alfa y c se pueden cambiar en vivo (ag.epsilon = 0.2). exploro: si la última elección fue al azar. */
+    return {Q,N,metodo:met,epsilon:o.epsilon??0.1,alfa:o.alfa??0.1,c:o.c??2,exploro:false,
+      elegir(){t++;this.exploro=false;
+        if(met==='ucb'){for(let a=0;a<k;a++)if(N[a]===0)return a;const c=this.c;return arg(a=>Q[a]+c*Math.sqrt(Math.log(t)/N[a]));}
+        if(met==='egreedy'&&r()<this.epsilon){this.exploro=true;return entero(r,k);}
+        return arg(a=>Q[a]);},
+      aprender(a,R){N[a]++;Q[a]+=(met==='optimista'?this.alfa:1/N[a])*(R-Q[a]);}};}
+
+  /* ---------- CartPole (Barto, Sutton y Anderson, 1983; constantes de Gymnasium CartPole-v1) ---------- */
+  function cartpole(r){const g=9.8,mc=1.0,mp=0.1,mt=mc+mp,l=0.5,pml=mp*l,F=10,tau=0.02,thMax=12*2*Math.PI/360,xMax=2.4;
+    const e={x:0,v:0,th:0,w:0,t:0,fin:false,
+      reiniciar(){this.x=(r()-.5)*.1;this.v=(r()-.5)*.1;this.th=(r()-.5)*.1;this.w=(r()-.5)*.1;this.t=0;this.fin=false;return this.obs();},
+      obs(){return [this.x,this.v,this.th,this.w];},
+      /* a: 0 empuja a la izquierda, 1 a la derecha. Recompensa 1 por paso; termina si |θ|>12° o |x|>2,4; trunca a 500. */
+      paso(a){const f=a===1?F:-F,ct=Math.cos(this.th),st=Math.sin(this.th);
+        const tmp=(f+pml*this.w*this.w*st)/mt,ta=(g*st-ct*tmp)/(l*(4/3-mp*ct*ct/mt)),xa=tmp-pml*ta*ct/mt;
+        this.x+=tau*this.v;this.v+=tau*xa;this.th+=tau*this.w;this.w+=tau*ta;this.t++;
+        const termina=Math.abs(this.x)>xMax||Math.abs(this.th)>thMax,trunca=this.t>=500;this.fin=termina||trunca;
+        return {obs:this.obs(),r:1,termina,trunca};}};
+    e.reiniciar();return e;}
+
+  /* ---------- Dibujo ---------- */
+  function color(raiz,n){return getComputedStyle(raiz).getPropertyValue(n).trim();}
+  function rgb(c){if(!c)return [128,128,128];if(c[0]==='#'){if(c.length===4)c='#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];return [1,3,5].map(i=>parseInt(c.substr(i,2),16));}
+    const m=c.match(/[\d.]+/g);return m?m.slice(0,3).map(Number):[128,128,128];}
+  function mezcla(a,b,t){const A=rgb(a),B=rgb(b);return 'rgb('+A.map((x,i)=>Math.round(x+(B[i]-x)*t)).join(',')+')';}
+  /* Prepara un canvas con devicePixelRatio. Alto = ancho * data-prop (o o.prop). Devuelve {c,w,h}. */
+  function lienzo(cv,prop){const w=Math.max(120,cv.clientWidth||cv.parentNode.clientWidth||300),p=prop??parseFloat(cv.dataset.prop||'0.6'),h=Math.round(w*p),k=window.devicePixelRatio||1;
+    cv.style.height=h+'px';cv.width=Math.round(w*k);cv.height=Math.round(h*k);const c=cv.getContext('2d');c.setTransform(k,0,0,k,0,0);return {c,w,h};}
+  function flecha(c,x,y,a,L,col,ancho){const dx=DC[a],dy=DF[a];c.strokeStyle=col;c.fillStyle=col;c.lineWidth=ancho||2;
+    const x0=x-dx*L*.45,y0=y-dy*L*.45,x1=x+dx*L*.45,y1=y+dy*L*.45;c.beginPath();c.moveTo(x0,y0);c.lineTo(x1-dx*L*.18,y1-dy*L*.18);c.stroke();
+    const px=-dy,py=dx;c.beginPath();c.moveTo(x1,y1);c.lineTo(x1-dx*L*.3+px*L*.2,y1-dy*L*.3+py*L*.2);c.lineTo(x1-dx*L*.3-px*L*.2,y1-dy*L*.3-py*L*.2);c.closePath();c.fill();}
+  /* Dibuja la cuadrícula. o: {raiz, V (mapa de calor), rango (|V| que satura el color), pi (flechas: probabilidades),
+     numeros (escribe V), ruta (lista de estados), agente (estado), resaltar (estado), Q (cuatro triángulos por casilla),
+     visitas (Float64Array: opacidad de exploración), prop}. Devuelve {lado, x0, y0, casilla(px,py) -> s o -1}. */
+  function dibujar(cv,m,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),prop=o.prop??(m.filas/m.cols);
+    const {c,w,h}=lienzo(cv,prop),lado=Math.min((w-2)/m.cols,(h-2)/m.filas),x0=(w-lado*m.cols)/2,y0=(h-lado*m.filas)/2;
+    const card=C('--card'),azul=C('--c-red'),rojo=C('--warm'),ink=C('--ink'),muted=C('--muted'),good=C('--good'),line=C('--line');
+    c.clearRect(0,0,w,h);
+    let rango=o.rango;if(!rango&&(o.V||o.Q)){rango=1e-9;const src=o.V||o.Q;for(let i=0;i<src.length;i++)rango=Math.max(rango,Math.abs(src[i]));}
+    const tinte=v=>v>=0?mezcla(card,azul,Math.min(1,v/rango)*.85):mezcla(card,rojo,Math.min(1,-v/rango)*.85);
+    const fuente=Math.max(9,Math.min(14,lado*.24));
+    for(let s=0;s<m.nS;s++){const x=x0+m.col(s)*lado,y=y0+m.fila(s)*lado,t=m.tipo[s],cx=x+lado/2,cy=y+lado/2;
+      c.fillStyle=card;
+      if(t==='#'){c.fillStyle=mezcla(card,muted,.55);c.fillRect(x,y,lado,lado);
+        c.strokeStyle=mezcla(card,muted,.8);c.lineWidth=1;c.beginPath();for(let k=1;k<4;k++){c.moveTo(x+3,y+lado*k/4);c.lineTo(x+lado-3,y+lado*k/4);}c.stroke();continue;}
+      if(t==='P'){c.fillStyle=mezcla(card,good,.28);c.fillRect(x,y,lado,lado);}
+      else if(t==='T'||t==='C'){c.fillStyle=mezcla(card,rojo,.28);c.fillRect(x,y,lado,lado);}
+      else if(o.Q){const q=k=>o.Q[s*4+k];const P=[[cx,cy],[x,y],[x+lado,y],[x+lado,y+lado],[x,y+lado]];
+        const tri=[[1,2],[2,3],[3,4],[4,1]];for(let a=0;a<4;a++){c.fillStyle=tinte(q(a));c.beginPath();c.moveTo(cx,cy);c.lineTo(...P[tri[a][0]]);c.lineTo(...P[tri[a][1]]);c.closePath();c.fill();}
+        c.strokeStyle=line;c.lineWidth=.6;c.beginPath();c.moveTo(x,y);c.lineTo(x+lado,y+lado);c.moveTo(x+lado,y);c.lineTo(x,y+lado);c.stroke();}
+      else if(o.V){c.fillStyle=tinte(o.V[s]);c.fillRect(x,y,lado,lado);}
+      else c.fillRect(x,y,lado,lado);
+      if(o.visitas&&!m.esTerminal(s)){const vmax=Math.max(1,...o.visitas);c.fillStyle=C('--c-apl');c.globalAlpha=.45*Math.sqrt(o.visitas[s]/vmax);c.fillRect(x,y,lado,lado);c.globalAlpha=1;}
+      c.textAlign='center';c.textBaseline='middle';
+      if(t==='P'||t==='T'||t==='C'){c.fillStyle=t==='P'?good:rojo;c.font='700 '+Math.round(fuente*1.05)+'px '+C('--f-display');
+        const val=t==='P'?m.op.premio:t==='T'?m.op.trampa:m.op.acantilado;
+        c.fillText(t==='P'?'Premio':t==='T'?'Trampa':'',cx,cy-(lado>44?fuente*.55:0));if(lado>44||t==='C'){c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText((val>0?'+':'')+nf(val,Number.isInteger(val)?0:1),cx,t==='C'?cy:cy+fuente*.65);}
+        continue;}
+      if(o.pi&&!o.Q){const ps=[0,1,2,3].map(a=>o.pi[s*4+a]),mx=Math.max(...ps);
+        for(let a=0;a<4;a++)if(ps[a]>0.01){const L=lado*(o.numeros?.42:.6)*(0.45+0.55*ps[a]/mx);flecha(c,cx,cy-(o.numeros?lado*.14:0),a,L,ink,ps[a]>=mx-1e-9?2.2:1.2);}}
+      if(o.numeros&&o.V){c.fillStyle=ink;c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText(nf(o.V[s],1),cx,o.pi?y+lado*.78:cy);}
+      if(t==='S'&&!o.V&&!o.Q){c.fillStyle=muted;c.font='700 '+Math.round(fuente*.85)+'px '+C('--f-display');c.fillText('Inicio',cx,y+lado*.82);}
+    }
+    c.strokeStyle=line;c.lineWidth=1;for(let i=0;i<=m.cols;i++){c.beginPath();c.moveTo(x0+i*lado,y0);c.lineTo(x0+i*lado,y0+m.filas*lado);c.stroke();}
+    for(let j=0;j<=m.filas;j++){c.beginPath();c.moveTo(x0,y0+j*lado);c.lineTo(x0+m.cols*lado,y0+j*lado);c.stroke();}
+    const ini=m.inicio,xi=x0+m.col(ini)*lado,yi=y0+m.fila(ini)*lado;c.strokeStyle=C('--accent');c.setLineDash([4,3]);c.lineWidth=2;c.strokeRect(xi+2,yi+2,lado-4,lado-4);c.setLineDash([]);
+    if(o.resaltar!==undefined&&o.resaltar>=0){const xr=x0+m.col(o.resaltar)*lado,yr=y0+m.fila(o.resaltar)*lado;c.strokeStyle=C('--c-tra');c.lineWidth=3;c.strokeRect(xr+1.5,yr+1.5,lado-3,lado-3);}
+    if(o.ruta&&o.ruta.length>1){c.strokeStyle=C('--c-fis');c.lineWidth=Math.max(2,lado*.07);c.lineJoin='round';c.globalAlpha=.85;c.beginPath();
+      o.ruta.forEach((s,i)=>{const px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado;i?c.lineTo(px,py):c.moveTo(px,py);});c.stroke();c.globalAlpha=1;}
+    if(o.agente!==undefined&&o.agente>=0){const s=o.agente,px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado,R=lado*.26;
+      c.fillStyle=C('--d-casa');c.strokeStyle=card;c.lineWidth=2;c.beginPath();c.arc(px,py,R,0,7);c.fill();c.stroke();
+      c.fillStyle=card;c.beginPath();c.arc(px-R*.38,py-R*.15,R*.16,0,7);c.arc(px+R*.38,py-R*.15,R*.16,0,7);c.fill();}
+    return {lado,x0,y0,casilla(px,py){const cc=Math.floor((px-x0)/lado),ff=Math.floor((py-y0)/lado);return (cc<0||ff<0||cc>=m.cols||ff>=m.filas)?-1:ff*m.cols+cc;}};
+  }
+  /* Curvas. series: [{y:[...], color:'--c-tra', nombre, punteada, tenue, ancho}]. o: {raiz, media (ventana de la
+     media móvil; la serie cruda se dibuja tenue), ymin, ymax, xmax, ejeX, ejeY, lineas:[{y, color, nombre}], prop}. */
+  function media(y,k){const out=new Array(y.length);let s=0;for(let i=0;i<y.length;i++){s+=y[i];if(i>=k)s-=y[i-k];out[i]=s/Math.min(i+1,k);}return out;}
+  function curva(cv,series,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),{c,w,h}=lienzo(cv,o.prop);
+    const iz=46,de=10,ar=10,ab=26,W=w-iz-de,H=h-ar-ab;
+    let n=o.xmax||1,lo=o.ymin,hi=o.ymax;series.forEach(S=>{n=Math.max(n,S.y.length);});
+    if(lo===undefined||hi===undefined){let a=Infinity,b=-Infinity;series.forEach(S=>S.y.forEach(v=>{if(isFinite(v)){a=Math.min(a,v);b=Math.max(b,v);}}));(o.lineas||[]).forEach(L=>{a=Math.min(a,L.y);b=Math.max(b,L.y);});
+      if(!isFinite(a)){a=0;b=1;}if(a===b){a-=1;b+=1;}const pad=(b-a)*.06;if(lo===undefined)lo=a-pad;if(hi===undefined)hi=b+pad;}
+    const X=i=>iz+(n>1?i/(n-1):0)*W,Y=v=>ar+H-(Math.min(hi,Math.max(lo,v))-lo)/(hi-lo)*H;
+    c.clearRect(0,0,w,h);c.fillStyle=C('--card');c.fillRect(0,0,w,h);
+    c.strokeStyle=C('--grid');c.lineWidth=1;c.fillStyle=C('--muted');c.font='10px '+C('--f-mono');c.textAlign='right';c.textBaseline='middle';
+    for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4,y=Y(v);c.beginPath();c.moveTo(iz,y);c.lineTo(iz+W,y);c.stroke();c.fillText(nf(v,o.decimales??(Math.abs(hi-lo)<0.5?2:Math.abs(hi-lo)<5?1:0)),iz-4,y);}
+    c.textAlign='center';c.textBaseline='top';for(let k=0;k<=4;k++){const i=Math.round((n-1)*k/4);if(k&&i===Math.round((n-1)*(k-1)/4))continue;const ul=n>1&&i===n-1;c.textAlign=ul?'right':'center';c.fillText(nf(i+(o.desde1?1:0)),ul?X(i)+de-1:X(i),ar+H+5);}
+    if(o.ejeX){c.textAlign='right';c.fillText(o.ejeX,iz+W,ar+H+15);}
+    if(o.ejeY){c.save();c.translate(10,ar+H/2);c.rotate(-Math.PI/2);c.textAlign='center';c.fillText(o.ejeY,0,0);c.restore();}
+    (o.lineas||[]).forEach(L=>{c.strokeStyle=C(L.color||'--muted');c.setLineDash([5,4]);c.lineWidth=1.4;c.beginPath();c.moveTo(iz,Y(L.y));c.lineTo(iz+W,Y(L.y));c.stroke();c.setLineDash([]);
+      if(L.nombre){c.fillStyle=C(L.color||'--muted');c.textAlign='right';c.textBaseline='bottom';c.fillText(L.nombre,iz+W-4,Y(L.y)-2);}});
+    const traza=(y,col,anch,alfa,punt)=>{if(!y.length)return;c.strokeStyle=col;c.lineWidth=anch;c.globalAlpha=alfa;c.setLineDash(punt?[5,4]:[]);c.beginPath();
+      y.forEach((v,i)=>{i?c.lineTo(X(i),Y(v)):c.moveTo(X(i),Y(v));});c.stroke();c.globalAlpha=1;c.setLineDash([]);};
+    series.forEach(S=>{const col=C(S.color||'--accent');if(o.media&&S.y.length>1){if(o.crudo!==false&&!S.sinCrudo)traza(S.y,col,1,.22,false);traza(media(S.y,o.media),col,S.ancho||2.2,1,S.punteada);}else traza(S.y,col,S.ancho||2,S.tenue?.35:1,S.punteada);});
+    c.strokeStyle=C('--line');c.strokeRect(iz+.5,ar+.5,W,H);
+    return {X,Y};
+  }
+  /* Redibuja al cambiar el tema o el ancho. */
+  function tema(raiz,fn){let t;const re=()=>{clearTimeout(t);t=setTimeout(fn,60);};
+    if(window.ResizeObserver)new ResizeObserver(re).observe(raiz);
+    new MutationObserver(re).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme','class']});
+    if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',re);}
+  const quieto=()=>!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+  /* Entrenar por tramos sin congelar la página: trabajo() hace una unidad (un episodio, un paso) y devuelve false
+     cuando ya no hay más; cada cuadro trabaja o.ms milisegundos (24 por defecto) y llama a o.cuadro(). */
+  function bucle(trabajo,o={}){const ms=o.ms??24;let vivo=false,id=0;
+    function cuadro(){if(!vivo)return;const t0=performance.now();let sigue=true;
+      do{sigue=trabajo()!==false;}while(sigue&&performance.now()-t0<ms&&!o.unoPorCuadro);
+      if(o.cuadro)o.cuadro();if(!sigue){vivo=false;if(o.fin)o.fin();return;}
+      id=o.pausa?setTimeout(cuadro,o.pausa):requestAnimationFrame(cuadro);}
+    return {iniciar(){if(vivo)return;vivo=true;cuadro();},parar(){vivo=false;cancelAnimationFrame(id);clearTimeout(id);},get corriendo(){return vivo;}};}
+
+  return {rnd,gauss,entero,barajar,nf,pct,ACC,FLECHA,MAPAS,DEF,cuadricula,
+    politicaAlAzar,politicaDe,accionDe,elegir,codiciosa,egreedy,qDeV,barridoEval,barridoValor,evaluar,iterarValor,iterarPolitica,
+    episodio,retornoMedio,BANDIDO,bandido,agenteBandido,cartpole,
+    color,rgb,mezcla,lienzo,flecha,dibujar,media,curva,tema,quieto,bucle};
+})();
+  const M=MundoRL,{$,tok,canvasWidget,hexRgb,lerp}=window.Lab,nf=M.nf,rnd=M.rnd;
+
+  /* Blackjack como en Sutton y Barto (ejemplo 5.1): mazo infinito, el crupier pide hasta sumar 17 o más,
+     +1 ganar, 0 empatar, −1 perder, γ = 1. Estado: suma del jugador (12-21), carta visible (1-10), as utilizable. */
+  let R=rnd(42);
+  const carta=()=>Math.min(1+Math.floor(R()*13),10);
+  const NOM=c=>c===1?'A':String(c);
+  function mano(cartas){let s=0,as=false;for(const c of cartas){s+=c;if(c===1)as=true;}const util=as&&s+10<=21;return {s:util?s+10:s,util};}
+  const idx=(s,d,u)=>(u?100:0)+(s-12)*10+(d-1);
+  const N=200;
+  let V,NV,Q,NQ,POL,manos,modo='pred',ver='pol',ultimo=null,lazo=null;
+  function reiniciar(){
+    R=rnd(42);V=new Float64Array(N);NV=new Float64Array(N);Q=new Float64Array(2*N);NQ=new Float64Array(2*N);
+    POL=new Uint8Array(N);for(let i=0;i<N;i++){const s=12+Math.floor((i%100)/10);POL[i]=s>=20?0:1;}  // 0 plantarse, 1 pedir
+    manos=0;ultimo=null;
+  }
+  reiniciar();
+  const eps=()=>parseFloat($('#c5l1-e').value);
+  function accion(i){
+    if(modo==='pred'){const s=12+Math.floor((i%100)/10);return s>=20?0:1;}
+    if(modo==='eps'&&R()<eps())return R()<0.5?0:1;
+    return POL[i];
+  }
+  /* Juega un episodio completo y devuelve la lista de (estado, acción) y el retorno G. */
+  function episodio(){
+    let pj,dv,dh,a0=-1;
+    if(modo==='es'){                       // arranque exploratorio: estado y primera acción al azar
+      const s=12+Math.floor(R()*10),u=R()<0.5;dv=1+Math.floor(R()*10);dh=carta();
+      pj=u?[1,s-11]:(s===21?[10,9,2]:[10,s-10]);
+      a0=R()<0.5?0:1;
+    } else {pj=[carta(),carta()];dv=carta();dh=carta();}
+    const tray=[];let m=mano(pj);
+    const nat=m.s===21&&pj.length===2;
+    while(m.s<12){pj.push(carta());m=mano(pj);}
+    let pasado=false;
+    if(!(nat&&modo!=='es')){
+      while(true){
+        const i=idx(m.s,dv,m.util);
+        const a=a0>=0?a0:accion(i);a0=-1;
+        tray.push([i,a]);
+        if(a===0)break;
+        pj.push(carta());m=mano(pj);
+        if(m.s>21){pasado=true;break;}
+      }
+    }
+    const dc=[dv,dh];let dm=mano(dc);
+    let G;
+    if(pasado)G=-1;
+    else if(nat&&modo!=='es'){G=(dm.s===21)?0:1;}
+    else{while(dm.s<17){dc.push(carta());dm=mano(dc);}G=dm.s>21?1:(m.s>dm.s?1:(m.s<dm.s?-1:0));}
+    return {tray,G,pj,dc,ps:m.s,ds:dm.s,pasado,nat:nat&&modo!=='es'};
+  }
+  /* Monte Carlo de primera visita: en Blackjack un estado no se repite dentro de una mano. */
+  function aprender(ep){
+    const G=ep.G;
+    for(const [i,a] of ep.tray){
+      if(modo==='pred'){NV[i]++;V[i]+=(G-V[i])/NV[i];}
+      else{const k=2*i+a;NQ[k]++;Q[k]+=(G-Q[k])/NQ[k];POL[i]=Q[2*i+1]>Q[2*i]?1:0;}
+    }
+    manos++;
+  }
+  function jugar(n){for(let k=0;k<n;k++){const ep=episodio();aprender(ep);if(k===n-1)ultimo=ep;}}
+
+  function valor(i){
+    if(modo==='pred')return NV[i]?V[i]:null;
+    if(!NQ[2*i]&&!NQ[2*i+1])return null;
+    return POL[i]?Q[2*i+1]:Q[2*i];
+  }
+  const COL=()=>({neg:hexRgb(tok('--warm')),pos:hexRgb(tok('--c-red')),mid:hexRgb(tok('--card')),ink:tok('--ink'),mut:tok('--muted'),acc:tok('--c-tra'),accS:tok('--c-tra-s'),line:tok('--line')});
+  function colorV(v,c){if(v==null)return null;const t=Math.max(-1,Math.min(1,v));const rgb=t<0?lerp(c.mid,c.neg,-t):lerp(c.mid,c.pos,t);return 'rgb('+rgb.join(',')+')';}
+  let geo=[null,null];
+  function dibujar(u){
+    return function(ctx,w,h){
+      const c=COL();ctx.clearRect(0,0,w,h);
+      const ml=30,mb=30,mt=6,mr=6,cw=(w-ml-mr)/10,ch=(h-mt-mb)/10;geo[u]={ml,mt,cw,ch};
+      const mostrarPol=modo!=='pred'&&ver==='pol';
+      ctx.font='600 11px '+tok('--f-display');
+      for(let r=0;r<10;r++)for(let d=0;d<10;d++){
+        const s=21-r,i=idx(s,d+1,u),x=ml+d*cw,y=mt+r*ch;
+        let fill;
+        if(mostrarPol){const vis=NQ[2*i]+NQ[2*i+1];fill=vis?(POL[i]?c.acc:c.accS):null;}
+        else fill=colorV(valor(i),c);
+        ctx.fillStyle=fill||tok('--card');ctx.fillRect(x+1,y+1,cw-2,ch-2);
+        if(!fill){ctx.strokeStyle=c.line;ctx.setLineDash([3,3]);ctx.strokeRect(x+2,y+2,cw-4,ch-4);ctx.setLineDash([]);}
+        if(ultimo&&ultimo.tray.some(([j])=>j===i)){ctx.strokeStyle=c.ink;ctx.lineWidth=2.5;ctx.strokeRect(x+2,y+2,cw-4,ch-4);ctx.lineWidth=1;}
+        if(!mostrarPol&&cw>=40&&valor(i)!=null){ctx.fillStyle=c.ink;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(nf(valor(i),2),x+cw/2,y+ch/2);}
+        if(mostrarPol&&fill&&cw>=26){ctx.fillStyle=POL[i]?tok('--card'):c.acc;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(POL[i]?'pide':'',x+cw/2,y+ch/2);}
+      }
+      ctx.fillStyle=c.mut;ctx.font='11px '+tok('--f-display');ctx.textAlign='right';ctx.textBaseline='middle';
+      for(let r=0;r<10;r++)ctx.fillText(String(21-r),ml-5,mt+r*ch+ch/2);
+      ctx.textAlign='center';ctx.textBaseline='top';
+      for(let d=0;d<10;d++)ctx.fillText(NOM(d+1),ml+d*cw+cw/2,h-mb+4);
+      ctx.fillText('carta visible del crupier',ml+5*cw,h-mb+16);
+    };
+  }
+  const W0=canvasWidget($('#c5l1-c0'),w=>w<360?1.0:0.92,dibujar(0));
+  const W1=canvasWidget($('#c5l1-c1'),w=>w<360?1.0:0.92,dibujar(1));
+  function leyenda(){
+    const c=COL();
+    if(modo!=='pred'&&ver==='pol')
+      $('#c5l1-ley').innerHTML='<span><i class="c5l1-cua" style="background:var(--c-tra)"></i>pide carta</span><span><i class="c5l1-cua" style="background:var(--c-tra-s)"></i>se planta</span><span><i class="c5l1-cua" style="border-style:dashed"></i>sin visitar</span><span>borde grueso: estados de la última mano</span>';
+    else
+      $('#c5l1-ley').innerHTML='<span>valor</span><span>−1<i class="c5l1-barra" style="background:linear-gradient(90deg,var(--warm),var(--card),var(--c-red))"></i>+1</span><span><i class="c5l1-cua" style="border-style:dashed"></i>sin visitar</span><span>borde grueso: estados de la última mano</span>';
+  }
+  function texto(){
+    const ep=ultimo;
+    if(!ep){$('#c5l1-mano').textContent='Pulsa «Jugar 1 mano» para ver un episodio completo: las cartas, los estados que visita el jugador y el retorno que se promedia en cada uno.';return;}
+    const est=ep.tray.map(([i,a])=>{const u=i>=100,s=12+Math.floor((i%100)/10),d=i%10+1;return '('+s+', '+NOM(d)+(u?', as':'')+') '+(a?'pide':'se planta');}).join(' → ');
+    const fin=ep.nat?'blackjack natural':(ep.pasado?'se pasa de 21':('jugador '+ep.ps+' contra crupier '+(ep.ds>21?ep.ds+' (se pasa)':ep.ds)));
+    $('#c5l1-mano').textContent='Mano '+nf(manos)+'. Jugador: '+ep.pj.map(NOM).join(' ')+' · Crupier: '+ep.dc.map(NOM).join(' ')+'. Estados: '+(est||'ninguno (no decide)')+'. Final: '+fin+'. Retorno G = '+(ep.G>0?'+1':ep.G<0?'−1':'0')+(ep.tray.length?', que se suma al promedio de '+(ep.tray.length===1?'ese estado':'esos '+ep.tray.length+' estados')+'.':'.');
+  }
+  function lectura(){
+    let vis=0;for(let i=0;i<N;i++)if(valor(i)!=null)vis++;
+    const v=(s,d,u)=>{const x=valor(idx(s,d,u));return x==null?'sin dato':nf(x,2);};
+    let t='<span class="big">'+nf(manos)+' manos · '+vis+' de 200 estados con estimación</span><span>';
+    if(modo==='pred')t+='Política fija: se planta con 20 o 21. V(20, crupier 10, sin as) = '+v(20,10,false)+'; V(13, crupier 10, sin as) = '+v(13,10,false)+'; V(13, crupier 2, con as) = '+v(13,2,true)+'.</span>';
+    else{
+      let pide=0;for(let s=12;s<=21;s++)for(let d=1;d<=10;d++)if(POL[idx(s,d,false)])pide++;
+      let um=0;for(let d=1;d<=10;d++){let k=12;while(k<=21&&POL[idx(k,d,false)])k++;um+=k;}
+      t+='Sin as utilizable, el agente pide carta en '+pide+' de 100 estados; en promedio se planta desde '+nf(um/10,1)+'. Con crupier 10 y 16 sin as: '+(POL[idx(16,10,false)]?'pide':'se planta')+' (Q pedir '+nf(Q[2*idx(16,10,false)+1],2)+', Q plantarse '+nf(Q[2*idx(16,10,false)],2)+').</span>';
+    }
+    $('#c5l1-out').innerHTML=t;
+  }
+  function todo(){W0();W1();leyenda();texto();lectura();}
+  function parar(){if(lazo){lazo.parar();lazo=null;}$('#c5l1-go').textContent='Entrenar';}
+  /* Entrena por tramos (unas 24 ms por cuadro) hasta 500.000 manos; con prefers-reduced-motion, de una vez. */
+  function correr(){
+    if(lazo){parar();return;}
+    const meta=500000;
+    if(M.quieto()){while(manos<meta)jugar(1000);todo();return;}
+    $('#c5l1-go').textContent='Pausa';
+    lazo=M.bucle(()=>{jugar(200);return manos<meta;},{cuadro:todo,fin:()=>{lazo=null;parar();}});
+    lazo.iniciar();
+  }
+  $('#c5l1-una').addEventListener('click',()=>{parar();jugar(1);todo();});
+  $('#c5l1-mil').addEventListener('click',()=>{parar();jugar(1000);todo();});
+  $('#c5l1-go').addEventListener('click',correr);
+  $('#c5l1-cero').addEventListener('click',()=>{parar();reiniciar();todo();});
+  $('#c5l1-modo').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;parar();
+    $('#c5l1-modo').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));
+    modo=b.dataset.m;$('#c5l1-ctl-eps').hidden=modo!=='eps';$('#c5l1-ver').hidden=modo==='pred';reiniciar();todo();});
+  $('#c5l1-ver').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+    $('#c5l1-ver').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));ver=b.dataset.v;todo();});
+  const eo=()=>{$('#c5l1-e-o').textContent=nf(eps(),2);};$('#c5l1-e').addEventListener('input',eo);eo();
+  [0,1].forEach(u=>{$('#c5l1-c'+u).addEventListener('click',ev=>{const g=geo[u];if(!g)return;const r=ev.target.getBoundingClientRect();
+    const d=Math.floor((ev.clientX-r.left-g.ml)/g.cw),f=Math.floor((ev.clientY-r.top-g.mt)/g.ch);if(d<0||d>9||f<0||f>9)return;
+    const s=21-f,i=idx(s,d+1,u===1),v=valor(i);
+    let t='Estado: suma '+s+', crupier '+NOM(d+1)+(u?', con as utilizable':', sin as utilizable')+'. ';
+    if(modo==='pred')t+=NV[i]?'V = '+nf(V[i],3)+' con '+nf(NV[i])+' visitas.':'Todavía sin visitas.';
+    else t+=(NQ[2*i]+NQ[2*i+1])?'Q(plantarse) = '+nf(Q[2*i],3)+' ('+nf(NQ[2*i])+' veces), Q(pedir) = '+nf(Q[2*i+1],3)+' ('+nf(NQ[2*i+1])+' veces): el agente '+(POL[i]?'pide carta.':'se planta.'):'Todavía sin visitas.';
+    $('#c5l1-out').textContent=t;});});
+  reiniciar();todo();
+})();
+</script>
+<script>
+(function(){
+/* MundoRL: biblioteca mínima común de los labs del curso «Aprendizaje por refuerzo» (sin dependencias, con semilla).
+   Plantilla: copia este bloque DENTRO de la IIFE de tu lab (el motor solo admite <script> en línea, sin src).
+   Uso típico:
+     const M=MundoRL, m=M.cuadricula('almacen');            // la cuadrícula de referencia del curso
+     const r=M.rnd(42);
+     const {V,pi}=M.iterarValor(m);                         // valores óptimos y política óptima
+     M.dibujar(canvas,m,{raiz,V,pi,numeros:true});          // mapa de calor de V y flechas de la política
+     const ep=M.episodio(m,s=>M.elegir(pi,s,r),r);          // un episodio: ep.G, ep.Gd, ep.pasos, ep.final
+   Acciones: 0 arriba, 1 derecha, 2 abajo, 3 izquierda (el orden de CliffWalking en Gymnasium).
+   Estados: s = fila*cols + columna (fila 0 arriba), como FrozenLake y CliffWalking. Nombre de casilla: 'A5' =
+   columna A (la primera de la izquierda), fila 5 contada desde arriba. */
+const MundoRL=(function(){
+  /* ---------- Azar con semilla (mulberry32) ---------- */
+  function rnd(s){return function(){s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  function gauss(r){let u=0;while(!u)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r());}
+  const entero=(r,n)=>Math.floor(r()*n);
+  function barajar(n,r){const a=Array.from({length:n},(_,i)=>i);for(let i=n-1;i>0;i--){const j=entero(r,i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+  /* ---------- Números en español: punto de miles, coma decimal ---------- */
+  const nf=(n,d=0)=>{if(!isFinite(n))return '—';const s=Math.abs(n).toFixed(d).split('.');s[0]=s[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');return (n<0&&Number(Math.abs(n).toFixed(d))!==0?'−':'')+s.join(',');};
+  const pct=(x,d=1)=>nf(100*x,d)+' %';
+
+  /* ---------- Cuadrículas ---------- */
+  const ACC=['arriba','derecha','abajo','izquierda'],FLECHA=['↑','→','↓','←'],DF=[-1,0,1,0],DC=[0,1,0,-1];
+  /* Caracteres: '.' piso, '#' pared (estantería), 'S' inicio, 'P' premio (termina), 'T' trampa (termina),
+     'C' acantilado (castigo y vuelta al inicio, no termina: CliffWalking). */
+  const MAPAS={
+    almacen:['.....P',
+             '.###.T',
+             '...T..',
+             '.#....',
+             '..S#..'],
+    acantilado:['............','............','............','SCCCCCCCCCCP'],
+    lago4:['S...','.T.T','...T','T..P']
+  };
+  /* Recompensas y dinámica por defecto de la cuadrícula de referencia. */
+  const DEF={paso:-0.1,premio:10,trampa:-10,acantilado:-100,resbalar:0.2,gamma:0.9,maxPasos:100};
+  const PRESET={
+    almacen:{},
+    acantilado:{paso:-1,premio:-1,resbalar:0,gamma:1,maxPasos:200},          // CliffWalking-v1 de Gymnasium
+    lago4:{paso:0,premio:1,trampa:0,resbalar:2/3,gamma:0.99,maxPasos:100}      // FrozenLake-v1 4x4, resbaloso
+  };
+  function cuadricula(mapa,o){
+    const clave=typeof mapa==='string'?mapa:null;
+    const filas=(clave?MAPAS[clave]:mapa).slice();
+    const op=Object.assign({},DEF,clave?PRESET[clave]:{},o||{});
+    const nF=filas.length,nC=filas[0].length,nS=nF*nC,tipo=[];
+    let inicio=0;
+    for(let f=0;f<nF;f++)for(let c=0;c<nC;c++){const t=filas[f][c]||'.';tipo.push(t);if(t==='S')inicio=f*nC+c;}
+    const m={mapa:filas,filas:nF,cols:nC,nS,nA:4,tipo,inicio,gamma:op.gamma,maxPasos:op.maxPasos,op,
+      esPared:s=>tipo[s]==='#',esTerminal:s=>tipo[s]==='P'||tipo[s]==='T',
+      fila:s=>Math.floor(s/nC),col:s=>s%nC,
+      nombre:s=>String.fromCharCode(65+s%nC)+(Math.floor(s/nC)+1)};
+    m.libres=[];for(let s=0;s<nS;s++)if(!m.esPared(s)&&!m.esTerminal(s))m.libres.push(s);
+    /* Adónde lleva moverse en la dirección d desde s (paredes y bordes: se queda). */
+    function mover(s,d){const f=m.fila(s)+DF[d],c=m.col(s)+DC[d];if(f<0||f>=nF||c<0||c>=nC)return s;const s2=f*nC+c;return tipo[s2]==='#'?s:s2;}
+    function resultado(s2){const t=tipo[s2];
+      if(t==='P')return {s2,r:op.premio,fin:true};
+      if(t==='T')return {s2,r:op.trampa,fin:true};
+      if(t==='C')return {s2:inicio,r:op.acantilado,fin:false,cayo:true};
+      return {s2,r:op.paso,fin:false};}
+    /* P[s][a]: lista de {p,s2,r,fin} (como env.unwrapped.P de Gymnasium). Con probabilidad 1−resbalar va adonde
+       quiere; con resbalar/2 se desvía a cada lado (nunca hacia atrás). */
+    m.reconstruir=function(){
+      m.P=[];
+      for(let s=0;s<nS;s++){const fila=[];
+        for(let a=0;a<4;a++){const lista=[];
+          if(m.esPared(s)||m.esTerminal(s)){fila.push([{p:1,s2:s,r:0,fin:true}]);continue;}
+          const q=op.resbalar,opciones=[[a,1-q],[(a+1)%4,q/2],[(a+3)%4,q/2]];
+          for(const [d,p] of opciones){if(p<=0)continue;const res=resultado(mover(s,d));
+            const ya=lista.find(x=>x.s2===res.s2&&x.r===res.r);if(ya)ya.p+=p;else lista.push(Object.assign({p},res));}
+          fila.push(lista);}
+        m.P.push(fila);}
+    };
+    m.reconstruir();
+    /* Cambia una casilla (para labs donde el lector arma la cuadrícula) o una opción, y recalcula P. */
+    m.poner=function(s,t){tipo[s]=t;if(t==='S'){for(let i=0;i<nS;i++)if(i!==s&&tipo[i]==='S')tipo[i]='.';inicio=s;m.inicio=s;}
+      m.libres=[];for(let i=0;i<nS;i++)if(!m.esPared(i)&&!m.esTerminal(i))m.libres.push(i);m.reconstruir();};
+    m.opcion=function(k,v){op[k]=v;if(k==='gamma')m.gamma=v;if(k==='maxPasos')m.maxPasos=v;m.reconstruir();};
+    /* Un paso con azar: {s2, r, fin, cayo}. */
+    m.paso=function(s,a,r){const L=m.P[s][a];let u=r(),k=0;while(k<L.length-1&&u>=L[k].p){u-=L[k].p;k++;}
+      const x=L[k];return {s2:x.s2,r:x.r,fin:x.fin,cayo:tipo[s]!=='C'&&x.s2===inicio&&x.r===op.acantilado};};
+    return m;
+  }
+
+  /* ---------- Políticas: Float64Array de nS*4 probabilidades (pi[s*4+a]) ---------- */
+  function politicaAlAzar(m){const pi=new Float64Array(m.nS*4).fill(0.25);return pi;}
+  function politicaDe(m,acciones){const pi=new Float64Array(m.nS*4);for(let s=0;s<m.nS;s++)pi[s*4+(acciones[s]??0)]=1;return pi;}
+  function accionDe(pi,s){let k=0;for(let a=1;a<4;a++)if(pi[s*4+a]>pi[s*4+k]+1e-12)k=a;return k;}
+  function elegir(pi,s,r){let u=r();for(let a=0;a<3;a++){u-=pi[s*4+a];if(u<0)return a;}return 3;}
+  /* Política codiciosa respecto de Q (nS*4). empates: 'primero' (determinista) o 'repartir'. */
+  function codiciosa(m,Q,empates){const pi=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++){let mx=-Infinity;for(let a=0;a<4;a++)mx=Math.max(mx,Q[s*4+a]);
+      const mejores=[];for(let a=0;a<4;a++)if(Q[s*4+a]>=mx-1e-9)mejores.push(a);
+      if(empates==='repartir')mejores.forEach(a=>pi[s*4+a]=1/mejores.length);else pi[s*4+mejores[0]]=1;}
+    return pi;}
+  function egreedy(m,Q,eps){const pi=codiciosa(m,Q);for(let i=0;i<pi.length;i++)pi[i]=pi[i]*(1-eps)+eps/4;return pi;}
+
+  /* ---------- Bellman ---------- */
+  function g_(m,o){return o&&o.gamma!==undefined?o.gamma:m.gamma;}
+  /* Q a partir de V: q(s,a) = Σ p·(r + γ·V(s')) */
+  function qDeV(m,V,gamma){const Q=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++)for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));Q[s*4+a]=(m.esPared(s)||m.esTerminal(s))?0:q;}
+    return Q;}
+  /* Un barrido de evaluación (síncrono): V'(s) = Σ_a π(a|s) Σ p·(r + γ·V(s')). Devuelve {V, delta}. */
+  function barridoEval(m,pi,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let v=0;for(let a=0;a<4;a++){const w=pi[s*4+a];if(!w)continue;let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));v+=w*q;}
+      W[s]=v;delta=Math.max(delta,Math.abs(v-V[s]));}
+    return {V:W,delta};}
+  /* Un barrido de optimalidad: V'(s) = max_a Σ p·(r + γ·V(s')). */
+  function barridoValor(m,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let mx=-Infinity;for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));if(q>mx)mx=q;}
+      W[s]=mx;delta=Math.max(delta,Math.abs(mx-V[s]));}
+    return {V:W,delta};}
+  /* Evaluación de política hasta que el cambio máximo baje de tol. */
+  function evaluar(m,pi,o={}){let V=o.V0?Float64Array.from(o.V0):new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoEval(m,pi,V,o);V=x.V;delta=x.delta;b++;}
+    return {V,barridos:b,delta};}
+  function iterarValor(m,o={}){let V=new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoValor(m,V,o);V=x.V;delta=x.delta;b++;}
+    const Q=qDeV(m,V,g_(m,o));return {V,Q,pi:codiciosa(m,Q),barridos:b};}
+  function iterarPolitica(m,o={}){let pi=o.pi0?Float64Array.from(o.pi0):politicaAlAzar(m),vueltas=0,V,historia=[];
+    for(;vueltas<100;vueltas++){V=evaluar(m,pi,o).V;const nuevo=codiciosa(m,qDeV(m,V,g_(m,o)));historia.push({V,pi});
+      let igual=true;for(const s of m.libres)if(accionDe(nuevo,s)!==accionDe(pi,s)||pi[s*4+accionDe(pi,s)]<1){igual=false;break;}
+      pi=nuevo;if(igual)break;}
+    return {V,pi,vueltas:vueltas+1,historia};}
+
+  /* ---------- Experiencia ---------- */
+  /* Un episodio desde el inicio (o desde o.desde). elegir(s) -> acción. Devuelve estados, acciones, recompensas,
+     G (suma), Gd (suma descontada con γ), pasos y final: 'premio', 'trampa' o 'tope'. */
+  function episodio(m,elegirA,r,o={}){const S=[],A=[],R=[];let s=o.desde??m.inicio,fin=false,final='tope',G=0,Gd=0,d=1;const max=o.max??m.maxPasos;
+    for(let t=0;t<max&&!fin;t++){const a=elegirA(s);const x=m.paso(s,a,r);S.push(s);A.push(a);R.push(x.r);G+=x.r;Gd+=d*x.r;d*=m.gamma;s=x.s2;fin=x.fin;
+      if(fin)final=m.tipo[s]==='P'?'premio':'trampa';}
+    S.push(s);return {S,A,R,G,Gd,pasos:A.length,final};}
+  /* Retorno medio de una política (pi) en n episodios. */
+  function retornoMedio(m,pi,r,n=1000){let G=0,Gd=0,P=0,ex=0;for(let i=0;i<n;i++){const e=episodio(m,s=>elegir(pi,s,r),r);G+=e.G;Gd+=e.Gd;P+=e.pasos;if(e.final==='premio')ex++;}
+    return {G:G/n,Gd:Gd/n,pasos:P/n,exito:ex/n};}
+
+  /* ---------- Bandido multibrazo (cap. 01) ---------- */
+  const BANDIDO=[0.25,0.40,0.55,0.50,0.30];   // máquinas A-E: probabilidad de pagar 1 ficha
+  function bandido(probs,r){probs=probs||BANDIDO;let mejor=0;probs.forEach((p,i)=>{if(p>probs[mejor])mejor=i;});
+    return {k:probs.length,probs,mejor,tirar:a=>r()<probs[a]?1:0};}
+  /* Agente de bandido. metodo: 'egreedy' (ε, promedio de la muestra), 'optimista' (codicioso con Q inicial q0 y
+     paso constante alfa) o 'ucb' (cota superior de confianza con c). */
+  function agenteBandido(k,o={}){const met=o.metodo||'egreedy',q0=o.q0??0,r=o.r||rnd(42);
+    const Q=new Float64Array(k).fill(met==='optimista'?q0:0),N=new Float64Array(k);let t=0;
+    function arg(f){let mx=-Infinity,L=[];for(let a=0;a<k;a++){const v=f(a);if(v>mx+1e-12){mx=v;L=[a];}else if(Math.abs(v-mx)<=1e-12)L.push(a);}return L[entero(r,L.length)];}
+    /* epsilon, alfa y c se pueden cambiar en vivo (ag.epsilon = 0.2). exploro: si la última elección fue al azar. */
+    return {Q,N,metodo:met,epsilon:o.epsilon??0.1,alfa:o.alfa??0.1,c:o.c??2,exploro:false,
+      elegir(){t++;this.exploro=false;
+        if(met==='ucb'){for(let a=0;a<k;a++)if(N[a]===0)return a;const c=this.c;return arg(a=>Q[a]+c*Math.sqrt(Math.log(t)/N[a]));}
+        if(met==='egreedy'&&r()<this.epsilon){this.exploro=true;return entero(r,k);}
+        return arg(a=>Q[a]);},
+      aprender(a,R){N[a]++;Q[a]+=(met==='optimista'?this.alfa:1/N[a])*(R-Q[a]);}};}
+
+  /* ---------- CartPole (Barto, Sutton y Anderson, 1983; constantes de Gymnasium CartPole-v1) ---------- */
+  function cartpole(r){const g=9.8,mc=1.0,mp=0.1,mt=mc+mp,l=0.5,pml=mp*l,F=10,tau=0.02,thMax=12*2*Math.PI/360,xMax=2.4;
+    const e={x:0,v:0,th:0,w:0,t:0,fin:false,
+      reiniciar(){this.x=(r()-.5)*.1;this.v=(r()-.5)*.1;this.th=(r()-.5)*.1;this.w=(r()-.5)*.1;this.t=0;this.fin=false;return this.obs();},
+      obs(){return [this.x,this.v,this.th,this.w];},
+      /* a: 0 empuja a la izquierda, 1 a la derecha. Recompensa 1 por paso; termina si |θ|>12° o |x|>2,4; trunca a 500. */
+      paso(a){const f=a===1?F:-F,ct=Math.cos(this.th),st=Math.sin(this.th);
+        const tmp=(f+pml*this.w*this.w*st)/mt,ta=(g*st-ct*tmp)/(l*(4/3-mp*ct*ct/mt)),xa=tmp-pml*ta*ct/mt;
+        this.x+=tau*this.v;this.v+=tau*xa;this.th+=tau*this.w;this.w+=tau*ta;this.t++;
+        const termina=Math.abs(this.x)>xMax||Math.abs(this.th)>thMax,trunca=this.t>=500;this.fin=termina||trunca;
+        return {obs:this.obs(),r:1,termina,trunca};}};
+    e.reiniciar();return e;}
+
+  /* ---------- Dibujo ---------- */
+  function color(raiz,n){return getComputedStyle(raiz).getPropertyValue(n).trim();}
+  function rgb(c){if(!c)return [128,128,128];if(c[0]==='#'){if(c.length===4)c='#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];return [1,3,5].map(i=>parseInt(c.substr(i,2),16));}
+    const m=c.match(/[\d.]+/g);return m?m.slice(0,3).map(Number):[128,128,128];}
+  function mezcla(a,b,t){const A=rgb(a),B=rgb(b);return 'rgb('+A.map((x,i)=>Math.round(x+(B[i]-x)*t)).join(',')+')';}
+  /* Prepara un canvas con devicePixelRatio. Alto = ancho * data-prop (o o.prop). Devuelve {c,w,h}. */
+  function lienzo(cv,prop){const w=Math.max(120,cv.clientWidth||cv.parentNode.clientWidth||300),p=prop??parseFloat(cv.dataset.prop||'0.6'),h=Math.round(w*p),k=window.devicePixelRatio||1;
+    cv.style.height=h+'px';cv.width=Math.round(w*k);cv.height=Math.round(h*k);const c=cv.getContext('2d');c.setTransform(k,0,0,k,0,0);return {c,w,h};}
+  function flecha(c,x,y,a,L,col,ancho){const dx=DC[a],dy=DF[a];c.strokeStyle=col;c.fillStyle=col;c.lineWidth=ancho||2;
+    const x0=x-dx*L*.45,y0=y-dy*L*.45,x1=x+dx*L*.45,y1=y+dy*L*.45;c.beginPath();c.moveTo(x0,y0);c.lineTo(x1-dx*L*.18,y1-dy*L*.18);c.stroke();
+    const px=-dy,py=dx;c.beginPath();c.moveTo(x1,y1);c.lineTo(x1-dx*L*.3+px*L*.2,y1-dy*L*.3+py*L*.2);c.lineTo(x1-dx*L*.3-px*L*.2,y1-dy*L*.3-py*L*.2);c.closePath();c.fill();}
+  /* Dibuja la cuadrícula. o: {raiz, V (mapa de calor), rango (|V| que satura el color), pi (flechas: probabilidades),
+     numeros (escribe V), ruta (lista de estados), agente (estado), resaltar (estado), Q (cuatro triángulos por casilla),
+     visitas (Float64Array: opacidad de exploración), prop}. Devuelve {lado, x0, y0, casilla(px,py) -> s o -1}. */
+  function dibujar(cv,m,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),prop=o.prop??(m.filas/m.cols);
+    const {c,w,h}=lienzo(cv,prop),lado=Math.min((w-2)/m.cols,(h-2)/m.filas),x0=(w-lado*m.cols)/2,y0=(h-lado*m.filas)/2;
+    const card=C('--card'),azul=C('--c-red'),rojo=C('--warm'),ink=C('--ink'),muted=C('--muted'),good=C('--good'),line=C('--line');
+    c.clearRect(0,0,w,h);
+    let rango=o.rango;if(!rango&&(o.V||o.Q)){rango=1e-9;const src=o.V||o.Q;for(let i=0;i<src.length;i++)rango=Math.max(rango,Math.abs(src[i]));}
+    const tinte=v=>v>=0?mezcla(card,azul,Math.min(1,v/rango)*.85):mezcla(card,rojo,Math.min(1,-v/rango)*.85);
+    const fuente=Math.max(9,Math.min(14,lado*.24));
+    for(let s=0;s<m.nS;s++){const x=x0+m.col(s)*lado,y=y0+m.fila(s)*lado,t=m.tipo[s],cx=x+lado/2,cy=y+lado/2;
+      c.fillStyle=card;
+      if(t==='#'){c.fillStyle=mezcla(card,muted,.55);c.fillRect(x,y,lado,lado);
+        c.strokeStyle=mezcla(card,muted,.8);c.lineWidth=1;c.beginPath();for(let k=1;k<4;k++){c.moveTo(x+3,y+lado*k/4);c.lineTo(x+lado-3,y+lado*k/4);}c.stroke();continue;}
+      if(t==='P'){c.fillStyle=mezcla(card,good,.28);c.fillRect(x,y,lado,lado);}
+      else if(t==='T'||t==='C'){c.fillStyle=mezcla(card,rojo,.28);c.fillRect(x,y,lado,lado);}
+      else if(o.Q){const q=k=>o.Q[s*4+k];const P=[[cx,cy],[x,y],[x+lado,y],[x+lado,y+lado],[x,y+lado]];
+        const tri=[[1,2],[2,3],[3,4],[4,1]];for(let a=0;a<4;a++){c.fillStyle=tinte(q(a));c.beginPath();c.moveTo(cx,cy);c.lineTo(...P[tri[a][0]]);c.lineTo(...P[tri[a][1]]);c.closePath();c.fill();}
+        c.strokeStyle=line;c.lineWidth=.6;c.beginPath();c.moveTo(x,y);c.lineTo(x+lado,y+lado);c.moveTo(x+lado,y);c.lineTo(x,y+lado);c.stroke();}
+      else if(o.V){c.fillStyle=tinte(o.V[s]);c.fillRect(x,y,lado,lado);}
+      else c.fillRect(x,y,lado,lado);
+      if(o.visitas&&!m.esTerminal(s)){const vmax=Math.max(1,...o.visitas);c.fillStyle=C('--c-apl');c.globalAlpha=.45*Math.sqrt(o.visitas[s]/vmax);c.fillRect(x,y,lado,lado);c.globalAlpha=1;}
+      c.textAlign='center';c.textBaseline='middle';
+      if(t==='P'||t==='T'||t==='C'){c.fillStyle=t==='P'?good:rojo;c.font='700 '+Math.round(fuente*1.05)+'px '+C('--f-display');
+        const val=t==='P'?m.op.premio:t==='T'?m.op.trampa:m.op.acantilado;
+        c.fillText(t==='P'?'Premio':t==='T'?'Trampa':'',cx,cy-(lado>44?fuente*.55:0));if(lado>44||t==='C'){c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText((val>0?'+':'')+nf(val,Number.isInteger(val)?0:1),cx,t==='C'?cy:cy+fuente*.65);}
+        continue;}
+      if(o.pi&&!o.Q){const ps=[0,1,2,3].map(a=>o.pi[s*4+a]),mx=Math.max(...ps);
+        for(let a=0;a<4;a++)if(ps[a]>0.01){const L=lado*(o.numeros?.42:.6)*(0.45+0.55*ps[a]/mx);flecha(c,cx,cy-(o.numeros?lado*.14:0),a,L,ink,ps[a]>=mx-1e-9?2.2:1.2);}}
+      if(o.numeros&&o.V){c.fillStyle=ink;c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText(nf(o.V[s],1),cx,o.pi?y+lado*.78:cy);}
+      if(t==='S'&&!o.V&&!o.Q){c.fillStyle=muted;c.font='700 '+Math.round(fuente*.85)+'px '+C('--f-display');c.fillText('Inicio',cx,y+lado*.82);}
+    }
+    c.strokeStyle=line;c.lineWidth=1;for(let i=0;i<=m.cols;i++){c.beginPath();c.moveTo(x0+i*lado,y0);c.lineTo(x0+i*lado,y0+m.filas*lado);c.stroke();}
+    for(let j=0;j<=m.filas;j++){c.beginPath();c.moveTo(x0,y0+j*lado);c.lineTo(x0+m.cols*lado,y0+j*lado);c.stroke();}
+    const ini=m.inicio,xi=x0+m.col(ini)*lado,yi=y0+m.fila(ini)*lado;c.strokeStyle=C('--accent');c.setLineDash([4,3]);c.lineWidth=2;c.strokeRect(xi+2,yi+2,lado-4,lado-4);c.setLineDash([]);
+    if(o.resaltar!==undefined&&o.resaltar>=0){const xr=x0+m.col(o.resaltar)*lado,yr=y0+m.fila(o.resaltar)*lado;c.strokeStyle=C('--c-tra');c.lineWidth=3;c.strokeRect(xr+1.5,yr+1.5,lado-3,lado-3);}
+    if(o.ruta&&o.ruta.length>1){c.strokeStyle=C('--c-fis');c.lineWidth=Math.max(2,lado*.07);c.lineJoin='round';c.globalAlpha=.85;c.beginPath();
+      o.ruta.forEach((s,i)=>{const px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado;i?c.lineTo(px,py):c.moveTo(px,py);});c.stroke();c.globalAlpha=1;}
+    if(o.agente!==undefined&&o.agente>=0){const s=o.agente,px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado,R=lado*.26;
+      c.fillStyle=C('--d-casa');c.strokeStyle=card;c.lineWidth=2;c.beginPath();c.arc(px,py,R,0,7);c.fill();c.stroke();
+      c.fillStyle=card;c.beginPath();c.arc(px-R*.38,py-R*.15,R*.16,0,7);c.arc(px+R*.38,py-R*.15,R*.16,0,7);c.fill();}
+    return {lado,x0,y0,casilla(px,py){const cc=Math.floor((px-x0)/lado),ff=Math.floor((py-y0)/lado);return (cc<0||ff<0||cc>=m.cols||ff>=m.filas)?-1:ff*m.cols+cc;}};
+  }
+  /* Curvas. series: [{y:[...], color:'--c-tra', nombre, punteada, tenue, ancho}]. o: {raiz, media (ventana de la
+     media móvil; la serie cruda se dibuja tenue), ymin, ymax, xmax, ejeX, ejeY, lineas:[{y, color, nombre}], prop}. */
+  function media(y,k){const out=new Array(y.length);let s=0;for(let i=0;i<y.length;i++){s+=y[i];if(i>=k)s-=y[i-k];out[i]=s/Math.min(i+1,k);}return out;}
+  function curva(cv,series,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),{c,w,h}=lienzo(cv,o.prop);
+    const iz=46,de=10,ar=10,ab=26,W=w-iz-de,H=h-ar-ab;
+    let n=o.xmax||1,lo=o.ymin,hi=o.ymax;series.forEach(S=>{n=Math.max(n,S.y.length);});
+    if(lo===undefined||hi===undefined){let a=Infinity,b=-Infinity;series.forEach(S=>S.y.forEach(v=>{if(isFinite(v)){a=Math.min(a,v);b=Math.max(b,v);}}));(o.lineas||[]).forEach(L=>{a=Math.min(a,L.y);b=Math.max(b,L.y);});
+      if(!isFinite(a)){a=0;b=1;}if(a===b){a-=1;b+=1;}const pad=(b-a)*.06;if(lo===undefined)lo=a-pad;if(hi===undefined)hi=b+pad;}
+    const X=i=>iz+(n>1?i/(n-1):0)*W,Y=v=>ar+H-(Math.min(hi,Math.max(lo,v))-lo)/(hi-lo)*H;
+    c.clearRect(0,0,w,h);c.fillStyle=C('--card');c.fillRect(0,0,w,h);
+    c.strokeStyle=C('--grid');c.lineWidth=1;c.fillStyle=C('--muted');c.font='10px '+C('--f-mono');c.textAlign='right';c.textBaseline='middle';
+    for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4,y=Y(v);c.beginPath();c.moveTo(iz,y);c.lineTo(iz+W,y);c.stroke();c.fillText(nf(v,o.decimales??(Math.abs(hi-lo)<0.5?2:Math.abs(hi-lo)<5?1:0)),iz-4,y);}
+    c.textAlign='center';c.textBaseline='top';for(let k=0;k<=4;k++){const i=Math.round((n-1)*k/4);if(k&&i===Math.round((n-1)*(k-1)/4))continue;const ul=n>1&&i===n-1;c.textAlign=ul?'right':'center';c.fillText(nf(i+(o.desde1?1:0)),ul?X(i)+de-1:X(i),ar+H+5);}
+    if(o.ejeX){c.textAlign='right';c.fillText(o.ejeX,iz+W,ar+H+15);}
+    if(o.ejeY){c.save();c.translate(10,ar+H/2);c.rotate(-Math.PI/2);c.textAlign='center';c.fillText(o.ejeY,0,0);c.restore();}
+    (o.lineas||[]).forEach(L=>{c.strokeStyle=C(L.color||'--muted');c.setLineDash([5,4]);c.lineWidth=1.4;c.beginPath();c.moveTo(iz,Y(L.y));c.lineTo(iz+W,Y(L.y));c.stroke();c.setLineDash([]);
+      if(L.nombre){c.fillStyle=C(L.color||'--muted');c.textAlign='right';c.textBaseline='bottom';c.fillText(L.nombre,iz+W-4,Y(L.y)-2);}});
+    const traza=(y,col,anch,alfa,punt)=>{if(!y.length)return;c.strokeStyle=col;c.lineWidth=anch;c.globalAlpha=alfa;c.setLineDash(punt?[5,4]:[]);c.beginPath();
+      y.forEach((v,i)=>{i?c.lineTo(X(i),Y(v)):c.moveTo(X(i),Y(v));});c.stroke();c.globalAlpha=1;c.setLineDash([]);};
+    series.forEach(S=>{const col=C(S.color||'--accent');if(o.media&&S.y.length>1){if(o.crudo!==false&&!S.sinCrudo)traza(S.y,col,1,.22,false);traza(media(S.y,o.media),col,S.ancho||2.2,1,S.punteada);}else traza(S.y,col,S.ancho||2,S.tenue?.35:1,S.punteada);});
+    c.strokeStyle=C('--line');c.strokeRect(iz+.5,ar+.5,W,H);
+    return {X,Y};
+  }
+  /* Redibuja al cambiar el tema o el ancho. */
+  function tema(raiz,fn){let t;const re=()=>{clearTimeout(t);t=setTimeout(fn,60);};
+    if(window.ResizeObserver)new ResizeObserver(re).observe(raiz);
+    new MutationObserver(re).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme','class']});
+    if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',re);}
+  const quieto=()=>!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+  /* Entrenar por tramos sin congelar la página: trabajo() hace una unidad (un episodio, un paso) y devuelve false
+     cuando ya no hay más; cada cuadro trabaja o.ms milisegundos (24 por defecto) y llama a o.cuadro(). */
+  function bucle(trabajo,o={}){const ms=o.ms??24;let vivo=false,id=0;
+    function cuadro(){if(!vivo)return;const t0=performance.now();let sigue=true;
+      do{sigue=trabajo()!==false;}while(sigue&&performance.now()-t0<ms&&!o.unoPorCuadro);
+      if(o.cuadro)o.cuadro();if(!sigue){vivo=false;if(o.fin)o.fin();return;}
+      id=o.pausa?setTimeout(cuadro,o.pausa):requestAnimationFrame(cuadro);}
+    return {iniciar(){if(vivo)return;vivo=true;cuadro();},parar(){vivo=false;cancelAnimationFrame(id);clearTimeout(id);},get corriendo(){return vivo;}};}
+
+  return {rnd,gauss,entero,barajar,nf,pct,ACC,FLECHA,MAPAS,DEF,cuadricula,
+    politicaAlAzar,politicaDe,accionDe,elegir,codiciosa,egreedy,qDeV,barridoEval,barridoValor,evaluar,iterarValor,iterarPolitica,
+    episodio,retornoMedio,BANDIDO,bandido,agenteBandido,cartpole,
+    color,rgb,mezcla,lienzo,flecha,dibujar,media,curva,tema,quieto,bucle};
+})();
+  const M=MundoRL,$=s=>document.querySelector(s),raiz=document.querySelector('[id="05-lab-2"]'),nf=M.nf;
+  const m=M.cuadricula('almacen');
+  const piOpt=M.iterarValor(m).pi,piAzar=M.politicaAlAzar(m);
+  let pol='azar',ini='inicio',vis='primera',pi,real,V,N,eps,err,ult,r,lazo=null;
+  const META=5000;
+  function reiniciar(){parar();pi=pol==='azar'?piAzar:piOpt;real=M.evaluar(m,pi).V;V=new Float64Array(m.nS);N=new Float64Array(m.nS);eps=0;err=[];ult=null;r=M.rnd(42);dibujar();}
+  function rms(){let s=0;for(const x of m.libres)s+=(V[x]-real[x])**2;return Math.sqrt(s/m.libres.length);}
+  function episodio(){
+    const desde=ini==='azar'?m.libres[M.entero(r,m.libres.length)]:m.inicio;
+    const e=M.episodio(m,s=>M.elegir(pi,s,r),r,{desde});
+    /* Retornos hacia atrás: G_t = R_{t+1} + γ·G_{t+1}. Primera visita: solo la primera vez que aparece cada casilla. */
+    const T=e.A.length,G=new Float64Array(T);let g=0;for(let t=T-1;t>=0;t--){g=e.R[t]+m.gamma*g;G[t]=g;}
+    const primera=new Map();for(let t=0;t<T;t++)if(!primera.has(e.S[t]))primera.set(e.S[t],t);
+    let act=0;
+    for(let t=0;t<T;t++){const s=e.S[t];if(vis==='primera'&&primera.get(s)!==t)continue;N[s]++;V[s]+=(G[t]-V[s])/N[s];act++;}
+    eps++;err.push(rms());ult={e,G0:T?G[0]:0,act,desde,distintas:primera.size};
+  }
+  function dibujar(){
+    const rango=Math.max(1,m.op.premio);
+    M.dibujar($('#c5l2-c'),m,{raiz,V,numeros:true,rango,ruta:ult?ult.e.S:null});
+    M.dibujar($('#c5l2-r'),m,{raiz,V:real,numeros:true,rango});
+    M.curva($('#c5l2-e'),[{y:err.length?err:[rms()],color:'--c-tra'}],{raiz,ymin:0,ejeX:'episodios',desde1:true});
+    $('#c5l2-t1').textContent='Estimación de Monte Carlo tras '+nf(eps)+(eps===1?' episodio':' episodios');
+    if(ult){const e=ult.e;
+      $('#c5l2-ep').textContent='Episodio '+nf(eps)+': sale de '+m.nombre(ult.desde)+', '+e.pasos+(e.pasos===1?' paso':' pasos')+', termina en '+(e.final==='premio'?'el premio':e.final==='trampa'?'una trampa':'el tope de pasos')+'. Retorno descontado desde la salida G = '+nf(ult.G0,2)+'. Pisó '+ult.distintas+' casillas distintas y se actualizaron '+ult.act+(ult.act===1?' promedio':' promedios')+' ('+(vis==='primera'?'una vez por casilla':'una vez por cada pisada')+').';}
+    let sin=0;for(const s of m.libres)if(!N[s])sin++;
+    $('#c5l2-out').innerHTML='<span class="big">'+nf(eps)+(eps===1?' episodio':' episodios')+' · error '+nf(rms(),3)+'</span><span>Error cuadrático medio frente al valor real. V(inicio) estimado = '+(N[m.inicio]?nf(V[m.inicio],2):'sin dato')+' (real '+nf(real[m.inicio],2)+'). '+(sin?sin+' de '+m.libres.length+' casillas siguen sin una sola visita: Monte Carlo no puede estimar lo que no vive.':'Todas las casillas tienen al menos una visita.')+'</span>';
+  }
+  function parar(){if(lazo){lazo.parar();lazo=null;}$('#c5l2-go').textContent='Entrenar';}
+  /* Hasta 5.000 episodios por tramos; con prefers-reduced-motion, de una vez. */
+  function correr(){if(lazo){parar();return;}
+    if(M.quieto()){while(eps<META)episodio();dibujar();return;}
+    $('#c5l2-go').textContent='Pausa';
+    lazo=M.bucle(()=>{episodio();return eps<META;},{cuadro:dibujar,fin:()=>{lazo=null;parar();}});lazo.iniciar();}
+  $('#c5l2-uno').addEventListener('click',()=>{parar();episodio();dibujar();});
+  $('#c5l2-cien').addEventListener('click',()=>{parar();for(let i=0;i<100;i++)episodio();dibujar();});
+  $('#c5l2-go').addEventListener('click',correr);
+  $('#c5l2-cero').addEventListener('click',reiniciar);
+  [['pol',v=>pol=v],['ini',v=>ini=v],['vis',v=>vis=v]].forEach(([id,f])=>{const g=$('#c5l2-'+id);g.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+    g.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));f(b.dataset.v);reiniciar();});});
+  M.tema(raiz,dibujar);
+  reiniciar();
+})();
+</script>
+<script>
+(function(){
+/* MundoRL: biblioteca mínima común de los labs del curso «Aprendizaje por refuerzo» (sin dependencias, con semilla).
+   Plantilla: copia este bloque DENTRO de la IIFE de tu lab (el motor solo admite <script> en línea, sin src).
+   Uso típico:
+     const M=MundoRL, m=M.cuadricula('almacen');            // la cuadrícula de referencia del curso
+     const r=M.rnd(42);
+     const {V,pi}=M.iterarValor(m);                         // valores óptimos y política óptima
+     M.dibujar(canvas,m,{raiz,V,pi,numeros:true});          // mapa de calor de V y flechas de la política
+     const ep=M.episodio(m,s=>M.elegir(pi,s,r),r);          // un episodio: ep.G, ep.Gd, ep.pasos, ep.final
+   Acciones: 0 arriba, 1 derecha, 2 abajo, 3 izquierda (el orden de CliffWalking en Gymnasium).
+   Estados: s = fila*cols + columna (fila 0 arriba), como FrozenLake y CliffWalking. Nombre de casilla: 'A5' =
+   columna A (la primera de la izquierda), fila 5 contada desde arriba. */
+const MundoRL=(function(){
+  /* ---------- Azar con semilla (mulberry32) ---------- */
+  function rnd(s){return function(){s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  function gauss(r){let u=0;while(!u)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r());}
+  const entero=(r,n)=>Math.floor(r()*n);
+  function barajar(n,r){const a=Array.from({length:n},(_,i)=>i);for(let i=n-1;i>0;i--){const j=entero(r,i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+  /* ---------- Números en español: punto de miles, coma decimal ---------- */
+  const nf=(n,d=0)=>{if(!isFinite(n))return '—';const s=Math.abs(n).toFixed(d).split('.');s[0]=s[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');return (n<0&&Number(Math.abs(n).toFixed(d))!==0?'−':'')+s.join(',');};
+  const pct=(x,d=1)=>nf(100*x,d)+' %';
+
+  /* ---------- Cuadrículas ---------- */
+  const ACC=['arriba','derecha','abajo','izquierda'],FLECHA=['↑','→','↓','←'],DF=[-1,0,1,0],DC=[0,1,0,-1];
+  /* Caracteres: '.' piso, '#' pared (estantería), 'S' inicio, 'P' premio (termina), 'T' trampa (termina),
+     'C' acantilado (castigo y vuelta al inicio, no termina: CliffWalking). */
+  const MAPAS={
+    almacen:['.....P',
+             '.###.T',
+             '...T..',
+             '.#....',
+             '..S#..'],
+    acantilado:['............','............','............','SCCCCCCCCCCP'],
+    lago4:['S...','.T.T','...T','T..P']
+  };
+  /* Recompensas y dinámica por defecto de la cuadrícula de referencia. */
+  const DEF={paso:-0.1,premio:10,trampa:-10,acantilado:-100,resbalar:0.2,gamma:0.9,maxPasos:100};
+  const PRESET={
+    almacen:{},
+    acantilado:{paso:-1,premio:-1,resbalar:0,gamma:1,maxPasos:200},          // CliffWalking-v1 de Gymnasium
+    lago4:{paso:0,premio:1,trampa:0,resbalar:2/3,gamma:0.99,maxPasos:100}      // FrozenLake-v1 4x4, resbaloso
+  };
+  function cuadricula(mapa,o){
+    const clave=typeof mapa==='string'?mapa:null;
+    const filas=(clave?MAPAS[clave]:mapa).slice();
+    const op=Object.assign({},DEF,clave?PRESET[clave]:{},o||{});
+    const nF=filas.length,nC=filas[0].length,nS=nF*nC,tipo=[];
+    let inicio=0;
+    for(let f=0;f<nF;f++)for(let c=0;c<nC;c++){const t=filas[f][c]||'.';tipo.push(t);if(t==='S')inicio=f*nC+c;}
+    const m={mapa:filas,filas:nF,cols:nC,nS,nA:4,tipo,inicio,gamma:op.gamma,maxPasos:op.maxPasos,op,
+      esPared:s=>tipo[s]==='#',esTerminal:s=>tipo[s]==='P'||tipo[s]==='T',
+      fila:s=>Math.floor(s/nC),col:s=>s%nC,
+      nombre:s=>String.fromCharCode(65+s%nC)+(Math.floor(s/nC)+1)};
+    m.libres=[];for(let s=0;s<nS;s++)if(!m.esPared(s)&&!m.esTerminal(s))m.libres.push(s);
+    /* Adónde lleva moverse en la dirección d desde s (paredes y bordes: se queda). */
+    function mover(s,d){const f=m.fila(s)+DF[d],c=m.col(s)+DC[d];if(f<0||f>=nF||c<0||c>=nC)return s;const s2=f*nC+c;return tipo[s2]==='#'?s:s2;}
+    function resultado(s2){const t=tipo[s2];
+      if(t==='P')return {s2,r:op.premio,fin:true};
+      if(t==='T')return {s2,r:op.trampa,fin:true};
+      if(t==='C')return {s2:inicio,r:op.acantilado,fin:false,cayo:true};
+      return {s2,r:op.paso,fin:false};}
+    /* P[s][a]: lista de {p,s2,r,fin} (como env.unwrapped.P de Gymnasium). Con probabilidad 1−resbalar va adonde
+       quiere; con resbalar/2 se desvía a cada lado (nunca hacia atrás). */
+    m.reconstruir=function(){
+      m.P=[];
+      for(let s=0;s<nS;s++){const fila=[];
+        for(let a=0;a<4;a++){const lista=[];
+          if(m.esPared(s)||m.esTerminal(s)){fila.push([{p:1,s2:s,r:0,fin:true}]);continue;}
+          const q=op.resbalar,opciones=[[a,1-q],[(a+1)%4,q/2],[(a+3)%4,q/2]];
+          for(const [d,p] of opciones){if(p<=0)continue;const res=resultado(mover(s,d));
+            const ya=lista.find(x=>x.s2===res.s2&&x.r===res.r);if(ya)ya.p+=p;else lista.push(Object.assign({p},res));}
+          fila.push(lista);}
+        m.P.push(fila);}
+    };
+    m.reconstruir();
+    /* Cambia una casilla (para labs donde el lector arma la cuadrícula) o una opción, y recalcula P. */
+    m.poner=function(s,t){tipo[s]=t;if(t==='S'){for(let i=0;i<nS;i++)if(i!==s&&tipo[i]==='S')tipo[i]='.';inicio=s;m.inicio=s;}
+      m.libres=[];for(let i=0;i<nS;i++)if(!m.esPared(i)&&!m.esTerminal(i))m.libres.push(i);m.reconstruir();};
+    m.opcion=function(k,v){op[k]=v;if(k==='gamma')m.gamma=v;if(k==='maxPasos')m.maxPasos=v;m.reconstruir();};
+    /* Un paso con azar: {s2, r, fin, cayo}. */
+    m.paso=function(s,a,r){const L=m.P[s][a];let u=r(),k=0;while(k<L.length-1&&u>=L[k].p){u-=L[k].p;k++;}
+      const x=L[k];return {s2:x.s2,r:x.r,fin:x.fin,cayo:tipo[s]!=='C'&&x.s2===inicio&&x.r===op.acantilado};};
+    return m;
+  }
+
+  /* ---------- Políticas: Float64Array de nS*4 probabilidades (pi[s*4+a]) ---------- */
+  function politicaAlAzar(m){const pi=new Float64Array(m.nS*4).fill(0.25);return pi;}
+  function politicaDe(m,acciones){const pi=new Float64Array(m.nS*4);for(let s=0;s<m.nS;s++)pi[s*4+(acciones[s]??0)]=1;return pi;}
+  function accionDe(pi,s){let k=0;for(let a=1;a<4;a++)if(pi[s*4+a]>pi[s*4+k]+1e-12)k=a;return k;}
+  function elegir(pi,s,r){let u=r();for(let a=0;a<3;a++){u-=pi[s*4+a];if(u<0)return a;}return 3;}
+  /* Política codiciosa respecto de Q (nS*4). empates: 'primero' (determinista) o 'repartir'. */
+  function codiciosa(m,Q,empates){const pi=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++){let mx=-Infinity;for(let a=0;a<4;a++)mx=Math.max(mx,Q[s*4+a]);
+      const mejores=[];for(let a=0;a<4;a++)if(Q[s*4+a]>=mx-1e-9)mejores.push(a);
+      if(empates==='repartir')mejores.forEach(a=>pi[s*4+a]=1/mejores.length);else pi[s*4+mejores[0]]=1;}
+    return pi;}
+  function egreedy(m,Q,eps){const pi=codiciosa(m,Q);for(let i=0;i<pi.length;i++)pi[i]=pi[i]*(1-eps)+eps/4;return pi;}
+
+  /* ---------- Bellman ---------- */
+  function g_(m,o){return o&&o.gamma!==undefined?o.gamma:m.gamma;}
+  /* Q a partir de V: q(s,a) = Σ p·(r + γ·V(s')) */
+  function qDeV(m,V,gamma){const Q=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++)for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));Q[s*4+a]=(m.esPared(s)||m.esTerminal(s))?0:q;}
+    return Q;}
+  /* Un barrido de evaluación (síncrono): V'(s) = Σ_a π(a|s) Σ p·(r + γ·V(s')). Devuelve {V, delta}. */
+  function barridoEval(m,pi,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let v=0;for(let a=0;a<4;a++){const w=pi[s*4+a];if(!w)continue;let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));v+=w*q;}
+      W[s]=v;delta=Math.max(delta,Math.abs(v-V[s]));}
+    return {V:W,delta};}
+  /* Un barrido de optimalidad: V'(s) = max_a Σ p·(r + γ·V(s')). */
+  function barridoValor(m,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let mx=-Infinity;for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));if(q>mx)mx=q;}
+      W[s]=mx;delta=Math.max(delta,Math.abs(mx-V[s]));}
+    return {V:W,delta};}
+  /* Evaluación de política hasta que el cambio máximo baje de tol. */
+  function evaluar(m,pi,o={}){let V=o.V0?Float64Array.from(o.V0):new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoEval(m,pi,V,o);V=x.V;delta=x.delta;b++;}
+    return {V,barridos:b,delta};}
+  function iterarValor(m,o={}){let V=new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoValor(m,V,o);V=x.V;delta=x.delta;b++;}
+    const Q=qDeV(m,V,g_(m,o));return {V,Q,pi:codiciosa(m,Q),barridos:b};}
+  function iterarPolitica(m,o={}){let pi=o.pi0?Float64Array.from(o.pi0):politicaAlAzar(m),vueltas=0,V,historia=[];
+    for(;vueltas<100;vueltas++){V=evaluar(m,pi,o).V;const nuevo=codiciosa(m,qDeV(m,V,g_(m,o)));historia.push({V,pi});
+      let igual=true;for(const s of m.libres)if(accionDe(nuevo,s)!==accionDe(pi,s)||pi[s*4+accionDe(pi,s)]<1){igual=false;break;}
+      pi=nuevo;if(igual)break;}
+    return {V,pi,vueltas:vueltas+1,historia};}
+
+  /* ---------- Experiencia ---------- */
+  /* Un episodio desde el inicio (o desde o.desde). elegir(s) -> acción. Devuelve estados, acciones, recompensas,
+     G (suma), Gd (suma descontada con γ), pasos y final: 'premio', 'trampa' o 'tope'. */
+  function episodio(m,elegirA,r,o={}){const S=[],A=[],R=[];let s=o.desde??m.inicio,fin=false,final='tope',G=0,Gd=0,d=1;const max=o.max??m.maxPasos;
+    for(let t=0;t<max&&!fin;t++){const a=elegirA(s);const x=m.paso(s,a,r);S.push(s);A.push(a);R.push(x.r);G+=x.r;Gd+=d*x.r;d*=m.gamma;s=x.s2;fin=x.fin;
+      if(fin)final=m.tipo[s]==='P'?'premio':'trampa';}
+    S.push(s);return {S,A,R,G,Gd,pasos:A.length,final};}
+  /* Retorno medio de una política (pi) en n episodios. */
+  function retornoMedio(m,pi,r,n=1000){let G=0,Gd=0,P=0,ex=0;for(let i=0;i<n;i++){const e=episodio(m,s=>elegir(pi,s,r),r);G+=e.G;Gd+=e.Gd;P+=e.pasos;if(e.final==='premio')ex++;}
+    return {G:G/n,Gd:Gd/n,pasos:P/n,exito:ex/n};}
+
+  /* ---------- Bandido multibrazo (cap. 01) ---------- */
+  const BANDIDO=[0.25,0.40,0.55,0.50,0.30];   // máquinas A-E: probabilidad de pagar 1 ficha
+  function bandido(probs,r){probs=probs||BANDIDO;let mejor=0;probs.forEach((p,i)=>{if(p>probs[mejor])mejor=i;});
+    return {k:probs.length,probs,mejor,tirar:a=>r()<probs[a]?1:0};}
+  /* Agente de bandido. metodo: 'egreedy' (ε, promedio de la muestra), 'optimista' (codicioso con Q inicial q0 y
+     paso constante alfa) o 'ucb' (cota superior de confianza con c). */
+  function agenteBandido(k,o={}){const met=o.metodo||'egreedy',q0=o.q0??0,r=o.r||rnd(42);
+    const Q=new Float64Array(k).fill(met==='optimista'?q0:0),N=new Float64Array(k);let t=0;
+    function arg(f){let mx=-Infinity,L=[];for(let a=0;a<k;a++){const v=f(a);if(v>mx+1e-12){mx=v;L=[a];}else if(Math.abs(v-mx)<=1e-12)L.push(a);}return L[entero(r,L.length)];}
+    /* epsilon, alfa y c se pueden cambiar en vivo (ag.epsilon = 0.2). exploro: si la última elección fue al azar. */
+    return {Q,N,metodo:met,epsilon:o.epsilon??0.1,alfa:o.alfa??0.1,c:o.c??2,exploro:false,
+      elegir(){t++;this.exploro=false;
+        if(met==='ucb'){for(let a=0;a<k;a++)if(N[a]===0)return a;const c=this.c;return arg(a=>Q[a]+c*Math.sqrt(Math.log(t)/N[a]));}
+        if(met==='egreedy'&&r()<this.epsilon){this.exploro=true;return entero(r,k);}
+        return arg(a=>Q[a]);},
+      aprender(a,R){N[a]++;Q[a]+=(met==='optimista'?this.alfa:1/N[a])*(R-Q[a]);}};}
+
+  /* ---------- CartPole (Barto, Sutton y Anderson, 1983; constantes de Gymnasium CartPole-v1) ---------- */
+  function cartpole(r){const g=9.8,mc=1.0,mp=0.1,mt=mc+mp,l=0.5,pml=mp*l,F=10,tau=0.02,thMax=12*2*Math.PI/360,xMax=2.4;
+    const e={x:0,v:0,th:0,w:0,t:0,fin:false,
+      reiniciar(){this.x=(r()-.5)*.1;this.v=(r()-.5)*.1;this.th=(r()-.5)*.1;this.w=(r()-.5)*.1;this.t=0;this.fin=false;return this.obs();},
+      obs(){return [this.x,this.v,this.th,this.w];},
+      /* a: 0 empuja a la izquierda, 1 a la derecha. Recompensa 1 por paso; termina si |θ|>12° o |x|>2,4; trunca a 500. */
+      paso(a){const f=a===1?F:-F,ct=Math.cos(this.th),st=Math.sin(this.th);
+        const tmp=(f+pml*this.w*this.w*st)/mt,ta=(g*st-ct*tmp)/(l*(4/3-mp*ct*ct/mt)),xa=tmp-pml*ta*ct/mt;
+        this.x+=tau*this.v;this.v+=tau*xa;this.th+=tau*this.w;this.w+=tau*ta;this.t++;
+        const termina=Math.abs(this.x)>xMax||Math.abs(this.th)>thMax,trunca=this.t>=500;this.fin=termina||trunca;
+        return {obs:this.obs(),r:1,termina,trunca};}};
+    e.reiniciar();return e;}
+
+  /* ---------- Dibujo ---------- */
+  function color(raiz,n){return getComputedStyle(raiz).getPropertyValue(n).trim();}
+  function rgb(c){if(!c)return [128,128,128];if(c[0]==='#'){if(c.length===4)c='#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];return [1,3,5].map(i=>parseInt(c.substr(i,2),16));}
+    const m=c.match(/[\d.]+/g);return m?m.slice(0,3).map(Number):[128,128,128];}
+  function mezcla(a,b,t){const A=rgb(a),B=rgb(b);return 'rgb('+A.map((x,i)=>Math.round(x+(B[i]-x)*t)).join(',')+')';}
+  /* Prepara un canvas con devicePixelRatio. Alto = ancho * data-prop (o o.prop). Devuelve {c,w,h}. */
+  function lienzo(cv,prop){const w=Math.max(120,cv.clientWidth||cv.parentNode.clientWidth||300),p=prop??parseFloat(cv.dataset.prop||'0.6'),h=Math.round(w*p),k=window.devicePixelRatio||1;
+    cv.style.height=h+'px';cv.width=Math.round(w*k);cv.height=Math.round(h*k);const c=cv.getContext('2d');c.setTransform(k,0,0,k,0,0);return {c,w,h};}
+  function flecha(c,x,y,a,L,col,ancho){const dx=DC[a],dy=DF[a];c.strokeStyle=col;c.fillStyle=col;c.lineWidth=ancho||2;
+    const x0=x-dx*L*.45,y0=y-dy*L*.45,x1=x+dx*L*.45,y1=y+dy*L*.45;c.beginPath();c.moveTo(x0,y0);c.lineTo(x1-dx*L*.18,y1-dy*L*.18);c.stroke();
+    const px=-dy,py=dx;c.beginPath();c.moveTo(x1,y1);c.lineTo(x1-dx*L*.3+px*L*.2,y1-dy*L*.3+py*L*.2);c.lineTo(x1-dx*L*.3-px*L*.2,y1-dy*L*.3-py*L*.2);c.closePath();c.fill();}
+  /* Dibuja la cuadrícula. o: {raiz, V (mapa de calor), rango (|V| que satura el color), pi (flechas: probabilidades),
+     numeros (escribe V), ruta (lista de estados), agente (estado), resaltar (estado), Q (cuatro triángulos por casilla),
+     visitas (Float64Array: opacidad de exploración), prop}. Devuelve {lado, x0, y0, casilla(px,py) -> s o -1}. */
+  function dibujar(cv,m,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),prop=o.prop??(m.filas/m.cols);
+    const {c,w,h}=lienzo(cv,prop),lado=Math.min((w-2)/m.cols,(h-2)/m.filas),x0=(w-lado*m.cols)/2,y0=(h-lado*m.filas)/2;
+    const card=C('--card'),azul=C('--c-red'),rojo=C('--warm'),ink=C('--ink'),muted=C('--muted'),good=C('--good'),line=C('--line');
+    c.clearRect(0,0,w,h);
+    let rango=o.rango;if(!rango&&(o.V||o.Q)){rango=1e-9;const src=o.V||o.Q;for(let i=0;i<src.length;i++)rango=Math.max(rango,Math.abs(src[i]));}
+    const tinte=v=>v>=0?mezcla(card,azul,Math.min(1,v/rango)*.85):mezcla(card,rojo,Math.min(1,-v/rango)*.85);
+    const fuente=Math.max(9,Math.min(14,lado*.24));
+    for(let s=0;s<m.nS;s++){const x=x0+m.col(s)*lado,y=y0+m.fila(s)*lado,t=m.tipo[s],cx=x+lado/2,cy=y+lado/2;
+      c.fillStyle=card;
+      if(t==='#'){c.fillStyle=mezcla(card,muted,.55);c.fillRect(x,y,lado,lado);
+        c.strokeStyle=mezcla(card,muted,.8);c.lineWidth=1;c.beginPath();for(let k=1;k<4;k++){c.moveTo(x+3,y+lado*k/4);c.lineTo(x+lado-3,y+lado*k/4);}c.stroke();continue;}
+      if(t==='P'){c.fillStyle=mezcla(card,good,.28);c.fillRect(x,y,lado,lado);}
+      else if(t==='T'||t==='C'){c.fillStyle=mezcla(card,rojo,.28);c.fillRect(x,y,lado,lado);}
+      else if(o.Q){const q=k=>o.Q[s*4+k];const P=[[cx,cy],[x,y],[x+lado,y],[x+lado,y+lado],[x,y+lado]];
+        const tri=[[1,2],[2,3],[3,4],[4,1]];for(let a=0;a<4;a++){c.fillStyle=tinte(q(a));c.beginPath();c.moveTo(cx,cy);c.lineTo(...P[tri[a][0]]);c.lineTo(...P[tri[a][1]]);c.closePath();c.fill();}
+        c.strokeStyle=line;c.lineWidth=.6;c.beginPath();c.moveTo(x,y);c.lineTo(x+lado,y+lado);c.moveTo(x+lado,y);c.lineTo(x,y+lado);c.stroke();}
+      else if(o.V){c.fillStyle=tinte(o.V[s]);c.fillRect(x,y,lado,lado);}
+      else c.fillRect(x,y,lado,lado);
+      if(o.visitas&&!m.esTerminal(s)){const vmax=Math.max(1,...o.visitas);c.fillStyle=C('--c-apl');c.globalAlpha=.45*Math.sqrt(o.visitas[s]/vmax);c.fillRect(x,y,lado,lado);c.globalAlpha=1;}
+      c.textAlign='center';c.textBaseline='middle';
+      if(t==='P'||t==='T'||t==='C'){c.fillStyle=t==='P'?good:rojo;c.font='700 '+Math.round(fuente*1.05)+'px '+C('--f-display');
+        const val=t==='P'?m.op.premio:t==='T'?m.op.trampa:m.op.acantilado;
+        c.fillText(t==='P'?'Premio':t==='T'?'Trampa':'',cx,cy-(lado>44?fuente*.55:0));if(lado>44||t==='C'){c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText((val>0?'+':'')+nf(val,Number.isInteger(val)?0:1),cx,t==='C'?cy:cy+fuente*.65);}
+        continue;}
+      if(o.pi&&!o.Q){const ps=[0,1,2,3].map(a=>o.pi[s*4+a]),mx=Math.max(...ps);
+        for(let a=0;a<4;a++)if(ps[a]>0.01){const L=lado*(o.numeros?.42:.6)*(0.45+0.55*ps[a]/mx);flecha(c,cx,cy-(o.numeros?lado*.14:0),a,L,ink,ps[a]>=mx-1e-9?2.2:1.2);}}
+      if(o.numeros&&o.V){c.fillStyle=ink;c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText(nf(o.V[s],1),cx,o.pi?y+lado*.78:cy);}
+      if(t==='S'&&!o.V&&!o.Q){c.fillStyle=muted;c.font='700 '+Math.round(fuente*.85)+'px '+C('--f-display');c.fillText('Inicio',cx,y+lado*.82);}
+    }
+    c.strokeStyle=line;c.lineWidth=1;for(let i=0;i<=m.cols;i++){c.beginPath();c.moveTo(x0+i*lado,y0);c.lineTo(x0+i*lado,y0+m.filas*lado);c.stroke();}
+    for(let j=0;j<=m.filas;j++){c.beginPath();c.moveTo(x0,y0+j*lado);c.lineTo(x0+m.cols*lado,y0+j*lado);c.stroke();}
+    const ini=m.inicio,xi=x0+m.col(ini)*lado,yi=y0+m.fila(ini)*lado;c.strokeStyle=C('--accent');c.setLineDash([4,3]);c.lineWidth=2;c.strokeRect(xi+2,yi+2,lado-4,lado-4);c.setLineDash([]);
+    if(o.resaltar!==undefined&&o.resaltar>=0){const xr=x0+m.col(o.resaltar)*lado,yr=y0+m.fila(o.resaltar)*lado;c.strokeStyle=C('--c-tra');c.lineWidth=3;c.strokeRect(xr+1.5,yr+1.5,lado-3,lado-3);}
+    if(o.ruta&&o.ruta.length>1){c.strokeStyle=C('--c-fis');c.lineWidth=Math.max(2,lado*.07);c.lineJoin='round';c.globalAlpha=.85;c.beginPath();
+      o.ruta.forEach((s,i)=>{const px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado;i?c.lineTo(px,py):c.moveTo(px,py);});c.stroke();c.globalAlpha=1;}
+    if(o.agente!==undefined&&o.agente>=0){const s=o.agente,px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado,R=lado*.26;
+      c.fillStyle=C('--d-casa');c.strokeStyle=card;c.lineWidth=2;c.beginPath();c.arc(px,py,R,0,7);c.fill();c.stroke();
+      c.fillStyle=card;c.beginPath();c.arc(px-R*.38,py-R*.15,R*.16,0,7);c.arc(px+R*.38,py-R*.15,R*.16,0,7);c.fill();}
+    return {lado,x0,y0,casilla(px,py){const cc=Math.floor((px-x0)/lado),ff=Math.floor((py-y0)/lado);return (cc<0||ff<0||cc>=m.cols||ff>=m.filas)?-1:ff*m.cols+cc;}};
+  }
+  /* Curvas. series: [{y:[...], color:'--c-tra', nombre, punteada, tenue, ancho}]. o: {raiz, media (ventana de la
+     media móvil; la serie cruda se dibuja tenue), ymin, ymax, xmax, ejeX, ejeY, lineas:[{y, color, nombre}], prop}. */
+  function media(y,k){const out=new Array(y.length);let s=0;for(let i=0;i<y.length;i++){s+=y[i];if(i>=k)s-=y[i-k];out[i]=s/Math.min(i+1,k);}return out;}
+  function curva(cv,series,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),{c,w,h}=lienzo(cv,o.prop);
+    const iz=46,de=10,ar=10,ab=26,W=w-iz-de,H=h-ar-ab;
+    let n=o.xmax||1,lo=o.ymin,hi=o.ymax;series.forEach(S=>{n=Math.max(n,S.y.length);});
+    if(lo===undefined||hi===undefined){let a=Infinity,b=-Infinity;series.forEach(S=>S.y.forEach(v=>{if(isFinite(v)){a=Math.min(a,v);b=Math.max(b,v);}}));(o.lineas||[]).forEach(L=>{a=Math.min(a,L.y);b=Math.max(b,L.y);});
+      if(!isFinite(a)){a=0;b=1;}if(a===b){a-=1;b+=1;}const pad=(b-a)*.06;if(lo===undefined)lo=a-pad;if(hi===undefined)hi=b+pad;}
+    const X=i=>iz+(n>1?i/(n-1):0)*W,Y=v=>ar+H-(Math.min(hi,Math.max(lo,v))-lo)/(hi-lo)*H;
+    c.clearRect(0,0,w,h);c.fillStyle=C('--card');c.fillRect(0,0,w,h);
+    c.strokeStyle=C('--grid');c.lineWidth=1;c.fillStyle=C('--muted');c.font='10px '+C('--f-mono');c.textAlign='right';c.textBaseline='middle';
+    for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4,y=Y(v);c.beginPath();c.moveTo(iz,y);c.lineTo(iz+W,y);c.stroke();c.fillText(nf(v,o.decimales??(Math.abs(hi-lo)<0.5?2:Math.abs(hi-lo)<5?1:0)),iz-4,y);}
+    c.textAlign='center';c.textBaseline='top';for(let k=0;k<=4;k++){const i=Math.round((n-1)*k/4);if(k&&i===Math.round((n-1)*(k-1)/4))continue;const ul=n>1&&i===n-1;c.textAlign=ul?'right':'center';c.fillText(nf(i+(o.desde1?1:0)),ul?X(i)+de-1:X(i),ar+H+5);}
+    if(o.ejeX){c.textAlign='right';c.fillText(o.ejeX,iz+W,ar+H+15);}
+    if(o.ejeY){c.save();c.translate(10,ar+H/2);c.rotate(-Math.PI/2);c.textAlign='center';c.fillText(o.ejeY,0,0);c.restore();}
+    (o.lineas||[]).forEach(L=>{c.strokeStyle=C(L.color||'--muted');c.setLineDash([5,4]);c.lineWidth=1.4;c.beginPath();c.moveTo(iz,Y(L.y));c.lineTo(iz+W,Y(L.y));c.stroke();c.setLineDash([]);
+      if(L.nombre){c.fillStyle=C(L.color||'--muted');c.textAlign='right';c.textBaseline='bottom';c.fillText(L.nombre,iz+W-4,Y(L.y)-2);}});
+    const traza=(y,col,anch,alfa,punt)=>{if(!y.length)return;c.strokeStyle=col;c.lineWidth=anch;c.globalAlpha=alfa;c.setLineDash(punt?[5,4]:[]);c.beginPath();
+      y.forEach((v,i)=>{i?c.lineTo(X(i),Y(v)):c.moveTo(X(i),Y(v));});c.stroke();c.globalAlpha=1;c.setLineDash([]);};
+    series.forEach(S=>{const col=C(S.color||'--accent');if(o.media&&S.y.length>1){if(o.crudo!==false&&!S.sinCrudo)traza(S.y,col,1,.22,false);traza(media(S.y,o.media),col,S.ancho||2.2,1,S.punteada);}else traza(S.y,col,S.ancho||2,S.tenue?.35:1,S.punteada);});
+    c.strokeStyle=C('--line');c.strokeRect(iz+.5,ar+.5,W,H);
+    return {X,Y};
+  }
+  /* Redibuja al cambiar el tema o el ancho. */
+  function tema(raiz,fn){let t;const re=()=>{clearTimeout(t);t=setTimeout(fn,60);};
+    if(window.ResizeObserver)new ResizeObserver(re).observe(raiz);
+    new MutationObserver(re).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme','class']});
+    if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',re);}
+  const quieto=()=>!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+  /* Entrenar por tramos sin congelar la página: trabajo() hace una unidad (un episodio, un paso) y devuelve false
+     cuando ya no hay más; cada cuadro trabaja o.ms milisegundos (24 por defecto) y llama a o.cuadro(). */
+  function bucle(trabajo,o={}){const ms=o.ms??24;let vivo=false,id=0;
+    function cuadro(){if(!vivo)return;const t0=performance.now();let sigue=true;
+      do{sigue=trabajo()!==false;}while(sigue&&performance.now()-t0<ms&&!o.unoPorCuadro);
+      if(o.cuadro)o.cuadro();if(!sigue){vivo=false;if(o.fin)o.fin();return;}
+      id=o.pausa?setTimeout(cuadro,o.pausa):requestAnimationFrame(cuadro);}
+    return {iniciar(){if(vivo)return;vivo=true;cuadro();},parar(){vivo=false;cancelAnimationFrame(id);clearTimeout(id);},get corriendo(){return vivo;}};}
+
+  return {rnd,gauss,entero,barajar,nf,pct,ACC,FLECHA,MAPAS,DEF,cuadricula,
+    politicaAlAzar,politicaDe,accionDe,elegir,codiciosa,egreedy,qDeV,barridoEval,barridoValor,evaluar,iterarValor,iterarPolitica,
+    episodio,retornoMedio,BANDIDO,bandido,agenteBandido,cartpole,
+    color,rgb,mezcla,lienzo,flecha,dibujar,media,curva,tema,quieto,bucle};
+})();
+  const M=MundoRL,{$,tok,canvasWidget}=window.Lab;
+  const nf=(n,d=0)=>{if(!isFinite(n))return '—';const s=Math.abs(n).toFixed(d).split('.');s[0]=s[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');return (n<0&&Number(Math.abs(n).toFixed(d))!==0?'−':'')+s.join(',');};
+  function rnd(s){return function(){s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  const REAL=-0.27726,N=10000,CORR=100;
+  /* Blackjack (mazo infinito). Estado fijo: jugador 13 con as utilizable (as + 2), crupier muestra un 2.
+     Política de comportamiento b: pedir o plantarse al azar (1/2 y 1/2). Política objetivo π: plantarse solo con 20 o 21. */
+  function mano(c){let s=0,as=false;for(const x of c){s+=x;if(x===1)as=true;}const u=as&&s+10<=21;return {s:u?s+10:s,u};}
+  function episodio(R){
+    const carta=()=>Math.min(1+Math.floor(R()*13),10);
+    const pj=[1,2],dc=[2,carta()];let m=mano(pj),rho=1,pasado=false;
+    while(true){const a=R()<0.5?1:0,objetivo=m.s>=20?0:1;           // 1 pedir, 0 plantarse
+      rho*=a===objetivo?2:0;                                          // π(a|s)/b(a|s): 1/0,5 o 0/0,5
+      if(a===0)break;pj.push(carta());m=mano(pj);if(m.s>21){pasado=true;break;}}
+    let G;if(pasado)G=-1;else{let d=mano(dc);while(d.s<17){dc.push(carta());d=mano(dc);}G=d.s>21?1:(m.s>d.s?1:m.s<d.s?-1:0);}
+    return {rho,G};
+  }
+  function corrida(semilla){const R=rnd(semilla),ord=new Float64Array(N),pon=new Float64Array(N);let sOrd=0,sW=0;
+    for(let k=0;k<N;k++){const {rho,G}=episodio(R);sOrd+=rho*G;sW+=rho;ord[k]=sOrd/(k+1);pon[k]=sW>0?sOrd/sW:0;}
+    return {ord,pon};}
+  let una=corrida(42),sem=42,msO=new Float64Array(N),msP=new Float64Array(N),hechas=0,lazo=null;
+  const PT=[];for(let i=0;i<=80;i++){const k=Math.round(Math.pow(10,4*i/80))-1;if(!PT.length||k>PT[PT.length-1])PT.push(k);}
+  function panel(ctx,w,h,series,y0,y1,etq){
+    const C=tok,l=44,r=14,t=10,b=26,W=w-l-r,H=h-t-b,X=k=>l+Math.log10(k+1)/4*W,Y=v=>t+(y1-Math.min(y1,Math.max(y0,v)))/(y1-y0)*H;
+    ctx.fillStyle=C('--card');ctx.fillRect(0,0,w,h);ctx.strokeStyle=C('--grid');ctx.fillStyle=C('--muted');ctx.font='10px '+C('--f-mono');ctx.lineWidth=1;
+    ctx.textAlign='center';ctx.textBaseline='top';
+    [0,1,2,3,4].forEach(e=>{const x=l+e/4*W;ctx.beginPath();ctx.moveTo(x,t);ctx.lineTo(x,t+H);ctx.stroke();ctx.textAlign=e===4?'right':e===0?'left':'center';ctx.fillText(nf(Math.pow(10,e)),x+(e===4?4:0),t+H+4);});
+    ctx.textAlign='right';ctx.textBaseline='middle';
+    for(let i=0;i<=4;i++){const v=y0+(y1-y0)*i/4,y=Y(v);ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(l+W,y);ctx.stroke();ctx.fillText(nf(v,1),l-4,y);}
+    ctx.textAlign='right';ctx.textBaseline='bottom';ctx.fillText(etq,l+W,t+H+24);
+    series.forEach(([arr,col,dash])=>{ctx.strokeStyle=C(col);ctx.lineWidth=2;ctx.setLineDash(dash?[5,4]:[]);ctx.beginPath();
+      PT.forEach((k,i)=>{const v=typeof arr==='number'?arr:arr[k];i?ctx.lineTo(X(k),Y(v)):ctx.moveTo(X(k),Y(v));});ctx.stroke();ctx.setLineDash([]);});
+    ctx.strokeStyle=C('--line');ctx.strokeRect(l+.5,t+.5,W,H);
+  }
+  const A=canvasWidget($('#c5l3-a'),w=>w<420?0.8:0.66,(ctx,w,h)=>panel(ctx,w,h,[[REAL,'--good',true],[una.ord,'--c-tra'],[una.pon,'--c-apl']],-1.6,0.8,'manos (escala logarítmica)'));
+  const B=canvasWidget($('#c5l3-b'),w=>w<420?0.8:0.66,(ctx,w,h)=>{
+    if(!hechas){panel(ctx,w,h,[],0,4,'manos (escala logarítmica)');ctx.fillStyle=tok('--muted');ctx.font='12px '+tok('--f-body');ctx.textAlign='center';ctx.fillText('Pulsa «Promediar 100 corridas»',w/2,h/2);return;}
+    const o=Array.from(msO,x=>x/hechas),p=Array.from(msP,x=>x/hechas);panel(ctx,w,h,[[o,'--c-tra'],[p,'--c-apl']],0,4,'manos (escala logarítmica)');});
+  function lectura(){
+    const u=k=>'ordinario '+nf(una.ord[k-1],3)+', ponderado '+nf(una.pon[k-1],3);
+    let t='<span class="big">Una corrida (semilla '+sem+'), tras 10.000 manos: '+u(10000)+'</span><span>Tras 10 manos: '+u(10)+'. ';
+    if(hechas){const e=k=>'ordinario '+nf(msO[k-1]/hechas,3)+' y ponderado '+nf(msP[k-1]/hechas,3);
+      t+='Error cuadrático medio en '+hechas+' corridas: con 10 manos, '+e(10)+'; con 100, '+e(100)+'; con 10.000, '+e(10000)+'.';}
+    $('#c5l3-out').innerHTML=t+'</span>';$('#c5l3-t2').textContent='Error cuadrático medio · '+hechas+' de '+CORR+' corridas';
+  }
+  $('#c5l3-una').addEventListener('click',()=>{sem++;una=corrida(sem);A();lectura();});
+  function sumar(){const c=corrida(5000+hechas);for(let k=0;k<N;k++){msO[k]+=(c.ord[k]-REAL)**2;msP[k]+=(c.pon[k]-REAL)**2;}hechas++;return hechas<CORR;}
+  $('#c5l3-go').addEventListener('click',()=>{if(lazo&&lazo.corriendo)return;msO.fill(0);msP.fill(0);hechas=0;
+    if(M.quieto()){while(sumar());B();lectura();return;}
+    lazo=M.bucle(sumar,{cuadro:()=>{B();lectura();}});lazo.iniciar();});
+  lectura();
+})();
+</script>
+</body>
+</html>

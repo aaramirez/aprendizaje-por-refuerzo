@@ -1,0 +1,919 @@
+<!doctype html>
+<html lang="es">
+<head>
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-KX76XF8R');</script>
+<!-- End Google Tag Manager -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>El refuerzo en el mundo · Aprendizaje por refuerzo · Aprendizaje por refuerzo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Agentes que aprenden por prueba y error a partir de una recompensa, de los procesos de decisión de Markov a Q-learning, DQN, PPO y el ajuste de los modelos de lenguaje con retroalimentación humana.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,600&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous" referrerpolicy="no-referrer">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KX76XF8R"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+<div class="wrap" data-page="refuerzo-en-el-mundo">
+<header class="topbar"><a class="brand" href="index.html">Aprendizaje por <b>refuerzo</b></a><span class="eyebrow">Curso visual e interactivo · Datos e inteligencia artificial</span><a class="al-sitio" href="https://aaramirez.github.io/">← Todos los cursos</a></header>
+<div class="layout">
+<nav class="toc" id="toc" aria-label="Ruta de aprendizaje"></nav>
+<main>
+<header class="page-head"><span class="num">CAPÍTULO 12 DE 12</span><h1>El refuerzo en el mundo: recompensas, simuladores y límites</h1><p class="lede">Un agente de refuerzo hace exactamente lo que la recompensa le paga, aprende en un simulador que nunca es igual al mundo y necesita una cantidad enorme de intentos. Este último capítulo muestra cómo fallan los agentes, qué se hace para que no fallen y cuándo conviene no usar refuerzo.</p></header>
+<section><h2><i>Reward hacking</i>: el agente que encuentra el atajo</h2><div class="prose"><p>La última reunión del proyecto no fue sobre algoritmos. Teodoro Vidal llegó con una sola pregunta: «Antes de poner un robot entrenado así en el piso, quiero saber de qué maneras puede fallar». Noemí Ferrer había preparado la respuesta en tres partes: la recompensa, el simulador y el costo de aprender. La primera ya la conocían desde el capítulo 2, cuando un premio por moverse dejó al robot empujando una estantería para siempre.</p><p>A ese comportamiento se le llama <b><i>reward hacking</b></i> (trampa en la recompensa) o <i>specification gaming</i> (aprovechar la especificación): el agente encuentra una forma de conseguir mucha recompensa que no es la que quien la diseñó tenía en mente. No es un error del algoritmo. Es el algoritmo funcionando perfectamente sobre una recompensa que dice algo distinto de lo que se quería decir.</p></div><div class="analogia"><b>Imagínalo así</b><p>Una empresa paga a su equipo de soporte por tickets cerrados. Al mes, los tickets se cierran rapidísimo: los empleados los cierran sin resolver y le piden al cliente que abra uno nuevo. Nadie hizo trampa a propósito; hicieron lo que se medía. En economía se lo conoce como la ley de Goodhart: cuando una medida se vuelve un objetivo, deja de ser una buena medida.</p></div><div class="prose"><p>El caso más citado es de 2016. Investigadores de OpenAI entrenaron un agente para CoastRunners, un videojuego de carreras de botes. La recompensa era el puntaje del juego, que parecía una buena medida de jugar bien. Pero en el juego los puntos se ganan chocando unos blancos que hay a lo largo del recorrido, no terminando la carrera. El agente encontró una laguna con tres blancos que reaparecían y aprendió a girar ahí para siempre, chocando contra otros botes, prendiéndose fuego y yendo en contramano, sin terminar nunca la carrera. Su puntaje era un 20 % más alto que el de los jugadores humanos.</p></div><figure class="fig fig-comparacion" id="12-diagrama-1"><div class="lienzo"><svg viewBox="0 0 800 342" style="min-width:640px" role="img" aria-label="Tabla de cinco casos de atajos en la recompensa: una bicicleta simulada que anda en círculos, Tetris en pausa, el bote de CoastRunners que gira en una laguna, un robot que tapa la cámara en lugar de agarrar y un modelo de código que engaña a las pruebas; para cada uno, lo que se pidió, lo que se quería y el atajo">
+<defs><marker id="c12d1-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker></defs><text x="20" y="26" class="t t-xs t-b t-m">LO QUE SE PIDIÓ, LO QUE SE QUERÍA Y EL ATAJO QUE ENCONTRÓ EL AGENTE</text><text x="28" y="52" class="t t-s t-b">Caso</text><text x="178" y="52" class="t t-s t-b">Lo que se pidió (la recompensa)</text><text x="378" y="52" class="t t-s t-b">Lo que se quería</text><text x="568" y="52" class="t t-s t-b">El atajo</text><path d="M20 60H780" class="ln"/><text x="28" y="84" class="t t-s t-b">Bicicleta simulada</text><text x="28" y="100" class="t t-xs t-m">1998</text><text x="178" y="84" class="t t-s k-fis">premio por acercarse</text><text x="178" y="100" class="t t-s k-fis">a la meta</text><text x="378" y="84" class="t t-s" style="fill:var(--good)">llegar a la meta</text><text x="568" y="84" class="t t-s k-warm">andar en círculos: alejarse</text><text x="568" y="100" class="t t-s k-warm">no costaba nada</text><path d="M20 110H780" class="ln" style="opacity:.5"/><text x="28" y="132" class="t t-s t-b">Tetris (NES)</text><text x="28" y="148" class="t t-xs t-m">2013</text><text x="178" y="132" class="t t-s k-fis">que no suban los números</text><text x="178" y="148" class="t t-s k-fis">que indican derrota</text><text x="378" y="132" class="t t-s" style="fill:var(--good)">jugar bien</text><text x="568" y="132" class="t t-s k-warm">pausar el juego para</text><text x="568" y="148" class="t t-s k-warm">siempre (capítulo 2)</text><path d="M20 158H780" class="ln" style="opacity:.5"/><text x="28" y="180" class="t t-s t-b">CoastRunners</text><text x="28" y="196" class="t t-xs t-m">2016</text><text x="178" y="180" class="t t-s k-fis">el puntaje del juego</text><text x="378" y="180" class="t t-s" style="fill:var(--good)">ganar la carrera</text><text x="568" y="180" class="t t-s k-warm">girar en una laguna chocando</text><text x="568" y="196" class="t t-s k-warm">blancos que reaparecen</text><path d="M20 206H780" class="ln" style="opacity:.5"/><text x="28" y="228" class="t t-s t-b">Robot que agarra</text><text x="28" y="244" class="t t-xs t-m">2017</text><text x="178" y="228" class="t t-s k-fis">que la cámara vea la mano</text><text x="178" y="244" class="t t-s k-fis">sobre el objeto (con personas)</text><text x="378" y="228" class="t t-s" style="fill:var(--good)">agarrar el objeto</text><text x="568" y="228" class="t t-s k-warm">poner la mano entre la cámara</text><text x="568" y="244" class="t t-s k-warm">y el objeto, sin tocarlo</text><path d="M20 254H780" class="ln" style="opacity:.5"/><text x="28" y="276" class="t t-s t-b">Modelo de código</text><text x="28" y="292" class="t t-xs t-m">2024-25</text><text x="178" y="276" class="t t-s k-fis">pasar las pruebas</text><text x="378" y="276" class="t t-s" style="fill:var(--good)">resolver el problema</text><text x="568" y="276" class="t t-s k-warm">detectar los casos de prueba</text><text x="568" y="292" class="t t-s k-warm">o modificar las pruebas</text><path d="M20 302H780" class="ln" style="opacity:.5"/><text x="20" y="328" class="t t-s t-m">En todos los casos el agente hizo bien su trabajo: maximizó la recompensa. El error estaba en la recompensa.</text>
+</svg></div><figcaption><b>Cinco atajos.</b> Para cada caso: lo que se le pidió al agente (ámbar), lo que se quería (verde) y el atajo que encontró (rojo). Una bicicleta simulada que anda en círculos (1998), Tetris en pausa (2013, capítulo 2), el bote de CoastRunners (2016), un brazo robótico que, entrenado con la opinión de personas que miraban una cámara, aprendió a poner la mano entre la cámara y el objeto en lugar de agarrarlo (2017), y modelos de código que pasan las pruebas detectándolas en lugar de resolver el problema.</figcaption></figure><div class="prose"><p>Los ejemplos se repiten en todas las épocas y todos los métodos. En 2018, Victoria Krakovna, de DeepMind, empezó a reunir una lista pública de casos que hoy tiene más de 60. Con los modelos de lenguaje, el problema reaparece con otra cara: una política ajustada contra un modelo de recompensa aprende a escribir lo que el modelo premia, como vimos en el capítulo 11, y un modelo de código entrenado con recompensas verificables puede aprender a modificar las pruebas en lugar de arreglar el programa.</p></div><div class="lab" id="12-lab-1"><div class="lab-title"><span class="tag">Laboratorio</span><h3><i>Reward hacking</i>: diseña la recompensa de un bote de carreras y mira el atajo que encuentra el agente</h3></div><p class="hint">El bote sale arriba a la izquierda y debe llegar a la meta, abajo a la derecha. En la laguna hay tres blancos que dan puntos. Empieza con «Como el juego: el puntaje» y mira la ruta que aprende. Después busca cuántos puntos por terminar hacen falta para que el bote termine la carrera, y prueba los blancos de una sola vez.</p><style>
+[id="12-lab-1"] .c12l1-rot{font:700 .7rem var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin:8px 0 4px}
+[id="12-lab-1"] .btns{align-items:center;margin:6px 0}
+[id="12-lab-1"] canvas{width:100%;display:block;border-radius:8px}
+[id="12-lab-1"] .c12l1-ley{display:flex;flex-wrap:wrap;gap:4px 14px;font:500 .8rem var(--f-display);color:var(--muted);margin-top:4px}
+[id="12-lab-1"] .c12l1-ley i{display:inline-block;width:12px;height:12px;vertical-align:middle;margin-right:5px;border-radius:50%}
+[id="12-lab-1"] .c12l1-ley i.l{width:18px;height:4px;border-radius:2px}
+[id="12-lab-1"] label.c12l1-chk{display:flex;gap:8px;align-items:center;font:500 .9rem var(--f-display);margin:4px 0}
+</style>
+<div class="btns" role="group" aria-label="Recompensas de ejemplo">
+  <button type="button" class="c12l1-pre" data-b="10" data-m="50" data-r="1" aria-pressed="true">Como el juego: el puntaje</button>
+  <button type="button" class="c12l1-pre" data-b="0" data-m="50" data-r="1" aria-pressed="false">Solo cuenta terminar</button>
+  <button type="button" class="c12l1-pre" data-b="10" data-m="50" data-r="0" aria-pressed="false">Blancos de una sola vez</button>
+  <button type="button" class="c12l1-pre" data-b="10" data-m="300" data-r="1" aria-pressed="false">Premio grande por terminar</button>
+</div>
+<div class="ctls">
+  <div class="ctl"><label for="c12l1-b">Puntos por cada blanco</label><input type="range" id="c12l1-b" min="0" max="20" step="1" value="10"><output id="c12l1-bo">10</output></div>
+  <div class="ctl"><label for="c12l1-m">Puntos por terminar la carrera</label><input type="range" id="c12l1-m" min="0" max="1000" step="50" value="50"><output id="c12l1-mo">50</output></div>
+</div>
+<label class="c12l1-chk"><input type="checkbox" id="c12l1-r" checked> Los blancos reaparecen apenas el bote se va (como en el juego)</label>
+<div class="btns">
+  <button type="button" id="c12l1-go" aria-pressed="false">Entrenar 8.000 regatas</button>
+  <button type="button" id="c12l1-ver" disabled>Ver la carrera</button>
+  <button type="button" id="c12l1-sem">Otra semilla</button>
+</div>
+<span class="c12l1-rot">El canal: de la salida a la meta, con la laguna de los blancos a un costado</span>
+<canvas id="c12l1-c" data-prop="0.64" role="img" aria-label="El canal de la regata: la salida arriba a la izquierda, la meta abajo a la derecha, la laguna con tres blancos y la ruta que aprendió el bote"></canvas>
+<div class="c12l1-ley"><span><i style="background:var(--c-fis)"></i>Blanco (da puntos)</span><span><i class="l" style="background:var(--c-fis)"></i>Ruta que aprendió el bote</span><span><i style="background:var(--d-casa)"></i>El bote</span><span><i style="background:var(--good)"></i>Meta</span></div>
+<div class="readout texto" id="c12l1-out" aria-live="polite"></div></div><div class="prose"><p>Con la recompensa del juego, 10 puntos por blanco y 50 por terminar, el bote no termina nunca: va y viene entre dos blancos de la laguna y suma unos 940 puntos en 100 pasos. Con 200 puntos por terminar sigue igual. Con 300, terminar ya vale más que dar vueltas y va directo a la meta en 13 pasos. Si los blancos no reaparecen, junta los tres y después termina, en 23 pasos. Ninguno de los tres arreglos le enseñó al bote qué es una carrera; solo cambiaron qué paga más.</p></div></section>
+<section><h2>Moldear la recompensa sin cambiar el objetivo</h2><div class="prose"><p>Si la recompensa honesta es escasa, como +10 solo al llegar al muelle, el agente tarda mucho en encontrarla por azar. La tentación es ayudarlo con recompensas intermedias: un bono por acercarse al muelle, por avanzar en la dirección correcta. A eso se le llama <b>moldear la recompensa</b> (<i>reward shaping</i>), y es exactamente como se crean los atajos. En 1998, Jette Randløv y Preben Alstrøm premiaron a una bicicleta simulada por acercarse a su destino, sin cobrarle por alejarse: la bicicleta aprendió a andar en círculos, porque en cada vuelta había un tramo en que se acercaba y cobraba.</p><p>En 1999, Andrew Ng, Daishi Harada y Stuart Russell demostraron qué forma tiene que tener un bono para no cambiar nunca la política óptima. Se elige una función de <b>potencial</b> Φ(s) (<i>potential function</i>), un número por estado que indica qué tan cerca de la meta parece estar, y el bono de cada paso es la diferencia de potencial:</p><div class="math-display">F(s, s') = \gamma\,\Phi(s') - \Phi(s)</div><p>El truco está en que esos bonos se cancelan en cadena. A lo largo de cualquier camino, la suma descontada de los bonos es siempre la misma: menos el potencial del punto de partida. Ningún camino puede ganar más que otro gracias a ellos, y un ciclo no paga nada extra. El bono puede orientar al agente al principio, porque las acciones que suben el potencial se ven mejores antes de que llegue la recompensa real, pero la mejor política sigue siendo la misma.</p></div><div class="analogia"><b>Imagínalo así</b><p>Es como una ruta de montaña con señales de altitud. Mirar el altímetro te ayuda a saber si vas subiendo hacia la cumbre, pero la altura que «ganas» en una subida la «devuelves» en la bajada siguiente: dar vueltas alrededor de un cerro no te deja más arriba. Un bono por cada paso de subida sin descontar las bajadas sí te premiaría por dar vueltas.</p></div><figure class="fig fig-esquema" id="12-diagrama-2"><div class="lienzo"><svg viewBox="0 0 800 430" style="min-width:640px" role="img" aria-label="Dos maquetas del almacén: a la izquierda, con un bono de +5 por acercarse, el robot va y viene entre D1 y E1 cobrando el bono y nunca entra al muelle; a la derecha, el potencial de cada casilla, menos los pasos hasta el muelle, con el que el bono de potencial no crea ciclos y la política óptima no cambia">
+<defs><marker id="c12d2-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker><marker id="c12d2-tra" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-tra)"/></marker><marker id="c12d2-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--warm)"/></marker><marker id="c12d2-fis" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-fis)"/></marker></defs><text x="20" y="26" class="t t-xs t-b t-m">MOLDEAR LA RECOMPENSA: UN BONO POR ACERCARSE CREA UN CICLO; UN BONO DE POTENCIAL, NO</text><text x="20" y="52" class="t t-s t-b k-warm">① Bono ingenuo: +5 cada vez que se acerca</text><rect x="46" y="84" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><rect x="96" y="84" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><rect x="146" y="84" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><rect x="196" y="84" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><rect x="246" y="84" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><rect x="296" y="84" width="50" height="50" style="fill:var(--good-soft);stroke:var(--line)"/><text x="321" y="107" class="t t-s t-b" text-anchor="middle" style="fill:var(--good)">Premio</text><text x="321" y="122" class="t t-s t-mono" text-anchor="middle" style="fill:var(--good)">+10</text><rect x="46" y="134" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><rect x="96" y="134" width="50" height="50" style="fill:var(--muted);fill-opacity:.35;stroke:var(--line)"/><path d="M100 146.5H142" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><path d="M100 159H142" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><path d="M100 171.5H142" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><rect x="146" y="134" width="50" height="50" style="fill:var(--muted);fill-opacity:.35;stroke:var(--line)"/><path d="M150 146.5H192" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><path d="M150 159H192" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><path d="M150 171.5H192" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><rect x="196" y="134" width="50" height="50" style="fill:var(--muted);fill-opacity:.35;stroke:var(--line)"/><path d="M200 146.5H242" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><path d="M200 159H242" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><path d="M200 171.5H242" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><rect x="246" y="134" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><rect x="296" y="134" width="50" height="50" style="fill:var(--warm-soft);stroke:var(--line)"/><text x="321" y="157" class="t t-s t-b k-warm" text-anchor="middle">Trampa</text><text x="321" y="172" class="t t-s t-mono k-warm" text-anchor="middle">−10</text><rect x="46" y="184" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><rect x="96" y="184" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><rect x="146" y="184" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><rect x="196" y="184" width="50" height="50" style="fill:var(--warm-soft);stroke:var(--line)"/><text x="221" y="207" class="t t-s t-b k-warm" text-anchor="middle">Trampa</text><text x="221" y="222" class="t t-s t-mono k-warm" text-anchor="middle">−10</text><rect x="246" y="184" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><rect x="296" y="184" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><rect x="46" y="234" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><rect x="96" y="234" width="50" height="50" style="fill:var(--muted);fill-opacity:.35;stroke:var(--line)"/><path d="M100 246.5H142" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><path d="M100 259H142" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><path d="M100 271.5H142" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><rect x="146" y="234" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><rect x="196" y="234" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><rect x="246" y="234" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><rect x="296" y="234" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><rect x="46" y="284" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><rect x="96" y="284" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><rect x="146" y="284" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><rect x="149" y="287" width="44" height="44" style="fill:none;stroke:var(--accent);stroke-width:2;stroke-dasharray:4 3"/><rect x="196" y="284" width="50" height="50" style="fill:var(--muted);fill-opacity:.35;stroke:var(--line)"/><path d="M200 296.5H242" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><path d="M200 309H242" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><path d="M200 321.5H242" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><rect x="246" y="284" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><rect x="296" y="284" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="71" y="77" class="t t-s t-m t-b" text-anchor="middle">A</text><text x="121" y="77" class="t t-s t-m t-b" text-anchor="middle">B</text><text x="171" y="77" class="t t-s t-m t-b" text-anchor="middle">C</text><text x="221" y="77" class="t t-s t-m t-b" text-anchor="middle">D</text><text x="271" y="77" class="t t-s t-m t-b" text-anchor="middle">E</text><text x="321" y="77" class="t t-s t-m t-b" text-anchor="middle">F</text><text x="37" y="113" class="t t-s t-m t-b" text-anchor="middle">1</text><text x="37" y="163" class="t t-s t-m t-b" text-anchor="middle">2</text><text x="37" y="213" class="t t-s t-m t-b" text-anchor="middle">3</text><text x="37" y="263" class="t t-s t-m t-b" text-anchor="middle">4</text><text x="37" y="313" class="t t-s t-m t-b" text-anchor="middle">5</text><path d="M217.0 105.0Q246.0 79.0 275.0 105.0" style="fill:none;stroke:var(--warm);stroke-width:2.6" marker-end="url(#c12d2-warm)"/><path d="M275.0 113.0Q246.0 139.0 217.0 113.0" style="fill:none;stroke:var(--warm);stroke-width:2.6;stroke-dasharray:5 4" marker-end="url(#c12d2-warm)"/><text x="46" y="358" class="t t-s t-mono">D1 → E1: se acerca, cobra +5 − 0,1</text><text x="46" y="376" class="t t-s t-mono">E1 → D1: se aleja, paga solo −0,1</text><text x="46" y="398" class="t t-s t-b k-warm">Ir y volver paga +4,8 cada dos pasos:</text><text x="46" y="416" class="t t-s t-b k-warm">nunca entra al muelle (llega 0 %).</text><text x="414" y="52" class="t t-s t-b k-tra">② Bono de potencial: γ·Φ(s′) − Φ(s)</text><rect x="440" y="84" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="465" y="114" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−5</text><rect x="490" y="84" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="515" y="114" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−4</text><rect x="540" y="84" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="565" y="114" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−3</text><rect x="590" y="84" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="615" y="114" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−2</text><rect x="640" y="84" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="665" y="114" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−1</text><rect x="690" y="84" width="50" height="50" style="fill:var(--good-soft);stroke:var(--line)"/><text x="715" y="107" class="t t-s t-b" text-anchor="middle" style="fill:var(--good)">Premio</text><text x="715" y="122" class="t t-s t-mono" text-anchor="middle" style="fill:var(--good)">+10</text><rect x="440" y="134" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="465" y="164" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−6</text><rect x="490" y="134" width="50" height="50" style="fill:var(--muted);fill-opacity:.35;stroke:var(--line)"/><path d="M494 146.5H536" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><path d="M494 159H536" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><path d="M494 171.5H536" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><rect x="540" y="134" width="50" height="50" style="fill:var(--muted);fill-opacity:.35;stroke:var(--line)"/><path d="M544 146.5H586" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><path d="M544 159H586" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><path d="M544 171.5H586" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><rect x="590" y="134" width="50" height="50" style="fill:var(--muted);fill-opacity:.35;stroke:var(--line)"/><path d="M594 146.5H636" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><path d="M594 159H636" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><path d="M594 171.5H636" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><rect x="640" y="134" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="665" y="164" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−2</text><rect x="690" y="134" width="50" height="50" style="fill:var(--warm-soft);stroke:var(--line)"/><text x="715" y="157" class="t t-s t-b k-warm" text-anchor="middle">Trampa</text><text x="715" y="172" class="t t-s t-mono k-warm" text-anchor="middle">−10</text><rect x="440" y="184" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="465" y="214" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−7</text><rect x="490" y="184" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="515" y="214" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−8</text><rect x="540" y="184" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="565" y="214" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−7</text><rect x="590" y="184" width="50" height="50" style="fill:var(--warm-soft);stroke:var(--line)"/><text x="615" y="207" class="t t-s t-b k-warm" text-anchor="middle">Trampa</text><text x="615" y="222" class="t t-s t-mono k-warm" text-anchor="middle">−10</text><rect x="640" y="184" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="665" y="214" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−3</text><rect x="690" y="184" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="715" y="214" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−4</text><rect x="440" y="234" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="465" y="264" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−8</text><rect x="490" y="234" width="50" height="50" style="fill:var(--muted);fill-opacity:.35;stroke:var(--line)"/><path d="M494 246.5H536" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><path d="M494 259H536" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><path d="M494 271.5H536" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><rect x="540" y="234" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="565" y="264" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−6</text><rect x="590" y="234" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="615" y="264" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−5</text><rect x="640" y="234" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="665" y="264" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−4</text><rect x="690" y="234" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="715" y="264" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−5</text><rect x="440" y="284" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="465" y="314" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−9</text><rect x="490" y="284" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="515" y="314" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−8</text><rect x="540" y="284" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="565" y="314" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−7</text><rect x="543" y="287" width="44" height="44" style="fill:none;stroke:var(--accent);stroke-width:2;stroke-dasharray:4 3"/><rect x="590" y="284" width="50" height="50" style="fill:var(--muted);fill-opacity:.35;stroke:var(--line)"/><path d="M594 296.5H636" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><path d="M594 309H636" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><path d="M594 321.5H636" style="stroke:var(--muted);stroke-width:1;opacity:.6"/><rect x="640" y="284" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="665" y="314" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−5</text><rect x="690" y="284" width="50" height="50" style="fill:var(--card);stroke:var(--line)"/><text x="715" y="314" class="t t-mono t-b" text-anchor="middle" style="font-size:12px">−6</text><text x="465" y="77" class="t t-s t-m t-b" text-anchor="middle">A</text><text x="515" y="77" class="t t-s t-m t-b" text-anchor="middle">B</text><text x="565" y="77" class="t t-s t-m t-b" text-anchor="middle">C</text><text x="615" y="77" class="t t-s t-m t-b" text-anchor="middle">D</text><text x="665" y="77" class="t t-s t-m t-b" text-anchor="middle">E</text><text x="715" y="77" class="t t-s t-m t-b" text-anchor="middle">F</text><text x="431" y="113" class="t t-s t-m t-b" text-anchor="middle">1</text><text x="431" y="163" class="t t-s t-m t-b" text-anchor="middle">2</text><text x="431" y="213" class="t t-s t-m t-b" text-anchor="middle">3</text><text x="431" y="263" class="t t-s t-m t-b" text-anchor="middle">4</text><text x="431" y="313" class="t t-s t-m t-b" text-anchor="middle">5</text><text x="414" y="358" class="t t-s">Φ(s) = −(pasos hasta el muelle). Los bonos se</text><text x="414" y="376" class="t t-s">cancelan en cadena: por cualquier camino suman</text><text x="414" y="394" class="t t-s">lo mismo, −Φ(inicio). Dar vueltas no paga extra.</text><text x="414" y="416" class="t t-s t-b k-tra">La política óptima no cambia: llega 98,5 %.</text>
+</svg></div><figcaption><b>Moldear con y sin potencial.</b> A la izquierda, la maqueta con un bono ingenuo de +5 cada vez que el robot se acerca al muelle: ir de D1 a E1 cobra el bono y volver de E1 a D1 cuesta solo el paso, así que el robot va y viene para siempre (flechas rojas). A la derecha, el potencial de cada casilla, menos los pasos que faltan hasta el muelle: con el bono de potencial, los bonos de cualquier camino suman lo mismo y la política óptima no cambia.</figcaption></figure><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>Moldea la recompensa del almacén y mira qué política sale</h3></div><p>Vas a calcular la política óptima del almacén con tres recompensas moldeadas de forma ingenua y dos con potencial, y a probar cada política con la recompensa original, la que de verdad importa. Entra a <code>refuerzo</code>, activa el entorno y asegúrate de tener <code>almacen.py</code> (capítulo 2) en la carpeta.</p><ol class="steps"><li><span>Guarda este programa como <code>moldear.py</code>:</span></li></ol><div class="code-copia code-lineas"><pre tabindex="0"><code><span class="ln">"""Moldear la recompensa en el almacen: un bono ingenuo por acercarse frente a un bono basado en un potencial.</span>
+<span class="ln">Usa almacen.py (capitulo 2). Calcula la politica optima de cada recompensa con iteracion de valor (capitulo 4)</span>
+<span class="ln">y la prueba con la recompensa original, la que de verdad importa."""</span>
+<span class="ln">from collections import deque</span>
+<span class="ln">import numpy as np</span>
+<span class="ln">from almacen import Almacen</span>
+<span class="ln"></span>
+<span class="ln">env = Almacen()</span>
+<span class="ln">nS, g = env.nS, env.gamma</span>
+<span class="ln">premio = next(s for s in range(nS) if env.tipo(s) == "P")</span>
+<span class="ln"></span>
+<span class="ln">dist = np.full(nS, 99.0)                               # pasos hasta el muelle por el camino mas corto</span>
+<span class="ln">dist[premio], cola = 0, deque([premio])</span>
+<span class="ln">while cola:</span>
+<span class="ln">    s = cola.popleft()</span>
+<span class="ln">    for d in range(4):</span>
+<span class="ln">        s2 = env._mover(s, d)</span>
+<span class="ln">        if env.tipo(s2) not in "#T" and dist[s2] &gt; dist[s] + 1:</span>
+<span class="ln">            dist[s2] = dist[s] + 1</span>
+<span class="ln">            cola.append(s2)</span>
+<span class="ln"></span>
+<span class="ln">def con_bono(bono):</span>
+<span class="ln">    """Copia del modelo env.P con la recompensa de cada transicion mas bono(s, s2)."""</span>
+<span class="ln">    return {s: {a: [(p, s2, r + bono(s, s2), fin) for p, s2, r, fin in env.P[s][a]] for a in range(4)} for s in range(nS)}</span>
+<span class="ln"></span>
+<span class="ln">def optima(P):</span>
+<span class="ln">    V = np.zeros(nS)</span>
+<span class="ln">    for _ in range(2000):                              # iteracion de valor (Bellman de optimalidad)</span>
+<span class="ln">        Q = np.array([[sum(p * (r + (0 if fin else g * V[s2])) for p, s2, r, fin in P[s][a]) for a in range(4)] for s in range(nS)])</span>
+<span class="ln">        V = Q.max(axis=1)</span>
+<span class="ln">    return Q.argmax(axis=1)</span>
+<span class="ln"></span>
+<span class="ln">def evaluar(pi, recompensa, gamma=g):</span>
+<span class="ln">    """Valor de la politica pi con otra recompensa (truco del cap. 4: premio 1 y gamma 1 da la prob. de llegar)."""</span>
+<span class="ln">    V = np.zeros(nS)</span>
+<span class="ln">    for _ in range(3000):</span>
+<span class="ln">        V = np.array([sum(p * (recompensa(r) + (0 if fin else gamma * V[s2])) for p, s2, r, fin in env.P[s][pi[s]]) for s in range(nS)])</span>
+<span class="ln">    return V[env.inicio]</span>
+<span class="ln"></span>
+<span class="ln">def potencial(k):</span>
+<span class="ln">    """Bono basado en un potencial Phi(s) = -k * pasos hasta el muelle (Phi = 0 en las casillas terminales)."""</span>
+<span class="ln">    phi = lambda s: 0.0 if env.tipo(s) in "PT" else -k * dist[s]</span>
+<span class="ln">    return lambda s, s2: g * phi(s2) - phi(s)</span>
+<span class="ln"></span>
+<span class="ln">bonos = [("sin bono (referencia)", lambda s, s2: 0.0)]</span>
+<span class="ln">bonos += [(f"ingenuo: +{b} si se acerca", lambda s, s2, b=b: b if dist[s2] &lt; dist[s] else 0.0) for b in (1, 3, 5)]</span>
+<span class="ln">bonos += [(f"potencial con k = {k}", potencial(k)) for k in (1, 5)]</span>
+<span class="ln">for nombre, bono in bonos:</span>
+<span class="ln">    pi = optima(con_bono(bono))</span>
+<span class="ln">    v = evaluar(pi, lambda r: r)                                          # con la recompensa original</span>
+<span class="ln">    llega = evaluar(pi, lambda r: 1.0 if r == env.premio else 0.0, 1.0)   # probabilidad de llegar al muelle</span>
+<span class="ln">    print(f"\n{nombre}: V original desde C5 = {v:.2f}, llega al muelle {llega:.1%}")</span>
+<span class="ln">    env.dibujar(pi=pi)</span></code></pre><button type="button" class="ver-todo" aria-expanded="false">Ver las 53 líneas</button><button type="button" class="copiar copiar-todo">Copiar</button></div><ol class="steps" start="2" style="counter-reset:st 1"><li><span>Córrelo (tarda unos segundos):</span></li></ol><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python moldear.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 moldear.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps" start="3" style="counter-reset:st 2"><li><span>Para cada recompensa, mira la fila 1 del mapa (las flechas de D1 y E1) y las dos cifras: el valor desde la base con la recompensa original y la probabilidad de llegar.</span></li></ol><p><b>Qué observar:</b> sin bono, la política es la del capítulo 3: valor 1,75 y llega el 98,5 %. Con el bono ingenuo de +1 o +3, la política cambia algunas flechas y empeora un poco con la recompensa original (1,66 y 1,48; llega el 95 %). Con +5, E1 apunta a la izquierda y D1 a la derecha: el robot va y viene entre las dos casillas cobrando el bono, el valor original cae a −1,19 y <b>no llega nunca</b> (0,0 %). Con el bono de potencial, sea con k = 1 o con k = 5, la política es idéntica a la de referencia: 1,75 y 98,5 %. Los números de programación dinámica no dependen del azar, así que deberías ver exactamente estos.</p></div></section>
+<section><h2>Simuladores y la brecha con la realidad</h2><div class="prose"><p>Desde el capítulo 1, todo el entrenamiento del robot de Noemí ocurrió en la maqueta del simulador de Ulises Robles, y no por casualidad: el refuerzo aprende equivocándose, y equivocarse en el piso cuesta robots, mercadería y personas en riesgo. En un <b>simulador</b> (<i>simulator</i>), un error cuesta milisegundos de cómputo y se pueden correr miles de copias en paralelo. Cómo se construye un simulador y cómo se valida está en <a href="https://aaramirez.github.io/mate-simulacion/temario.html" target="_blank" rel="noopener">Simulación</a>; aquí importa su límite.</p><p>Ningún simulador es igual al mundo. La diferencia entre los dos se llama <b>brecha de la realidad</b> (<i>reality gap</i> o <i>sim-to-real gap</i>): la fricción del piso, el desgaste de las ruedas, el peso exacto de cada caja, el retraso entre que el sensor mide y el motor responde, el ruido en las medidas y todo lo que nadie pensó en modelar. Una política entrenada en un solo simulador aprende a aprovechar sus detalles, incluso sus errores, y puede fallar en cuanto algo cambia.</p></div><div class="analogia"><b>Imagínalo así</b><p>Un piloto que solo practicó en un simulador de vuelo con el aire siempre en calma puede aterrizar perfecto mil veces y desorientarse el primer día con viento cruzado. Por eso los simuladores de entrenamiento de pilotos agregan viento, lluvia, fallas de motor y pistas distintas: no para que cada vuelo sea realista, sino para que ningún vuelo real sea una sorpresa.</p></div><div class="prose"><p>La técnica más usada para cruzar la brecha es la <b>aleatorización del dominio</b> (<i>domain randomization</i>): en cada episodio de entrenamiento se sortean los parámetros del simulador dentro de rangos amplios (fricción, masas, retrasos, colores, iluminación). La política no puede aprovechar ningún valor exacto, porque cambia todo el tiempo, y aprende algo que funciona en todos. Si el mundo real cae dentro de la variedad que vio, lo trata como un mundo más. Así se entrenaron la mano Dactyl del capítulo 10 y, desde 2019, los robots de cuatro patas ANYmal de la ETH de Zúrich, que aprendieron a caminar y a levantarse en simulación y pasaron al robot real sin ajustes.</p></div><figure class="fig fig-arquitectura" id="12-diagrama-3"><div class="lienzo"><svg viewBox="0 0 800 314" style="min-width:640px" role="img" aria-label="Del simulador al mundo real: el simulador genera muchos mundos con fricción y masa al azar, la política entrenada en todos es robusta y se lleva al mundo real, cuya brecha incluye fricción, masas, retrasos, ruido y lo que nadie modeló">
+<defs><marker id="c12d3-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker><marker id="c12d3-tra" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-tra)"/></marker><marker id="c12d3-fis" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-fis)"/></marker><marker id="c12d3-inet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--d-inet)"/></marker><marker id="c12d3-casa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--d-casa)"/></marker><marker id="c12d3-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--warm)"/></marker></defs><text x="20" y="26" class="t t-xs t-b t-m">DEL SIMULADOR AL PISO: ENTRENAR EN MUCHOS MUNDOS PARECIDOS PARA FUNCIONAR EN EL REAL</text><rect x="20" y="44" width="300" height="230" rx="10" class="d-inet"/><text x="36" y="68" class="t t-s t-b k-inet">Simulador (barato, rápido, seguro)</text><rect x="36" y="84" width="128" height="62" rx="8" class="caja"/><text x="46" y="106" class="t t-xs t-b t-m">mundo 1</text><text x="46" y="124" class="t t-xs t-mono">fricción 0,1</text><text x="46" y="138" class="t t-xs t-mono">masa 1,0</text><rect x="176" y="84" width="128" height="62" rx="8" class="caja"/><text x="186" y="106" class="t t-xs t-b t-m">mundo 2</text><text x="186" y="124" class="t t-xs t-mono">fricción 0,6</text><text x="186" y="138" class="t t-xs t-mono">masa 1,3</text><rect x="36" y="158" width="128" height="62" rx="8" class="caja"/><text x="46" y="180" class="t t-xs t-b t-m">mundo 3</text><text x="46" y="198" class="t t-xs t-mono">fricción 0,3</text><text x="46" y="212" class="t t-xs t-mono">masa 0,8</text><rect x="176" y="158" width="128" height="62" rx="8" class="caja"/><text x="186" y="180" class="t t-xs t-b t-m">mundo 4</text><text x="186" y="198" class="t t-xs t-mono">fricción 0,8</text><text x="186" y="212" class="t t-xs t-mono">masa 1,1</text><text x="36" y="252" class="t t-xs t-m">aleatorización del dominio: cada</text><text x="36" y="266" class="t t-xs t-m">episodio, parámetros al azar</text><path d="M320 160H370" class="ln" style="stroke:var(--c-tra);stroke-width:2" marker-end="url(#c12d3-tra)"/><rect x="374" y="110" width="150" height="100" rx="10" class="c-tra"/><text x="449" y="146" class="t t-b k-tra" text-anchor="middle">política</text><text x="449" y="166" class="t t-b k-tra" text-anchor="middle">robusta</text><text x="449" y="188" class="t t-xs" text-anchor="middle">(funciona en todos)</text><path d="M524 160H574" class="ln" style="stroke:var(--c-tra);stroke-width:2" marker-end="url(#c12d3-tra)"/><rect x="578" y="44" width="202" height="230" rx="10" class="d-casa"/><text x="594" y="68" class="t t-s t-b k-casa">Mundo real (el piso)</text><text x="594" y="96" class="t t-s t-b">La brecha: lo que el</text><text x="594" y="116" class="t t-s t-b">simulador no tiene bien</text><text x="594" y="136" class="t t-s">· fricción y desgaste</text><text x="594" y="156" class="t t-s">· masas y motores</text><text x="594" y="176" class="t t-s">· retrasos de sensores</text><text x="594" y="196" class="t t-s">· motores que responden tarde</text><text x="594" y="216" class="t t-s">· ruido en las medidas</text><text x="594" y="236" class="t t-s">· lo que nadie modeló</text><text x="400" y="300" class="t t-s t-m" text-anchor="middle">Si el mundo real cae dentro de la variedad que vio en el simulador, la política lo trata como un mundo más.</text>
+</svg></div><figcaption><b>Del simulador al piso.</b> A la izquierda, el simulador genera muchos mundos con parámetros sorteados (fricción, masa). En el centro, la política entrenada en todos ellos. A la derecha, el mundo real, con la lista de lo que el simulador no captura del todo. Si el mundo real cae dentro de la variedad que vio la política, la brecha se cruza.</figcaption></figure><div class="lab" id="12-lab-2"><div class="lab-title"><span class="tag">Laboratorio</span><h3>La brecha del simulador: entrena en un mundo sin fricción y prueba en uno con fricción</h3></div><p class="hint">El robot debe detenerse en el muelle sin chocar con la pared. Entrena primero en el simulador sin fricción y prueba en el piso real con la fricción de 0,7 m/s². Después mueve la fricción del piso real, prueba el simulador con fricción fija y, al final, la aleatorización. La tabla de abajo muestra qué hace la misma política en nueve pisos distintos.</p><style>
+[id="12-lab-2"] .c12l2-rot{font:700 .7rem var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin:8px 0 4px}
+[id="12-lab-2"] .btns{align-items:center;margin:6px 0}
+[id="12-lab-2"] canvas{width:100%;display:block;border-radius:8px}
+[id="12-lab-2"] .c12l2-ley{display:flex;flex-wrap:wrap;gap:4px 14px;font:500 .8rem var(--f-display);color:var(--muted);margin-top:4px}
+[id="12-lab-2"] .c12l2-ley i{display:inline-block;width:12px;height:12px;vertical-align:middle;margin-right:5px;border-radius:3px}
+[id="12-lab-2"] .c12l2-ley i.l{width:18px;height:3px;border-radius:2px}
+[id="12-lab-2"] .c12l2-ley i.p{width:18px;height:0;background:none!important;border-top:2px dashed}
+</style>
+<div class="opciones">
+  <label>Cómo es el simulador donde se entrena
+    <select id="c12l2-sim">
+      <option value="0" selected>Sin fricción (0 m/s²)</option>
+      <option value="0.4">Fricción fija de 0,4 m/s²</option>
+      <option value="azar">Al azar entre 0 y 0,8 en cada episodio</option>
+    </select></label>
+</div>
+<div class="ctls">
+  <div class="ctl"><label for="c12l2-f">Fricción del piso real</label><input type="range" id="c12l2-f" min="0" max="0.8" step="0.1" value="0.7"><output id="c12l2-fo">0,7 m/s²</output></div>
+</div>
+<div class="btns">
+  <button type="button" id="c12l2-go" aria-pressed="false">Entrenar 4.000 episodios en el simulador</button>
+  <button type="button" id="c12l2-ver" disabled>Probar en el piso real</button>
+  <button type="button" id="c12l2-sem">Otra semilla</button>
+</div>
+<p class="hint" style="margin:2px 0 0">El robot arranca quieto y debe detenerse en el muelle, entre 7,5 y 8,5 m, a menos de 0,25 m/s. Si pasa de 10 m choca con la pared. Cada 0,25 s elige acelerar, frenar o dejar rodar. Aprende con Q-learning sobre su posición y su velocidad.</p>
+<span class="c12l2-rot">La pista: el robot en el piso real</span>
+<canvas id="c12l2-p" data-prop="0.2" role="img" aria-label="La pista de 10 metros con el muelle entre 7,5 y 8,5 metros, la pared al final y el robot"></canvas>
+<span class="c12l2-rot">Posición en el tiempo: en el simulador y en el piso real</span>
+<canvas id="c12l2-g" data-prop="0.42" role="img" aria-label="Posición del robot segundo a segundo con la misma política en el simulador y en el piso real, con la franja del muelle"></canvas>
+<div class="c12l2-ley"><span><i class="l" style="background:var(--c-tra)"></i>En el simulador</span><span><i class="l" style="background:var(--c-fis)"></i>En el piso real</span><span><i style="background:var(--good)"></i>Muelle</span><span><i class="p" style="border-color:var(--warm)"></i>Pared</span></div>
+<span class="c12l2-rot">La misma política en pisos con distinta fricción</span>
+<canvas id="c12l2-t" data-prop="0.22" role="img" aria-label="Resultado de la política en nueve pisos, de fricción 0 a 0,8: llega al muelle, choca o se queda corto"></canvas>
+<div class="c12l2-ley"><span><i style="background:var(--good)"></i>Llega al muelle</span><span><i style="background:var(--warm)"></i>Choca con la pared</span><span><i style="background:var(--muted)"></i>Se queda corto (se acaba el tiempo)</span></div>
+<div class="readout texto" id="c12l2-out" aria-live="polite"></div></div><div class="prose"><p>Con la semilla de referencia, la política entrenada sin fricción se detiene en el muelle en el simulador en 23 pasos y funciona hasta una fricción de 0,6, pero con 0,7 se frena antes del muelle y no vuelve a arrancar: en el simulador nunca estuvo quieta lejos del muelle, así que no sabe qué hacer ahí. La entrenada con fricción fija de 0,4 tiene el problema contrario: en un piso sin fricción no frena a tiempo y choca. Con la fricción al azar en cada episodio, la política llega al muelle en los nueve pisos: tarda más en los pisos fáciles, pero no falla en ninguno.</p></div><div class="practica"><div class="practica-title"><span class="tag">En la terminal</span><h3>La brecha del simulador en CartPole</h3></div><p>Vas a probar la política PPO que guardó la práctica del capítulo 10 (<code>ppo_cartpole.zip</code>) en péndulos con otra física, y a entrenar otra con aleatorización del dominio. Usa la carpeta <code>refuerzo</code> con el entorno activado; si no tienes el archivo, el programa entrena la política primero.</p><ol class="steps"><li><span>Guarda este programa como <code>brecha.py</code>:</span></li></ol><div class="code-copia code-lineas"><pre tabindex="0"><code><span class="ln">"""La brecha del simulador en CartPole: una politica PPO entrenada con la fisica de fabrica se prueba con un</span>
+<span class="ln">pendulo mas largo, uno mas pesado y un motor mas debil; despues se entrena otra con aleatorizacion del dominio.</span>
+<span class="ln">Usa ppo_cartpole.zip, el modelo que guardo la practica del capitulo 10 (si no esta, lo entrena)."""</span>
+<span class="ln">import os</span>
+<span class="ln">import gymnasium as gym</span>
+<span class="ln">import numpy as np</span>
+<span class="ln">from stable_baselines3 import PPO</span>
+<span class="ln">from stable_baselines3.common.env_util import make_vec_env</span>
+<span class="ln">from stable_baselines3.common.evaluation import evaluate_policy</span>
+<span class="ln">from stable_baselines3.common.monitor import Monitor</span>
+<span class="ln"></span>
+<span class="ln">def fisica(env, longitud=0.5, masa=0.1, fuerza=10.0):</span>
+<span class="ln">    """Cambia la fisica del CartPole de Gymnasium (longitud = media longitud del pendulo, en metros)."""</span>
+<span class="ln">    u = env.unwrapped</span>
+<span class="ln">    u.length, u.masspole, u.force_mag = longitud, masa, fuerza</span>
+<span class="ln">    u.total_mass = u.masscart + u.masspole</span>
+<span class="ln">    u.polemass_length = u.masspole * u.length</span>
+<span class="ln"></span>
+<span class="ln">class Aleatorio(gym.Wrapper):</span>
+<span class="ln">    """Aleatorizacion del dominio: cada episodio empieza con una fisica distinta, sorteada al azar."""</span>
+<span class="ln">    def reset(self, **kw):</span>
+<span class="ln">        r = self.np_random</span>
+<span class="ln">        fisica(self.env, longitud=r.uniform(0.3, 1.2), masa=r.uniform(0.05, 0.6), fuerza=r.uniform(5, 12))</span>
+<span class="ln">        return self.env.reset(**kw)</span>
+<span class="ln"></span>
+<span class="ln">MUNDOS = {"el simulador (de fabrica)": {}, "pendulo el doble de largo": {"longitud": 1.0},</span>
+<span class="ln">          "pendulo 5 veces mas pesado": {"masa": 0.5}, "motor 40 % mas debil": {"fuerza": 6.0},</span>
+<span class="ln">          "las tres cosas juntas": {"longitud": 1.0, "masa": 0.5, "fuerza": 6.0}}</span>
+<span class="ln"></span>
+<span class="ln">def probar(modelo, nombre):</span>
+<span class="ln">    print(f"\n{nombre}:")</span>
+<span class="ln">    for mundo, cambios in MUNDOS.items():</span>
+<span class="ln">        env = Monitor(gym.make("CartPole-v1"))</span>
+<span class="ln">        fisica(env, **cambios)</span>
+<span class="ln">        media, _ = evaluate_policy(modelo, env, n_eval_episodes=20, deterministic=True)</span>
+<span class="ln">        print(f"   {mundo:28s} aguanta {media:5.1f} pasos")</span>
+<span class="ln"></span>
+<span class="ln">if os.path.exists("ppo_cartpole.zip"):</span>
+<span class="ln">    normal = PPO.load("ppo_cartpole")</span>
+<span class="ln">else:</span>
+<span class="ln">    normal = PPO("MlpPolicy", make_vec_env("CartPole-v1", n_envs=8, seed=42), n_steps=32, batch_size=256, n_epochs=20,</span>
+<span class="ln">                 learning_rate=0.001, gamma=0.98, gae_lambda=0.8, seed=42).learn(60_000)</span>
+<span class="ln">probar(normal, "Entrenada solo en el simulador")</span>
+<span class="ln"></span>
+<span class="ln">robusta = PPO("MlpPolicy", make_vec_env("CartPole-v1", n_envs=8, seed=42, wrapper_class=Aleatorio), n_steps=32,</span>
+<span class="ln">              batch_size=256, n_epochs=20, learning_rate=0.001, gamma=0.98, gae_lambda=0.8, seed=42).learn(100_000)</span>
+<span class="ln">probar(robusta, "Entrenada con aleatorizacion del dominio")</span></code></pre><button type="button" class="ver-todo" aria-expanded="false">Ver las 47 líneas</button><button type="button" class="copiar copiar-todo">Copiar</button></div><ol class="steps" start="2" style="counter-reset:st 1"><li><span>Córrelo:</span></li></ol><div class="cmds"><div class="cmd-tabs" role="tablist" aria-label="Sistema operativo"><button type="button" role="tab" data-so="win">Windows</button><button type="button" role="tab" data-so="mac linux">macOS y Linux</button></div><div class="cmd-panel" role="tabpanel" data-so="win"><div class="cmd-l"><code>python brecha.py</code><button type="button" class="copiar">Copiar</button></div></div><div class="cmd-panel" role="tabpanel" data-so="mac linux"><div class="cmd-l"><code>python3 brecha.py</code><button type="button" class="copiar">Copiar</button></div></div></div><ol class="steps" start="3" style="counter-reset:st 2"><li><span>Compara, mundo por mundo, las dos listas que imprime.</span></li></ol><p><b>Qué observar:</b> la política entrenada solo con la física de fábrica aguanta los 500 pasos en su simulador, con el péndulo cinco veces más pesado y con el motor más débil, pero con un péndulo el doble de largo cae en 13 pasos y con las tres cosas juntas, en 16. La entrenada con la física al azar aguanta entre 405 y 476 pasos en los cinco mundos: un poco menos que la otra en el simulador de fábrica, mucho más en todos los demás. Es el precio habitual de la robustez. En el equipo de prueba, ocupado con otras tareas, tardó unos 10 minutos; con otra versión de las bibliotecas, las cifras cambian.</p></div></section>
+<section><h2>Eficiencia de muestras: millones de intentos</h2><div class="prose"><p>La segunda limitación es el costo de aprender. La <b>eficiencia de muestras</b> (<i>sample efficiency</i>) mide cuántas interacciones con el entorno necesita un método para aprender una tarea, y la del refuerzo es, en general, mala. El DQN de Atari de 2015 entrenó con 50 millones de cuadros por juego, unos 38 días de juego continuo; el probador humano con quien se lo comparó había practicado dos horas. OpenAI Five acumuló el equivalente a 45.000 años de partidas de Dota 2. AlphaGo Zero jugó 4,9 millones de partidas contra sí mismo en tres días.</p><p>En este curso las cifras son chicas porque los problemas lo son, pero la proporción se mantiene. El PPO del capítulo 10 necesitó unos 20.000 pasos para dominar CartPole: unos 7 minutos de péndulo real, con un péndulo que se cae cientos de veces. El caminante del laboratorio, 100.000 pasos. Un robot del almacén que tardara 2 segundos por movimiento necesitaría más de dos días sin parar para juntar los pasos del caminante, y cada choque sería parte del aprendizaje.</p><p>Por eso casi todo el refuerzo que funciona en el mundo físico se entrena en simulación, y por eso importan tanto los métodos que aprovechan mejor los datos del capítulo 10: SAC y su memoria de repetición, que enseñó a caminar a un robot real en unas dos horas, y los métodos basados en modelo, que aprenden cómo responde el mundo y practican en su imaginación. Cuando no hay simulador ni se puede practicar en el mundo, queda una tercera vía.</p></div></section>
+<section><h2>Refuerzo fuera de línea: aprender de datos ya registrados</h2><div class="prose"><p>Muchas empresas tienen años de registros de decisiones y sus consecuencias: qué ruta tomó cada robot y cuánto tardó, qué oferta vio cada cliente y si compró, qué ajuste hizo un operador y qué pasó con la máquina. El <b>refuerzo fuera de línea</b> (<i>offline reinforcement learning</i>, también llamado <i>batch RL</i>) intenta aprender una política solo a partir de ese registro, sin interactuar con el mundo durante el entrenamiento.</p></div><div class="analogia"><b>Imagínalo así</b><p>Es como aprender a manejar mirando los videos de las cámaras de otros conductores. Puedes aprender mucho de cómo frenan, cuándo doblan y qué pasa después. Pero si nadie en los videos tomó nunca cierta calle, no sabes qué hay ahí, y sería imprudente concluir que es un atajo solo porque nadie la tomó y nadie chocó en ella.</p></div><div class="prose"><p>El problema central es justamente ese. En el refuerzo en línea, si el agente sobrestima una acción, la prueba, ve que era mala y corrige. Fuera de línea no puede probar nada: si su estimación de una acción que nadie tomó sale alta por error, nada la desmiente, y la política aprendida elige justo esas acciones. Es el <b>corrimiento de la distribución</b> (<i>distribution shift</i>): la política nueva visita estados y acciones que el registro no cubre. Los métodos fuera de línea modernos, como CQL (2020), son <b>conservadores</b> a propósito: castigan el valor de las acciones poco representadas en los datos y prefieren quedarse cerca de lo que hicieron los operarios.</p></div><figure class="fig fig-comparacion" id="12-diagrama-4"><div class="lienzo"><svg viewBox="0 0 800 304" style="min-width:640px" role="img" aria-label="Comparación entre refuerzo en línea, donde el agente actúa en el entorno y ve el resultado, y fuera de línea, donde aprende solo de un registro de lo que hicieron otros, con el peligro de sobrestimar acciones que nadie probó">
+<defs><marker id="c12d4-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker><marker id="c12d4-tra" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-tra)"/></marker><marker id="c12d4-fis" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--c-fis)"/></marker><marker id="c12d4-inet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--d-inet)"/></marker><marker id="c12d4-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--warm)"/></marker></defs><text x="20" y="26" class="t t-xs t-b t-m">APRENDER INTERACTUANDO O APRENDER DE UN REGISTRO: EL REFUERZO FUERA DE LÍNEA</text><rect x="20" y="44" width="370" height="220" rx="10" class="caja"/><text x="36" y="68" class="t t-s t-b">① En línea (todo el curso hasta aquí)</text><rect x="50" y="90" width="120" height="56" rx="10" class="c-tra"/><text x="110" y="122" class="t t-b k-tra" text-anchor="middle">agente</text><rect x="240" y="90" width="120" height="56" rx="10" class="d-inet"/><text x="300" y="122" class="t t-b k-inet" text-anchor="middle">entorno</text><path d="M170 108H238" class="ln" style="stroke:var(--c-tra);stroke-width:1.8" marker-end="url(#c12d4-tra)"/><text x="204" y="102" class="t t-xs k-tra" text-anchor="middle">acción</text><path d="M240 130H172" class="ln" style="stroke:var(--c-fis);stroke-width:1.8" marker-end="url(#c12d4-fis)"/><text x="206" y="146" class="t t-xs k-fis" text-anchor="middle">r, s′</text><text x="36" y="186" class="t t-s">Prueba lo que quiere y ve qué pasa.</text><text x="36" y="204" class="t t-s t-m">Si se equivoca sobre una acción, la prueba</text><text x="36" y="222" class="t t-s t-m">y corrige. Pero cada prueba cuesta: en el</text><text x="36" y="240" class="t t-s t-m">mundo real, tiempo, dinero o un robot roto.</text><rect x="410" y="44" width="370" height="220" rx="10" class="caja"/><text x="426" y="68" class="t t-s t-b">② Fuera de línea (offline)</text><rect x="426" y="86" width="150" height="70" rx="10" class="d-sis"/><text x="501" y="112" class="t t-b k-sis" text-anchor="middle">registro</text><text x="501" y="130" class="t t-xs" text-anchor="middle">s, a, r, s′ de lo que</text><text x="501" y="144" class="t t-xs" text-anchor="middle">hicieron los operarios</text><path d="M576 121H620" class="ln" style="stroke-width:1.8" marker-end="url(#c12d4-muted)"/><rect x="624" y="92" width="140" height="56" rx="10" class="c-tra"/><text x="694" y="124" class="t t-b k-tra" text-anchor="middle">agente</text><text x="426" y="186" class="t t-s">No toca el mundo: solo lee el registro.</text><text x="426" y="204" class="t t-s t-b k-warm">El peligro: acciones que nadie probó.</text><text x="426" y="222" class="t t-s t-m">Su valor es una suposición y, si sale alto</text><text x="426" y="240" class="t t-s t-m">por error, nadie lo desmiente.</text><text x="400" y="290" class="t t-s t-m" text-anchor="middle">Los métodos fuera de línea son conservadores a propósito: desconfían de lo que el registro no muestra.</text>
+</svg></div><figcaption><b>En línea frente a fuera de línea.</b> A la izquierda, el refuerzo de todo el curso: el agente actúa, el entorno responde y el agente corrige sus errores probando. A la derecha, el refuerzo fuera de línea: el agente solo lee un registro de lo que hicieron otros. El peligro, en rojo: acciones que nadie probó, cuyo valor estimado nadie puede desmentir.</figcaption></figure><div class="prose"><p>Es una vía atractiva donde equivocarse es caro y los registros abundan: medicina, logística, recomendaciones, control industrial. Su límite es el registro mismo: un método fuera de línea puede mejorar lo que hacían los operarios, pero difícilmente descubre algo que nadie probó nunca.</p></div></section>
+<section><h2>Casos: juegos, robótica, control de energía, recomendaciones y redes</h2><div class="prose"><p>El refuerzo ya salió del laboratorio en varios terrenos, casi siempre con un simulador detrás o con decisiones baratas de probar:</p><ul><li><b>Juegos.</b> De TD-Gammon (1992) a DQN en Atari (2015), AlphaGo (2016), AlphaZero (2017), AlphaStar en StarCraft II (2019) y Gran Turismo Sophy (2022), que le ganó a los mejores pilotos del videojuego de carreras de Sony. Los juegos son el caso ideal: simulador perfecto, recompensa clara y millones de partidas gratis.</li><li><b>Robótica.</b> La mano Dactyl (2019), los robots de cuatro patas que caminan sobre terreno difícil (ANYmal, desde 2019) y la manipulación de objetos, casi siempre entrenados en simulación con aleatorización del dominio. Cómo se modela y se controla un robot está en <a href="https://aaramirez.github.io/robotica/temario.html" target="_blank" rel="noopener">Robótica</a>.</li><li><b>Control de energía.</b> En 2016, DeepMind y Google redujeron hasta un 40 % la energía usada para enfriar un centro de datos con un sistema que recomendaba ajustes; en 2018 pasó a controlar el enfriamiento directamente. En 2022, DeepMind y la EPFL de Lausana controlaron con refuerzo el plasma de un reactor de fusión experimental, un tokamak.</li><li><b>Recomendaciones y publicidad.</b> Los bandidos del capítulo 1 se usan desde hace más de una década para elegir noticias, portadas y anuncios. En 2019, un equipo de Google presentó un recomendador de YouTube entrenado con REINFORCE y una corrección <i>off-policy</i>, que describió como una de las mejoras más grandes del sistema en años.</li><li><b>Redes.</b> En 2017, Pensieve, del MIT, aprendió con A3C a elegir la calidad de video en un servicio de streaming según el estado de la red, y mejoró la experiencia entre un 12 y un 25 % frente a los mejores algoritmos escritos a mano. Hay trabajos similares en control de congestión, enrutamiento y asignación de recursos de radio en redes móviles.</li></ul></div><div class="caso"><b>Un caso real</b><p>El caso del centro de datos de Google muestra cómo se lleva el refuerzo a un sistema real con cuidado. En la primera versión, de 2016, el modelo solo recomendaba ajustes y los operadores decidían. En 2018 pasó a controlar el enfriamiento, pero con capas de seguridad: cada acción propuesta se verificaba contra restricciones escritas por los ingenieros, el sistema elegía solo entre acciones que su modelo consideraba confiables y los operadores podían tomar el control en cualquier momento. Aun con esas restricciones, ahorraba en promedio un 30 % de la energía de enfriamiento. La lección es la del capítulo 10: mejorar sin alejarse demasiado de lo que se sabe seguro.</p></div></section>
+<section><h2>Cuándo no usar refuerzo: un modelo supervisado o una regla bastan</h2><div class="prose"><p>El refuerzo es la herramienta para decisiones <b>en secuencia</b>, cuyas consecuencias llegan después, cuando se puede probar mucho. Fuera de ese terreno suele haber algo mejor:</p><ul><li><b>Si cada decisión es independiente</b> y se sabe cuál fue la respuesta correcta, como clasificar un correo o predecir la demanda de mañana, es un problema supervisado: más simple, más barato y con mejores garantías. Ver <a href="https://aaramirez.github.io/aprendizaje-estadistico/temario.html" target="_blank" rel="noopener">Aprendizaje automático</a>. Si la decisión es independiente pero solo se ve la recompensa de lo que se eligió, un bandido del capítulo 1 alcanza.</li><li><b>Si no hay simulador ni forma barata de probar</b>, y no hay registros que cubran las decisiones importantes, el refuerzo no tiene de dónde aprender.</li><li><b>Si no se puede escribir la recompensa</b> sin dejar atajos, conviene aprender de las preferencias de personas (capítulo 11) o imitar a expertos.</li><li><b>Si una regla simple ya funciona</b>, úsala. En el capítulo 8, la regla de una línea «empuja hacia donde cae, contando el giro» aguantaba 484 pasos de media en CartPole, sin entrenar nada. Una regla se entiende, se audita y no tiene atajos ocultos. Y si el modelo del problema se conoce, la programación dinámica del capítulo 4 o la <a href="https://aaramirez.github.io/investigacion-de-operaciones/temario.html" target="_blank" rel="noopener">investigación de operaciones</a> dan la solución óptima sin prueba y error.</li></ul></div><figure class="fig fig-flujo" id="12-diagrama-5"><div class="lienzo"><svg viewBox="0 0 800 414" style="min-width:640px" role="img" aria-label="Diagrama de decisión con cuatro preguntas: si las decisiones se encadenan, si hay un simulador, si se puede escribir la recompensa sin atajos y si una regla simple ya funciona; solo si las respuestas lo permiten conviene probar el refuerzo">
+<defs><marker id="c12d5-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-muted"/></marker><marker id="c12d5-good" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--good)"/></marker><marker id="c12d5-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--warm)"/></marker></defs><text x="20" y="26" class="t t-xs t-b t-m">¿CONVIENE EL APRENDIZAJE POR REFUERZO? CUATRO PREGUNTAS ANTES DE EMPEZAR</text><rect x="20" y="50" width="330" height="56" rx="10" class="caja"/><text x="36" y="74" class="t t-s t-b">¿Las decisiones se encadenan y sus</text><text x="36" y="92" class="t t-s t-b">efectos llegan después?</text><path d="M350 78H420" class="ln" style="stroke:var(--warm);stroke-width:1.6" marker-end="url(#c12d5-warm)"/><text x="385" y="72" class="t t-xs t-b k-warm" text-anchor="middle">no</text><rect x="424" y="58" width="356" height="40" rx="8" class="caja"/><text x="436" y="83" class="t t-s k-warm">No: un modelo supervisado o un bandido</text><path d="M185 106V124" class="ln" style="stroke:var(--good);stroke-width:1.6" marker-end="url(#c12d5-good)"/><text x="195" y="120" class="t t-xs t-b" style="fill:var(--good)">sí</text><rect x="20" y="126" width="330" height="56" rx="10" class="caja"/><text x="36" y="150" class="t t-s t-b">¿Hay un simulador o se puede probar</text><text x="36" y="168" class="t t-s t-b">barato y sin riesgo?</text><path d="M350 154H420" class="ln" style="stroke:var(--warm);stroke-width:1.6" marker-end="url(#c12d5-warm)"/><text x="385" y="148" class="t t-xs t-b k-warm" text-anchor="middle">no</text><rect x="424" y="134" width="356" height="40" rx="8" class="caja"/><text x="436" y="159" class="t t-s k-warm">No: refuerzo fuera de línea, o no usarlo</text><path d="M185 182V200" class="ln" style="stroke:var(--good);stroke-width:1.6" marker-end="url(#c12d5-good)"/><text x="195" y="196" class="t t-xs t-b" style="fill:var(--good)">sí</text><rect x="20" y="202" width="330" height="56" rx="10" class="caja"/><text x="36" y="226" class="t t-s t-b">¿Se puede escribir la recompensa</text><text x="36" y="244" class="t t-s t-b">sin dejar atajos?</text><path d="M350 230H420" class="ln" style="stroke:var(--warm);stroke-width:1.6" marker-end="url(#c12d5-warm)"/><text x="385" y="224" class="t t-xs t-b k-warm" text-anchor="middle">no</text><rect x="424" y="210" width="356" height="40" rx="8" class="caja"/><text x="436" y="235" class="t t-s k-warm">No: preferencias o imitación de expertos</text><path d="M185 258V276" class="ln" style="stroke:var(--good);stroke-width:1.6" marker-end="url(#c12d5-good)"/><text x="195" y="272" class="t t-xs t-b" style="fill:var(--good)">sí</text><rect x="20" y="278" width="330" height="56" rx="10" class="caja"/><text x="36" y="302" class="t t-s t-b">¿Una regla simple ya funciona</text><text x="36" y="320" class="t t-s t-b">bastante bien?</text><path d="M350 306H420" class="ln" style="stroke:var(--warm);stroke-width:1.6" marker-end="url(#c12d5-warm)"/><text x="385" y="300" class="t t-xs t-b k-warm" text-anchor="middle">sí</text><rect x="424" y="286" width="356" height="40" rx="8" class="caja"/><text x="436" y="311" class="t t-s k-warm">Sí: usa la regla (y mídela)</text><path d="M185 334V352" class="ln" style="stroke:var(--good);stroke-width:1.6" marker-end="url(#c12d5-good)"/><text x="195" y="348" class="t t-xs t-b" style="fill:var(--good)">no</text><rect x="20" y="354" width="330" height="46" rx="10" class="c-tra"/><text x="185" y="382" class="t t-s t-b k-tra" text-anchor="middle">Prueba el refuerzo, empezando por el simulador</text>
+</svg></div><figcaption><b>¿Refuerzo o no?</b> Cuatro preguntas de arriba abajo: si las decisiones se encadenan con efectos diferidos, si hay un simulador o se puede probar barato, si la recompensa se puede escribir sin atajos y si una regla simple ya funciona. Cada respuesta que no acompaña lleva a otra herramienta (rojo). Solo al final, probar el refuerzo, empezando por el simulador.</figcaption></figure><div class="ml"><b>En la práctica</b><p><b>La decisión de Teodoro.</b> Noemí terminó la presentación con un plan, no con una promesa. El robot seguiría aprendiendo solo en el simulador de Ulises, con la fricción, el peso de las cajas y el retraso de los sensores sorteados en cada episodio, porque el laboratorio de la brecha había mostrado lo que pasa si no. Yolanda revisaría la recompensa antes de cada entrenamiento, buscando atajos, y la rampa y el foso quedarían como zonas prohibidas por una regla escrita a mano, fuera del alcance del aprendizaje. Antes de tocar el piso, la política aprendida se compararía en el simulador con las rutas programadas de hoy, midiendo lo que Teodoro mide: viajes por hora, entregas a tiempo y robots dañados. Y el primer robot real trabajaría un mes en una sola zona, con un operario capaz de detenerlo. Teodoro hizo una última pregunta: «¿Y para las estanterías que se mueven cada temporada?». Ese era el problema con que había empezado todo, y la respuesta fue la del curso entero: se cambia la maqueta, se vuelve a entrenar, y el robot aprende solo la ruta nueva.</p></div></section>
+<section><h2>La idea clave</h2><div class="prose"><p>Un agente de refuerzo optimiza exactamente la recompensa que recibe, y si esa recompensa tiene un atajo, lo encuentra: es el <i>reward hacking</i>. Se puede orientar al agente con bonos, pero solo los que son diferencias de un potencial dejan intacta la mejor política. El entrenamiento ocurre casi siempre en un simulador, que nunca es igual al mundo; la aleatorización del dominio enseña políticas que funcionan en muchos mundos y, con suerte, en el real. El refuerzo necesita muchísimos intentos, y donde no se puede practicar, el refuerzo fuera de línea aprende de registros con desconfianza hacia lo que nadie probó. Funciona en juegos, robots, energía, recomendaciones y redes, y muchas veces un modelo supervisado o una regla bastan. El agente optimiza la recompensa que le diste, no la que querías darle.</p></div></section>
+<section><h2>Pruébate</h2><div class="quiz"><h3>Pruébate</h3><details><summary>¿Por qué el <i>reward hacking</i> no es un error del algoritmo?</summary><p>Porque el algoritmo hace exactamente lo que se le pide: maximizar la recompensa. El error está en la recompensa, que dice algo distinto de lo que se quería.</p></details><details><summary>¿Qué tiene de especial un bono de la forma γΦ(s′) − Φ(s)?</summary><p>Que a lo largo de cualquier camino los bonos suman lo mismo (menos el potencial del punto de partida), así que ningún camino gana más que otro gracias a ellos y la política óptima no cambia; en cambio, puede orientar al agente al principio.</p></details><details><summary>En el laboratorio del bote, ¿por qué hacer que los blancos no reaparezcan elimina el atajo?</summary><p>Porque los puntos de los blancos ya no se pueden repetir: después de juntarlos una vez, lo único que queda por ganar es terminar la carrera.</p></details><details><summary>¿Qué es la aleatorización del dominio y qué precio suele tener?</summary><p>Sortear en cada episodio los parámetros del simulador (fricción, masas, retrasos) para que la política funcione en muchos mundos. El precio es rendir algo menos en el mundo exacto del simulador.</p></details><details><summary>¿Cuál es el peligro central del refuerzo fuera de línea?</summary><p>Que la política aprendida elija acciones que el registro no cubre y cuyo valor quedó sobrestimado por error, sin posibilidad de probarlas para corregirlo (corrimiento de la distribución).</p></details><details><summary>Da dos situaciones en que no conviene usar refuerzo.</summary><p>Cuando cada decisión es independiente y se conoce la respuesta correcta (mejor un modelo supervisado), cuando no hay simulador ni forma barata de probar, cuando la recompensa no se puede escribir sin atajos, o cuando una regla simple ya funciona bien.</p></details></div></section>
+<section><h2>Para investigar</h2><div class="investiga"><h3>Para investigar</h3><p class="hint">Estas preguntas no se responden en el capítulo: búscalas por tu cuenta.</p><ol><li>¿Quién fue Charles Goodhart y en qué discusión de política monetaria formuló la ley que lleva su nombre?<small>Pista: busca «Goodhart's law 1975 monetary policy».</small></li><li>¿Qué es el aprendizaje por refuerzo inverso y cómo infiere una recompensa observando a un experto?<small>Pista: busca «inverse reinforcement learning Ng Russell 2000».</small></li><li>¿Cómo se estima qué tan buena sería una política nueva usando solo registros de otra, antes de ponerla en marcha (evaluación fuera de la política)?<small>Pista: busca «off-policy evaluation doubly robust estimator».</small></li><li>¿Qué es un gemelo digital y en qué se diferencia de un simulador como los de este capítulo?<small>Pista: busca «digital twin vs simulation».</small></li><li>¿Qué es la aleatorización automática del dominio (ADR) y cómo decide sola cuánto ampliar los rangos?<small>Pista: busca «automatic domain randomization OpenAI Rubik's cube».</small></li></ol></div></section>
+<section><h2>Para saber más</h2><div class="vids"><span>Para saber más</span><a class="vid" href="https://people.eecs.berkeley.edu/~pabbeel/cs287-fa09/readings/NgHaradaRussell-shaping-ICML1999.pdf" target="_blank" rel="noopener">Policy invariance under reward transformations <small>el artículo de Ng, Harada y Russell sobre el moldeado con potencial (1999), en inglés</small></a><a class="vid" href="https://deepmind.google/discover/blog/specification-gaming-the-flip-side-of-ai-ingenuity/" target="_blank" rel="noopener">Specification gaming: the flip side of AI ingenuity <small>los atajos de los agentes, con la lista de ejemplos, de DeepMind, en inglés</small></a><a class="vid" href="https://arxiv.org/abs/1710.06537" target="_blank" rel="noopener">Sim-to-Real Transfer of Robotic Control with Dynamics Randomization <small>la aleatorización de la física para cruzar al robot real (2017), en inglés</small></a><a class="vid" href="https://arxiv.org/abs/2005.01643" target="_blank" rel="noopener">Offline Reinforcement Learning: Tutorial, Review, and Perspectives on Open Problems <small>el panorama del refuerzo fuera de línea (2020), en inglés</small></a><a class="vid" href="https://arxiv.org/abs/1606.06565" target="_blank" rel="noopener">Concrete Problems in AI Safety <small>el artículo que puso en la agenda el <i>reward hacking</i> y otros riesgos (2016), en inglés</small></a></div></section>
+<label class="got"><input type="checkbox" id="got"> Lo tengo claro</label>
+<nav class="pager" id="pager" aria-label="Capítulo anterior y siguiente"></nav>
+</main>
+</div>
+<footer><span>Curso abierto de aaramirez.github.io.</span><span>Sitio publicado: <a href="https://github.com/aaramirez/aprendizaje-por-refuerzo" target="_blank" rel="noopener">github.com/aaramirez/aprendizaje-por-refuerzo</a></span></footer>
+</div>
+<script src="assets/lab.js"></script>
+<script>
+(function(){
+  const raiz=document.querySelector('[id="12-lab-1"]');
+/* MundoRL: biblioteca mínima común de los labs del curso «Aprendizaje por refuerzo» (sin dependencias, con semilla).
+   Plantilla: copia este bloque DENTRO de la IIFE de tu lab (el motor solo admite <script> en línea, sin src).
+   Uso típico:
+     const M=MundoRL, m=M.cuadricula('almacen');            // la cuadrícula de referencia del curso
+     const r=M.rnd(42);
+     const {V,pi}=M.iterarValor(m);                         // valores óptimos y política óptima
+     M.dibujar(canvas,m,{raiz,V,pi,numeros:true});          // mapa de calor de V y flechas de la política
+     const ep=M.episodio(m,s=>M.elegir(pi,s,r),r);          // un episodio: ep.G, ep.Gd, ep.pasos, ep.final
+   Acciones: 0 arriba, 1 derecha, 2 abajo, 3 izquierda (el orden de CliffWalking en Gymnasium).
+   Estados: s = fila*cols + columna (fila 0 arriba), como FrozenLake y CliffWalking. Nombre de casilla: 'A5' =
+   columna A (la primera de la izquierda), fila 5 contada desde arriba. */
+const MundoRL=(function(){
+  /* ---------- Azar con semilla (mulberry32) ---------- */
+  function rnd(s){return function(){s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  function gauss(r){let u=0;while(!u)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r());}
+  const entero=(r,n)=>Math.floor(r()*n);
+  function barajar(n,r){const a=Array.from({length:n},(_,i)=>i);for(let i=n-1;i>0;i--){const j=entero(r,i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+  /* ---------- Números en español: punto de miles, coma decimal ---------- */
+  const nf=(n,d=0)=>{if(!isFinite(n))return '—';const s=Math.abs(n).toFixed(d).split('.');s[0]=s[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');return (n<0&&Number(Math.abs(n).toFixed(d))!==0?'−':'')+s.join(',');};
+  const pct=(x,d=1)=>nf(100*x,d)+' %';
+
+  /* ---------- Cuadrículas ---------- */
+  const ACC=['arriba','derecha','abajo','izquierda'],FLECHA=['↑','→','↓','←'],DF=[-1,0,1,0],DC=[0,1,0,-1];
+  /* Caracteres: '.' piso, '#' pared (estantería), 'S' inicio, 'P' premio (termina), 'T' trampa (termina),
+     'C' acantilado (castigo y vuelta al inicio, no termina: CliffWalking). */
+  const MAPAS={
+    almacen:['.....P',
+             '.###.T',
+             '...T..',
+             '.#....',
+             '..S#..'],
+    acantilado:['............','............','............','SCCCCCCCCCCP'],
+    lago4:['S...','.T.T','...T','T..P']
+  };
+  /* Recompensas y dinámica por defecto de la cuadrícula de referencia. */
+  const DEF={paso:-0.1,premio:10,trampa:-10,acantilado:-100,resbalar:0.2,gamma:0.9,maxPasos:100};
+  const PRESET={
+    almacen:{},
+    acantilado:{paso:-1,premio:-1,resbalar:0,gamma:1,maxPasos:200},          // CliffWalking-v1 de Gymnasium
+    lago4:{paso:0,premio:1,trampa:0,resbalar:2/3,gamma:0.99,maxPasos:100}      // FrozenLake-v1 4x4, resbaloso
+  };
+  function cuadricula(mapa,o){
+    const clave=typeof mapa==='string'?mapa:null;
+    const filas=(clave?MAPAS[clave]:mapa).slice();
+    const op=Object.assign({},DEF,clave?PRESET[clave]:{},o||{});
+    const nF=filas.length,nC=filas[0].length,nS=nF*nC,tipo=[];
+    let inicio=0;
+    for(let f=0;f<nF;f++)for(let c=0;c<nC;c++){const t=filas[f][c]||'.';tipo.push(t);if(t==='S')inicio=f*nC+c;}
+    const m={mapa:filas,filas:nF,cols:nC,nS,nA:4,tipo,inicio,gamma:op.gamma,maxPasos:op.maxPasos,op,
+      esPared:s=>tipo[s]==='#',esTerminal:s=>tipo[s]==='P'||tipo[s]==='T',
+      fila:s=>Math.floor(s/nC),col:s=>s%nC,
+      nombre:s=>String.fromCharCode(65+s%nC)+(Math.floor(s/nC)+1)};
+    m.libres=[];for(let s=0;s<nS;s++)if(!m.esPared(s)&&!m.esTerminal(s))m.libres.push(s);
+    /* Adónde lleva moverse en la dirección d desde s (paredes y bordes: se queda). */
+    function mover(s,d){const f=m.fila(s)+DF[d],c=m.col(s)+DC[d];if(f<0||f>=nF||c<0||c>=nC)return s;const s2=f*nC+c;return tipo[s2]==='#'?s:s2;}
+    function resultado(s2){const t=tipo[s2];
+      if(t==='P')return {s2,r:op.premio,fin:true};
+      if(t==='T')return {s2,r:op.trampa,fin:true};
+      if(t==='C')return {s2:inicio,r:op.acantilado,fin:false,cayo:true};
+      return {s2,r:op.paso,fin:false};}
+    /* P[s][a]: lista de {p,s2,r,fin} (como env.unwrapped.P de Gymnasium). Con probabilidad 1−resbalar va adonde
+       quiere; con resbalar/2 se desvía a cada lado (nunca hacia atrás). */
+    m.reconstruir=function(){
+      m.P=[];
+      for(let s=0;s<nS;s++){const fila=[];
+        for(let a=0;a<4;a++){const lista=[];
+          if(m.esPared(s)||m.esTerminal(s)){fila.push([{p:1,s2:s,r:0,fin:true}]);continue;}
+          const q=op.resbalar,opciones=[[a,1-q],[(a+1)%4,q/2],[(a+3)%4,q/2]];
+          for(const [d,p] of opciones){if(p<=0)continue;const res=resultado(mover(s,d));
+            const ya=lista.find(x=>x.s2===res.s2&&x.r===res.r);if(ya)ya.p+=p;else lista.push(Object.assign({p},res));}
+          fila.push(lista);}
+        m.P.push(fila);}
+    };
+    m.reconstruir();
+    /* Cambia una casilla (para labs donde el lector arma la cuadrícula) o una opción, y recalcula P. */
+    m.poner=function(s,t){tipo[s]=t;if(t==='S'){for(let i=0;i<nS;i++)if(i!==s&&tipo[i]==='S')tipo[i]='.';inicio=s;m.inicio=s;}
+      m.libres=[];for(let i=0;i<nS;i++)if(!m.esPared(i)&&!m.esTerminal(i))m.libres.push(i);m.reconstruir();};
+    m.opcion=function(k,v){op[k]=v;if(k==='gamma')m.gamma=v;if(k==='maxPasos')m.maxPasos=v;m.reconstruir();};
+    /* Un paso con azar: {s2, r, fin, cayo}. */
+    m.paso=function(s,a,r){const L=m.P[s][a];let u=r(),k=0;while(k<L.length-1&&u>=L[k].p){u-=L[k].p;k++;}
+      const x=L[k];return {s2:x.s2,r:x.r,fin:x.fin,cayo:tipo[s]!=='C'&&x.s2===inicio&&x.r===op.acantilado};};
+    return m;
+  }
+
+  /* ---------- Políticas: Float64Array de nS*4 probabilidades (pi[s*4+a]) ---------- */
+  function politicaAlAzar(m){const pi=new Float64Array(m.nS*4).fill(0.25);return pi;}
+  function politicaDe(m,acciones){const pi=new Float64Array(m.nS*4);for(let s=0;s<m.nS;s++)pi[s*4+(acciones[s]??0)]=1;return pi;}
+  function accionDe(pi,s){let k=0;for(let a=1;a<4;a++)if(pi[s*4+a]>pi[s*4+k]+1e-12)k=a;return k;}
+  function elegir(pi,s,r){let u=r();for(let a=0;a<3;a++){u-=pi[s*4+a];if(u<0)return a;}return 3;}
+  /* Política codiciosa respecto de Q (nS*4). empates: 'primero' (determinista) o 'repartir'. */
+  function codiciosa(m,Q,empates){const pi=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++){let mx=-Infinity;for(let a=0;a<4;a++)mx=Math.max(mx,Q[s*4+a]);
+      const mejores=[];for(let a=0;a<4;a++)if(Q[s*4+a]>=mx-1e-9)mejores.push(a);
+      if(empates==='repartir')mejores.forEach(a=>pi[s*4+a]=1/mejores.length);else pi[s*4+mejores[0]]=1;}
+    return pi;}
+  function egreedy(m,Q,eps){const pi=codiciosa(m,Q);for(let i=0;i<pi.length;i++)pi[i]=pi[i]*(1-eps)+eps/4;return pi;}
+
+  /* ---------- Bellman ---------- */
+  function g_(m,o){return o&&o.gamma!==undefined?o.gamma:m.gamma;}
+  /* Q a partir de V: q(s,a) = Σ p·(r + γ·V(s')) */
+  function qDeV(m,V,gamma){const Q=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++)for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));Q[s*4+a]=(m.esPared(s)||m.esTerminal(s))?0:q;}
+    return Q;}
+  /* Un barrido de evaluación (síncrono): V'(s) = Σ_a π(a|s) Σ p·(r + γ·V(s')). Devuelve {V, delta}. */
+  function barridoEval(m,pi,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let v=0;for(let a=0;a<4;a++){const w=pi[s*4+a];if(!w)continue;let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));v+=w*q;}
+      W[s]=v;delta=Math.max(delta,Math.abs(v-V[s]));}
+    return {V:W,delta};}
+  /* Un barrido de optimalidad: V'(s) = max_a Σ p·(r + γ·V(s')). */
+  function barridoValor(m,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let mx=-Infinity;for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));if(q>mx)mx=q;}
+      W[s]=mx;delta=Math.max(delta,Math.abs(mx-V[s]));}
+    return {V:W,delta};}
+  /* Evaluación de política hasta que el cambio máximo baje de tol. */
+  function evaluar(m,pi,o={}){let V=o.V0?Float64Array.from(o.V0):new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoEval(m,pi,V,o);V=x.V;delta=x.delta;b++;}
+    return {V,barridos:b,delta};}
+  function iterarValor(m,o={}){let V=new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoValor(m,V,o);V=x.V;delta=x.delta;b++;}
+    const Q=qDeV(m,V,g_(m,o));return {V,Q,pi:codiciosa(m,Q),barridos:b};}
+  function iterarPolitica(m,o={}){let pi=o.pi0?Float64Array.from(o.pi0):politicaAlAzar(m),vueltas=0,V,historia=[];
+    for(;vueltas<100;vueltas++){V=evaluar(m,pi,o).V;const nuevo=codiciosa(m,qDeV(m,V,g_(m,o)));historia.push({V,pi});
+      let igual=true;for(const s of m.libres)if(accionDe(nuevo,s)!==accionDe(pi,s)||pi[s*4+accionDe(pi,s)]<1){igual=false;break;}
+      pi=nuevo;if(igual)break;}
+    return {V,pi,vueltas:vueltas+1,historia};}
+
+  /* ---------- Experiencia ---------- */
+  /* Un episodio desde el inicio (o desde o.desde). elegir(s) -> acción. Devuelve estados, acciones, recompensas,
+     G (suma), Gd (suma descontada con γ), pasos y final: 'premio', 'trampa' o 'tope'. */
+  function episodio(m,elegirA,r,o={}){const S=[],A=[],R=[];let s=o.desde??m.inicio,fin=false,final='tope',G=0,Gd=0,d=1;const max=o.max??m.maxPasos;
+    for(let t=0;t<max&&!fin;t++){const a=elegirA(s);const x=m.paso(s,a,r);S.push(s);A.push(a);R.push(x.r);G+=x.r;Gd+=d*x.r;d*=m.gamma;s=x.s2;fin=x.fin;
+      if(fin)final=m.tipo[s]==='P'?'premio':'trampa';}
+    S.push(s);return {S,A,R,G,Gd,pasos:A.length,final};}
+  /* Retorno medio de una política (pi) en n episodios. */
+  function retornoMedio(m,pi,r,n=1000){let G=0,Gd=0,P=0,ex=0;for(let i=0;i<n;i++){const e=episodio(m,s=>elegir(pi,s,r),r);G+=e.G;Gd+=e.Gd;P+=e.pasos;if(e.final==='premio')ex++;}
+    return {G:G/n,Gd:Gd/n,pasos:P/n,exito:ex/n};}
+
+  /* ---------- Bandido multibrazo (cap. 01) ---------- */
+  const BANDIDO=[0.25,0.40,0.55,0.50,0.30];   // máquinas A-E: probabilidad de pagar 1 ficha
+  function bandido(probs,r){probs=probs||BANDIDO;let mejor=0;probs.forEach((p,i)=>{if(p>probs[mejor])mejor=i;});
+    return {k:probs.length,probs,mejor,tirar:a=>r()<probs[a]?1:0};}
+  /* Agente de bandido. metodo: 'egreedy' (ε, promedio de la muestra), 'optimista' (codicioso con Q inicial q0 y
+     paso constante alfa) o 'ucb' (cota superior de confianza con c). */
+  function agenteBandido(k,o={}){const met=o.metodo||'egreedy',q0=o.q0??0,r=o.r||rnd(42);
+    const Q=new Float64Array(k).fill(met==='optimista'?q0:0),N=new Float64Array(k);let t=0;
+    function arg(f){let mx=-Infinity,L=[];for(let a=0;a<k;a++){const v=f(a);if(v>mx+1e-12){mx=v;L=[a];}else if(Math.abs(v-mx)<=1e-12)L.push(a);}return L[entero(r,L.length)];}
+    /* epsilon, alfa y c se pueden cambiar en vivo (ag.epsilon = 0.2). exploro: si la última elección fue al azar. */
+    return {Q,N,metodo:met,epsilon:o.epsilon??0.1,alfa:o.alfa??0.1,c:o.c??2,exploro:false,
+      elegir(){t++;this.exploro=false;
+        if(met==='ucb'){for(let a=0;a<k;a++)if(N[a]===0)return a;const c=this.c;return arg(a=>Q[a]+c*Math.sqrt(Math.log(t)/N[a]));}
+        if(met==='egreedy'&&r()<this.epsilon){this.exploro=true;return entero(r,k);}
+        return arg(a=>Q[a]);},
+      aprender(a,R){N[a]++;Q[a]+=(met==='optimista'?this.alfa:1/N[a])*(R-Q[a]);}};}
+
+  /* ---------- CartPole (Barto, Sutton y Anderson, 1983; constantes de Gymnasium CartPole-v1) ---------- */
+  function cartpole(r){const g=9.8,mc=1.0,mp=0.1,mt=mc+mp,l=0.5,pml=mp*l,F=10,tau=0.02,thMax=12*2*Math.PI/360,xMax=2.4;
+    const e={x:0,v:0,th:0,w:0,t:0,fin:false,
+      reiniciar(){this.x=(r()-.5)*.1;this.v=(r()-.5)*.1;this.th=(r()-.5)*.1;this.w=(r()-.5)*.1;this.t=0;this.fin=false;return this.obs();},
+      obs(){return [this.x,this.v,this.th,this.w];},
+      /* a: 0 empuja a la izquierda, 1 a la derecha. Recompensa 1 por paso; termina si |θ|>12° o |x|>2,4; trunca a 500. */
+      paso(a){const f=a===1?F:-F,ct=Math.cos(this.th),st=Math.sin(this.th);
+        const tmp=(f+pml*this.w*this.w*st)/mt,ta=(g*st-ct*tmp)/(l*(4/3-mp*ct*ct/mt)),xa=tmp-pml*ta*ct/mt;
+        this.x+=tau*this.v;this.v+=tau*xa;this.th+=tau*this.w;this.w+=tau*ta;this.t++;
+        const termina=Math.abs(this.x)>xMax||Math.abs(this.th)>thMax,trunca=this.t>=500;this.fin=termina||trunca;
+        return {obs:this.obs(),r:1,termina,trunca};}};
+    e.reiniciar();return e;}
+
+  /* ---------- Dibujo ---------- */
+  function color(raiz,n){return getComputedStyle(raiz).getPropertyValue(n).trim();}
+  function rgb(c){if(!c)return [128,128,128];if(c[0]==='#'){if(c.length===4)c='#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];return [1,3,5].map(i=>parseInt(c.substr(i,2),16));}
+    const m=c.match(/[\d.]+/g);return m?m.slice(0,3).map(Number):[128,128,128];}
+  function mezcla(a,b,t){const A=rgb(a),B=rgb(b);return 'rgb('+A.map((x,i)=>Math.round(x+(B[i]-x)*t)).join(',')+')';}
+  /* Prepara un canvas con devicePixelRatio. Alto = ancho * data-prop (o o.prop). Devuelve {c,w,h}. */
+  function lienzo(cv,prop){const w=Math.max(120,cv.clientWidth||cv.parentNode.clientWidth||300),p=prop??parseFloat(cv.dataset.prop||'0.6'),h=Math.round(w*p),k=window.devicePixelRatio||1;
+    cv.style.height=h+'px';cv.width=Math.round(w*k);cv.height=Math.round(h*k);const c=cv.getContext('2d');c.setTransform(k,0,0,k,0,0);return {c,w,h};}
+  function flecha(c,x,y,a,L,col,ancho){const dx=DC[a],dy=DF[a];c.strokeStyle=col;c.fillStyle=col;c.lineWidth=ancho||2;
+    const x0=x-dx*L*.45,y0=y-dy*L*.45,x1=x+dx*L*.45,y1=y+dy*L*.45;c.beginPath();c.moveTo(x0,y0);c.lineTo(x1-dx*L*.18,y1-dy*L*.18);c.stroke();
+    const px=-dy,py=dx;c.beginPath();c.moveTo(x1,y1);c.lineTo(x1-dx*L*.3+px*L*.2,y1-dy*L*.3+py*L*.2);c.lineTo(x1-dx*L*.3-px*L*.2,y1-dy*L*.3-py*L*.2);c.closePath();c.fill();}
+  /* Dibuja la cuadrícula. o: {raiz, V (mapa de calor), rango (|V| que satura el color), pi (flechas: probabilidades),
+     numeros (escribe V), ruta (lista de estados), agente (estado), resaltar (estado), Q (cuatro triángulos por casilla),
+     visitas (Float64Array: opacidad de exploración), prop}. Devuelve {lado, x0, y0, casilla(px,py) -> s o -1}. */
+  function dibujar(cv,m,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),prop=o.prop??(m.filas/m.cols);
+    const {c,w,h}=lienzo(cv,prop),lado=Math.min((w-2)/m.cols,(h-2)/m.filas),x0=(w-lado*m.cols)/2,y0=(h-lado*m.filas)/2;
+    const card=C('--card'),azul=C('--c-red'),rojo=C('--warm'),ink=C('--ink'),muted=C('--muted'),good=C('--good'),line=C('--line');
+    c.clearRect(0,0,w,h);
+    let rango=o.rango;if(!rango&&(o.V||o.Q)){rango=1e-9;const src=o.V||o.Q;for(let i=0;i<src.length;i++)rango=Math.max(rango,Math.abs(src[i]));}
+    const tinte=v=>v>=0?mezcla(card,azul,Math.min(1,v/rango)*.85):mezcla(card,rojo,Math.min(1,-v/rango)*.85);
+    const fuente=Math.max(9,Math.min(14,lado*.24));
+    for(let s=0;s<m.nS;s++){const x=x0+m.col(s)*lado,y=y0+m.fila(s)*lado,t=m.tipo[s],cx=x+lado/2,cy=y+lado/2;
+      c.fillStyle=card;
+      if(t==='#'){c.fillStyle=mezcla(card,muted,.55);c.fillRect(x,y,lado,lado);
+        c.strokeStyle=mezcla(card,muted,.8);c.lineWidth=1;c.beginPath();for(let k=1;k<4;k++){c.moveTo(x+3,y+lado*k/4);c.lineTo(x+lado-3,y+lado*k/4);}c.stroke();continue;}
+      if(t==='P'){c.fillStyle=mezcla(card,good,.28);c.fillRect(x,y,lado,lado);}
+      else if(t==='T'||t==='C'){c.fillStyle=mezcla(card,rojo,.28);c.fillRect(x,y,lado,lado);}
+      else if(o.Q){const q=k=>o.Q[s*4+k];const P=[[cx,cy],[x,y],[x+lado,y],[x+lado,y+lado],[x,y+lado]];
+        const tri=[[1,2],[2,3],[3,4],[4,1]];for(let a=0;a<4;a++){c.fillStyle=tinte(q(a));c.beginPath();c.moveTo(cx,cy);c.lineTo(...P[tri[a][0]]);c.lineTo(...P[tri[a][1]]);c.closePath();c.fill();}
+        c.strokeStyle=line;c.lineWidth=.6;c.beginPath();c.moveTo(x,y);c.lineTo(x+lado,y+lado);c.moveTo(x+lado,y);c.lineTo(x,y+lado);c.stroke();}
+      else if(o.V){c.fillStyle=tinte(o.V[s]);c.fillRect(x,y,lado,lado);}
+      else c.fillRect(x,y,lado,lado);
+      if(o.visitas&&!m.esTerminal(s)){const vmax=Math.max(1,...o.visitas);c.fillStyle=C('--c-apl');c.globalAlpha=.45*Math.sqrt(o.visitas[s]/vmax);c.fillRect(x,y,lado,lado);c.globalAlpha=1;}
+      c.textAlign='center';c.textBaseline='middle';
+      if(t==='P'||t==='T'||t==='C'){c.fillStyle=t==='P'?good:rojo;c.font='700 '+Math.round(fuente*1.05)+'px '+C('--f-display');
+        const val=t==='P'?m.op.premio:t==='T'?m.op.trampa:m.op.acantilado;
+        c.fillText(t==='P'?'Premio':t==='T'?'Trampa':'',cx,cy-(lado>44?fuente*.55:0));if(lado>44||t==='C'){c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText((val>0?'+':'')+nf(val,Number.isInteger(val)?0:1),cx,t==='C'?cy:cy+fuente*.65);}
+        continue;}
+      if(o.pi&&!o.Q){const ps=[0,1,2,3].map(a=>o.pi[s*4+a]),mx=Math.max(...ps);
+        for(let a=0;a<4;a++)if(ps[a]>0.01){const L=lado*(o.numeros?.42:.6)*(0.45+0.55*ps[a]/mx);flecha(c,cx,cy-(o.numeros?lado*.14:0),a,L,ink,ps[a]>=mx-1e-9?2.2:1.2);}}
+      if(o.numeros&&o.V){c.fillStyle=ink;c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText(nf(o.V[s],1),cx,o.pi?y+lado*.78:cy);}
+      if(t==='S'&&!o.V&&!o.Q){c.fillStyle=muted;c.font='700 '+Math.round(fuente*.85)+'px '+C('--f-display');c.fillText('Inicio',cx,y+lado*.82);}
+    }
+    c.strokeStyle=line;c.lineWidth=1;for(let i=0;i<=m.cols;i++){c.beginPath();c.moveTo(x0+i*lado,y0);c.lineTo(x0+i*lado,y0+m.filas*lado);c.stroke();}
+    for(let j=0;j<=m.filas;j++){c.beginPath();c.moveTo(x0,y0+j*lado);c.lineTo(x0+m.cols*lado,y0+j*lado);c.stroke();}
+    const ini=m.inicio,xi=x0+m.col(ini)*lado,yi=y0+m.fila(ini)*lado;c.strokeStyle=C('--accent');c.setLineDash([4,3]);c.lineWidth=2;c.strokeRect(xi+2,yi+2,lado-4,lado-4);c.setLineDash([]);
+    if(o.resaltar!==undefined&&o.resaltar>=0){const xr=x0+m.col(o.resaltar)*lado,yr=y0+m.fila(o.resaltar)*lado;c.strokeStyle=C('--c-tra');c.lineWidth=3;c.strokeRect(xr+1.5,yr+1.5,lado-3,lado-3);}
+    if(o.ruta&&o.ruta.length>1){c.strokeStyle=C('--c-fis');c.lineWidth=Math.max(2,lado*.07);c.lineJoin='round';c.globalAlpha=.85;c.beginPath();
+      o.ruta.forEach((s,i)=>{const px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado;i?c.lineTo(px,py):c.moveTo(px,py);});c.stroke();c.globalAlpha=1;}
+    if(o.agente!==undefined&&o.agente>=0){const s=o.agente,px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado,R=lado*.26;
+      c.fillStyle=C('--d-casa');c.strokeStyle=card;c.lineWidth=2;c.beginPath();c.arc(px,py,R,0,7);c.fill();c.stroke();
+      c.fillStyle=card;c.beginPath();c.arc(px-R*.38,py-R*.15,R*.16,0,7);c.arc(px+R*.38,py-R*.15,R*.16,0,7);c.fill();}
+    return {lado,x0,y0,casilla(px,py){const cc=Math.floor((px-x0)/lado),ff=Math.floor((py-y0)/lado);return (cc<0||ff<0||cc>=m.cols||ff>=m.filas)?-1:ff*m.cols+cc;}};
+  }
+  /* Curvas. series: [{y:[...], color:'--c-tra', nombre, punteada, tenue, ancho}]. o: {raiz, media (ventana de la
+     media móvil; la serie cruda se dibuja tenue), ymin, ymax, xmax, ejeX, ejeY, lineas:[{y, color, nombre}], prop}. */
+  function media(y,k){const out=new Array(y.length);let s=0;for(let i=0;i<y.length;i++){s+=y[i];if(i>=k)s-=y[i-k];out[i]=s/Math.min(i+1,k);}return out;}
+  function curva(cv,series,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),{c,w,h}=lienzo(cv,o.prop);
+    const iz=46,de=10,ar=10,ab=26,W=w-iz-de,H=h-ar-ab;
+    let n=o.xmax||1,lo=o.ymin,hi=o.ymax;series.forEach(S=>{n=Math.max(n,S.y.length);});
+    if(lo===undefined||hi===undefined){let a=Infinity,b=-Infinity;series.forEach(S=>S.y.forEach(v=>{if(isFinite(v)){a=Math.min(a,v);b=Math.max(b,v);}}));(o.lineas||[]).forEach(L=>{a=Math.min(a,L.y);b=Math.max(b,L.y);});
+      if(!isFinite(a)){a=0;b=1;}if(a===b){a-=1;b+=1;}const pad=(b-a)*.06;if(lo===undefined)lo=a-pad;if(hi===undefined)hi=b+pad;}
+    const X=i=>iz+(n>1?i/(n-1):0)*W,Y=v=>ar+H-(Math.min(hi,Math.max(lo,v))-lo)/(hi-lo)*H;
+    c.clearRect(0,0,w,h);c.fillStyle=C('--card');c.fillRect(0,0,w,h);
+    c.strokeStyle=C('--grid');c.lineWidth=1;c.fillStyle=C('--muted');c.font='10px '+C('--f-mono');c.textAlign='right';c.textBaseline='middle';
+    for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4,y=Y(v);c.beginPath();c.moveTo(iz,y);c.lineTo(iz+W,y);c.stroke();c.fillText(nf(v,o.decimales??(Math.abs(hi-lo)<0.5?2:Math.abs(hi-lo)<5?1:0)),iz-4,y);}
+    c.textAlign='center';c.textBaseline='top';for(let k=0;k<=4;k++){const i=Math.round((n-1)*k/4);if(k&&i===Math.round((n-1)*(k-1)/4))continue;const ul=n>1&&i===n-1;c.textAlign=ul?'right':'center';c.fillText(nf(i+(o.desde1?1:0)),ul?X(i)+de-1:X(i),ar+H+5);}
+    if(o.ejeX){c.textAlign='right';c.fillText(o.ejeX,iz+W,ar+H+15);}
+    if(o.ejeY){c.save();c.translate(10,ar+H/2);c.rotate(-Math.PI/2);c.textAlign='center';c.fillText(o.ejeY,0,0);c.restore();}
+    (o.lineas||[]).forEach(L=>{c.strokeStyle=C(L.color||'--muted');c.setLineDash([5,4]);c.lineWidth=1.4;c.beginPath();c.moveTo(iz,Y(L.y));c.lineTo(iz+W,Y(L.y));c.stroke();c.setLineDash([]);
+      if(L.nombre){c.fillStyle=C(L.color||'--muted');c.textAlign='right';c.textBaseline='bottom';c.fillText(L.nombre,iz+W-4,Y(L.y)-2);}});
+    const traza=(y,col,anch,alfa,punt)=>{if(!y.length)return;c.strokeStyle=col;c.lineWidth=anch;c.globalAlpha=alfa;c.setLineDash(punt?[5,4]:[]);c.beginPath();
+      y.forEach((v,i)=>{i?c.lineTo(X(i),Y(v)):c.moveTo(X(i),Y(v));});c.stroke();c.globalAlpha=1;c.setLineDash([]);};
+    series.forEach(S=>{const col=C(S.color||'--accent');if(o.media&&S.y.length>1){if(o.crudo!==false&&!S.sinCrudo)traza(S.y,col,1,.22,false);traza(media(S.y,o.media),col,S.ancho||2.2,1,S.punteada);}else traza(S.y,col,S.ancho||2,S.tenue?.35:1,S.punteada);});
+    c.strokeStyle=C('--line');c.strokeRect(iz+.5,ar+.5,W,H);
+    return {X,Y};
+  }
+  /* Redibuja al cambiar el tema o el ancho. */
+  function tema(raiz,fn){let t;const re=()=>{clearTimeout(t);t=setTimeout(fn,60);};
+    if(window.ResizeObserver)new ResizeObserver(re).observe(raiz);
+    new MutationObserver(re).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme','class']});
+    if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',re);}
+  const quieto=()=>!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+  /* Entrenar por tramos sin congelar la página: trabajo() hace una unidad (un episodio, un paso) y devuelve false
+     cuando ya no hay más; cada cuadro trabaja o.ms milisegundos (24 por defecto) y llama a o.cuadro(). */
+  function bucle(trabajo,o={}){const ms=o.ms??24;let vivo=false,id=0;
+    function cuadro(){if(!vivo)return;const t0=performance.now();let sigue=true;
+      do{sigue=trabajo()!==false;}while(sigue&&performance.now()-t0<ms&&!o.unoPorCuadro);
+      if(o.cuadro)o.cuadro();if(!sigue){vivo=false;if(o.fin)o.fin();return;}
+      id=o.pausa?setTimeout(cuadro,o.pausa):requestAnimationFrame(cuadro);}
+    return {iniciar(){if(vivo)return;vivo=true;cuadro();},parar(){vivo=false;cancelAnimationFrame(id);clearTimeout(id);},get corriendo(){return vivo;}};}
+
+  return {rnd,gauss,entero,barajar,nf,pct,ACC,FLECHA,MAPAS,DEF,cuadricula,
+    politicaAlAzar,politicaDe,accionDe,elegir,codiciosa,egreedy,qDeV,barridoEval,barridoValor,evaluar,iterarValor,iterarPolitica,
+    episodio,retornoMedio,BANDIDO,bandido,agenteBandido,cartpole,
+    color,rgb,mezcla,lienzo,flecha,dibujar,media,curva,tema,quieto,bucle};
+})();
+  const M=MundoRL,nf=M.nf,$=s=>raiz.querySelector(s);
+  /* La regata: un bote debe ir de la salida (S) a la meta (M) por el canal; en la laguna hay tres blancos (B) que
+     dan puntos cada vez que el bote entra en su casilla; cada paso gasta 0,1 de combustible. o: {blanco (puntos por blanco), meta (puntos por terminar),
+     reaparecen (los blancos vuelven apenas el bote se va), gamma}. Q-learning tabular (capítulo 7). */
+  const REGATA=['S.......',
+                '###.###.',
+                '#BB.###.',
+                '#B..###.',
+                '#####M..'];
+  function regata(o){o=Object.assign({blanco:10,meta:50,paso:-0.1,reaparecen:true,gamma:0.9,tope:100,semilla:42},o);
+    const F=REGATA.length,Cn=REGATA[0].length,nS=F*Cn,DF=[-1,0,1,0],DC=[0,1,0,-1];
+    const tipo=s=>REGATA[Math.floor(s/Cn)][s%Cn],blancos=[],agua=[];for(let s=0;s<nS;s++){if(tipo(s)==='B')blancos.push(s);if(tipo(s)!=='#'&&tipo(s)!=='M')agua.push(s);}
+    const inicio=REGATA.join('').indexOf('S'),nM=o.reaparecen?1:8,Q=new Float64Array(nS*nM*4),r=M.rnd(o.semilla);
+    function mover(s,a){const f=Math.floor(s/Cn)+DF[a],c=s%Cn+DC[a];if(f<0||c<0||f>=F||c>=Cn||REGATA[f][c]==='#')return s;return f*Cn+c;}
+    /* Un paso: devuelve {s2, m2 (blancos que quedan), r, fin}. */
+    function paso(s,m,a){const s2=mover(s,a);let rr=o.paso,m2=m;const k=blancos.indexOf(s2);
+      if(k>=0&&s2!==s){if(o.reaparecen)rr+=o.blanco;else if(m&(1<<k)){rr+=o.blanco;m2=m&~(1<<k);}}
+      if(tipo(s2)==='M')return {s2,m2,r:rr+o.meta,fin:true};return {s2,m2,r:rr,fin:false};}
+    const idx=(s,m)=>((o.reaparecen?0:m)*nS+s)*4;
+    /* La mejor acción; los empates se sortean (con la semilla). */
+    const mejor=(s,m,az)=>{const i=idx(s,m);let b=0,n=1;for(let a=1;a<4;a++){if(Q[i+a]>Q[i+b]+1e-12){b=a;n=1;}else if(az&&Math.abs(Q[i+a]-Q[i+b])<=1e-12&&r()*(++n)<1)b=a;}return b;};
+    const ag={F,Cn,nS,tipo,blancos,inicio,Q,o,ep:0,
+      /* Cada episodio de entrenamiento arranca en una casilla de agua al azar (arranques exploratorios, cap. 5). */
+      episodio(){let s=agua[Math.floor(r()*agua.length)],m=o.reaparecen?7:Math.floor(r()*8);for(let t=0;t<o.tope;t++){const a=r()<0.1?Math.floor(r()*4):mejor(s,m,true);const x=paso(s,m,a);
+          const i=idx(s,m)+a,j=idx(x.s2,x.m2);const obj=x.fin?x.r:x.r+o.gamma*Math.max(Q[j],Q[j+1],Q[j+2],Q[j+3]);
+          Q[i]+=0.2*(obj-Q[i]);s=x.s2;m=x.m2;if(x.fin)break;}ag.ep++;},
+      /* La carrera con la política aprendida (sin explorar): ruta, puntos, si terminó y vueltas a la laguna. */
+      carrera(){let s=inicio,m=7,pts=0,golpes=0;const ruta=[s];for(let t=0;t<o.tope;t++){const x=paso(s,m,mejor(s,m));if(x.r>0&&!x.fin)golpes++;pts+=x.r;s=x.s2;m=x.m2;ruta.push(s);
+          if(x.fin)return {ruta,pts,golpes,termino:true,pasos:t+1};}return {ruta,pts,golpes,termino:false,pasos:o.tope};}};
+    return ag;}
+  const EP=8000;let semilla=42,ag=null,res=null,cuadro=-1,anim=0;
+  const leer=()=>({blanco:+$('#c12l1-b').value,meta:+$('#c12l1-m').value,reaparecen:$('#c12l1-r').checked});
+  function nuevo(){cancelAnimationFrame(anim);ag=regata(Object.assign({semilla},leer()));res=null;cuadro=-1;$('#c12l1-ver').disabled=true;}
+  function pintarMapa(){const cv=$('#c12l1-c'),{c,w,h}=M.lienzo(cv),C=k=>M.color(raiz,k);const F=REGATA.length,Cn=REGATA[0].length;
+    const L=Math.min((w-4)/Cn,(h-4)/F),x0=(w-L*Cn)/2,y0=(h-L*F)/2,card=C('--card');c.clearRect(0,0,w,h);
+    const agua=M.mezcla(card,C('--c-red'),.16),tierra=M.mezcla(card,C('--muted'),.45),o=leer();
+    for(let s=0;s<F*Cn;s++){const f=Math.floor(s/Cn),cc=s%Cn,x=x0+cc*L,y=y0+f*L,t=REGATA[f][cc];
+      c.fillStyle=t==='#'?tierra:t==='M'?M.mezcla(card,C('--good'),.35):agua;c.fillRect(x,y,L,L);
+      if(t==='M'){c.fillStyle=C('--good');const q=L/4;for(let i=0;i<4;i++)for(let j=0;j<4;j++)if((i+j)%2===0)c.fillRect(x+i*q,y+j*q,q,q*0.999);
+        c.fillStyle=C('--card');c.font='700 '+Math.round(L*.22)+'px '+C('--f-display');c.textAlign='center';c.textBaseline='middle';c.fillText('META',x+L/2,y+L/2);}
+      if(t==='B'){c.fillStyle=C('--c-fis');c.beginPath();c.arc(x+L/2,y+L*.6,L*.24,0,7);c.fill();c.fillStyle=C('--card');c.beginPath();c.arc(x+L/2,y+L*.6,L*.12,0,7);c.fill();
+        c.fillStyle=C('--c-fis');c.beginPath();c.arc(x+L/2,y+L*.6,L*.05,0,7);c.fill();
+        c.fillStyle=C('--ink');c.font='600 '+Math.max(10,Math.round(L*.18))+'px '+C('--f-mono');c.textAlign='center';c.textBaseline='top';c.fillText('+'+o.blanco,x+L/2,y+3);}
+      if(t==='S'){c.strokeStyle=C('--accent');c.setLineDash([4,3]);c.lineWidth=2;c.strokeRect(x+3,y+3,L-6,L-6);c.setLineDash([]);
+        c.fillStyle=C('--muted');c.font='700 '+Math.max(10,Math.round(L*.18))+'px '+C('--f-display');c.textAlign='center';c.textBaseline='bottom';c.fillText('Salida',x+L/2,y+L-4);}}
+    c.strokeStyle=C('--line');c.lineWidth=1;for(let i=0;i<=Cn;i++){c.beginPath();c.moveTo(x0+i*L,y0);c.lineTo(x0+i*L,y0+F*L);c.stroke();}for(let j=0;j<=F;j++){c.beginPath();c.moveTo(x0,y0+j*L);c.lineTo(x0+Cn*L,y0+j*L);c.stroke();}
+    const cen=s=>[x0+(s%Cn+.5)*L,y0+(Math.floor(s/Cn)+.5)*L];
+    if(res){const n=cuadro<0?res.ruta.length:Math.min(res.ruta.length,cuadro+1),R=res.ruta.slice(0,n);
+      /* La ruta: los tramos que se repiten se ven más gruesos (el bote pasó muchas veces). */
+      c.strokeStyle=C('--c-fis');c.lineWidth=Math.max(3,L*.09);c.lineJoin='round';c.lineCap='round';c.globalAlpha=.55;c.beginPath();
+      R.forEach((s,i)=>{const [px,py]=cen(s);i?c.lineTo(px,py):c.moveTo(px,py);});c.stroke();c.globalAlpha=1;
+      const [bx,by]=cen(R[R.length-1]);c.fillStyle=C('--d-casa');c.strokeStyle=C('--card');c.lineWidth=2;
+      c.beginPath();c.moveTo(bx-L*.26,by-L*.12);c.lineTo(bx+L*.14,by-L*.12);c.lineTo(bx+L*.3,by);c.lineTo(bx+L*.14,by+L*.12);c.lineTo(bx-L*.26,by+L*.12);c.closePath();c.fill();c.stroke();}
+    else{const [bx,by]=cen(REGATA.join('').indexOf('S'));c.fillStyle=C('--d-casa');c.beginPath();c.arc(bx,by,L*.16,0,7);c.fill();}}
+  function pintar(){pintarMapa();const o=leer();let t;
+    if(!ag||ag.ep===0)t='<span class="big">Sin entrenar</span><span>Elige cómo se puntúa y pulsa «Entrenar 8.000 regatas». El bote aprende con Q-learning; cada paso gasta 0,1 de combustible.</span>';
+    else if(!res)t='<span class="big">Regata '+nf(ag.ep)+' de '+nf(EP)+'</span><span>El bote explora el canal y la laguna…</span>';
+    else{const r=res;t='<span class="big">'+(r.termino?'Terminó la carrera en '+r.pasos+' pasos':'No terminó la carrera')+'</span>';
+      t+='<span>Puntaje que consiguió en '+r.pasos+' pasos: <b>'+nf(r.pts,1)+'</b>, con '+nf(r.golpes)+' blancos.</span>';
+      if(!r.termino&&r.golpes>10)t+='<span class="warn">Encontró el atajo: dar vueltas en la laguna, chocando los mismos blancos una y otra vez, paga más que terminar. Es lo que hizo el agente de CoastRunners en 2016. El agente optimizó la recompensa que le diste, no la que querías darle.</span>';
+      else if(r.termino&&r.golpes===0&&o.blanco>0)t+='<span class="ok">Ahora terminar vale más que dar vueltas, y el bote va directo a la meta. Pero ojo: no fue «entender la carrera»; solo cambió qué paga más.</span>';
+      else if(r.termino&&r.golpes>0)t+='<span class="ok">Junta los tres blancos una vez y después va a la meta: los puntos ya no se pueden repetir, así que no hay atajo que explotar.</span>';
+      else if(r.termino)t+='<span class="ok">Sin puntos por los blancos, lo único que paga es terminar, y el bote va por el camino más corto.</span>';
+      else t+='<span class="warn">El bote no aprendió a terminar: con estos puntos, terminar no le conviene.</span>';}
+    $('#c12l1-out').innerHTML=t;}
+  const b=M.bucle(()=>{if(ag.ep>=EP)return false;ag.episodio();return true;},{ms:20,cuadro:pintar,fin:()=>{parar();res=ag.carrera();cuadro=-1;$('#c12l1-ver').disabled=false;pintar();}});
+  function parar(){b.parar();const g=$('#c12l1-go');g.setAttribute('aria-pressed','false');g.textContent='Entrenar 8.000 regatas';}
+  function entrenar(){parar();nuevo();const g=$('#c12l1-go');g.setAttribute('aria-pressed','true');g.textContent='Entrenando…';b.iniciar();}
+  function verCarrera(){if(!res)return;cancelAnimationFrame(anim);if(M.quieto()){cuadro=-1;pintar();return;}cuadro=0;let ult=0;const tope=Math.min(res.ruta.length-1,60);
+    const paso=ts=>{if(ts-ult>140){ult=ts;cuadro++;pintarMapa();}if(cuadro<tope)anim=requestAnimationFrame(paso);else{cuadro=-1;pintar();}};anim=requestAnimationFrame(paso);}
+  function cambio(){$('#c12l1-bo').textContent=$('#c12l1-b').value;$('#c12l1-mo').textContent=$('#c12l1-m').value;parar();nuevo();pintar();
+    raiz.querySelectorAll('.c12l1-pre').forEach(x=>x.setAttribute('aria-pressed',String(+x.dataset.b===+$('#c12l1-b').value&&+x.dataset.m===+$('#c12l1-m').value&&(x.dataset.r==='1')===$('#c12l1-r').checked)));}
+  ['#c12l1-b','#c12l1-m'].forEach(id=>$(id).addEventListener('input',cambio));$('#c12l1-r').addEventListener('change',cambio);
+  raiz.querySelectorAll('.c12l1-pre').forEach(x=>x.addEventListener('click',()=>{$('#c12l1-b').value=x.dataset.b;$('#c12l1-m').value=x.dataset.m;$('#c12l1-r').checked=x.dataset.r==='1';cambio();entrenar();}));
+  $('#c12l1-go').addEventListener('click',()=>{if(b.corriendo)return;entrenar();});
+  $('#c12l1-ver').addEventListener('click',verCarrera);
+  $('#c12l1-sem').addEventListener('click',()=>{semilla++;entrenar();});
+  M.tema(raiz,pintar);nuevo();pintar();
+})();
+</script>
+<script>
+(function(){
+  const raiz=document.querySelector('[id="12-lab-2"]');
+/* MundoRL: biblioteca mínima común de los labs del curso «Aprendizaje por refuerzo» (sin dependencias, con semilla).
+   Plantilla: copia este bloque DENTRO de la IIFE de tu lab (el motor solo admite <script> en línea, sin src).
+   Uso típico:
+     const M=MundoRL, m=M.cuadricula('almacen');            // la cuadrícula de referencia del curso
+     const r=M.rnd(42);
+     const {V,pi}=M.iterarValor(m);                         // valores óptimos y política óptima
+     M.dibujar(canvas,m,{raiz,V,pi,numeros:true});          // mapa de calor de V y flechas de la política
+     const ep=M.episodio(m,s=>M.elegir(pi,s,r),r);          // un episodio: ep.G, ep.Gd, ep.pasos, ep.final
+   Acciones: 0 arriba, 1 derecha, 2 abajo, 3 izquierda (el orden de CliffWalking en Gymnasium).
+   Estados: s = fila*cols + columna (fila 0 arriba), como FrozenLake y CliffWalking. Nombre de casilla: 'A5' =
+   columna A (la primera de la izquierda), fila 5 contada desde arriba. */
+const MundoRL=(function(){
+  /* ---------- Azar con semilla (mulberry32) ---------- */
+  function rnd(s){return function(){s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  function gauss(r){let u=0;while(!u)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r());}
+  const entero=(r,n)=>Math.floor(r()*n);
+  function barajar(n,r){const a=Array.from({length:n},(_,i)=>i);for(let i=n-1;i>0;i--){const j=entero(r,i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+  /* ---------- Números en español: punto de miles, coma decimal ---------- */
+  const nf=(n,d=0)=>{if(!isFinite(n))return '—';const s=Math.abs(n).toFixed(d).split('.');s[0]=s[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');return (n<0&&Number(Math.abs(n).toFixed(d))!==0?'−':'')+s.join(',');};
+  const pct=(x,d=1)=>nf(100*x,d)+' %';
+
+  /* ---------- Cuadrículas ---------- */
+  const ACC=['arriba','derecha','abajo','izquierda'],FLECHA=['↑','→','↓','←'],DF=[-1,0,1,0],DC=[0,1,0,-1];
+  /* Caracteres: '.' piso, '#' pared (estantería), 'S' inicio, 'P' premio (termina), 'T' trampa (termina),
+     'C' acantilado (castigo y vuelta al inicio, no termina: CliffWalking). */
+  const MAPAS={
+    almacen:['.....P',
+             '.###.T',
+             '...T..',
+             '.#....',
+             '..S#..'],
+    acantilado:['............','............','............','SCCCCCCCCCCP'],
+    lago4:['S...','.T.T','...T','T..P']
+  };
+  /* Recompensas y dinámica por defecto de la cuadrícula de referencia. */
+  const DEF={paso:-0.1,premio:10,trampa:-10,acantilado:-100,resbalar:0.2,gamma:0.9,maxPasos:100};
+  const PRESET={
+    almacen:{},
+    acantilado:{paso:-1,premio:-1,resbalar:0,gamma:1,maxPasos:200},          // CliffWalking-v1 de Gymnasium
+    lago4:{paso:0,premio:1,trampa:0,resbalar:2/3,gamma:0.99,maxPasos:100}      // FrozenLake-v1 4x4, resbaloso
+  };
+  function cuadricula(mapa,o){
+    const clave=typeof mapa==='string'?mapa:null;
+    const filas=(clave?MAPAS[clave]:mapa).slice();
+    const op=Object.assign({},DEF,clave?PRESET[clave]:{},o||{});
+    const nF=filas.length,nC=filas[0].length,nS=nF*nC,tipo=[];
+    let inicio=0;
+    for(let f=0;f<nF;f++)for(let c=0;c<nC;c++){const t=filas[f][c]||'.';tipo.push(t);if(t==='S')inicio=f*nC+c;}
+    const m={mapa:filas,filas:nF,cols:nC,nS,nA:4,tipo,inicio,gamma:op.gamma,maxPasos:op.maxPasos,op,
+      esPared:s=>tipo[s]==='#',esTerminal:s=>tipo[s]==='P'||tipo[s]==='T',
+      fila:s=>Math.floor(s/nC),col:s=>s%nC,
+      nombre:s=>String.fromCharCode(65+s%nC)+(Math.floor(s/nC)+1)};
+    m.libres=[];for(let s=0;s<nS;s++)if(!m.esPared(s)&&!m.esTerminal(s))m.libres.push(s);
+    /* Adónde lleva moverse en la dirección d desde s (paredes y bordes: se queda). */
+    function mover(s,d){const f=m.fila(s)+DF[d],c=m.col(s)+DC[d];if(f<0||f>=nF||c<0||c>=nC)return s;const s2=f*nC+c;return tipo[s2]==='#'?s:s2;}
+    function resultado(s2){const t=tipo[s2];
+      if(t==='P')return {s2,r:op.premio,fin:true};
+      if(t==='T')return {s2,r:op.trampa,fin:true};
+      if(t==='C')return {s2:inicio,r:op.acantilado,fin:false,cayo:true};
+      return {s2,r:op.paso,fin:false};}
+    /* P[s][a]: lista de {p,s2,r,fin} (como env.unwrapped.P de Gymnasium). Con probabilidad 1−resbalar va adonde
+       quiere; con resbalar/2 se desvía a cada lado (nunca hacia atrás). */
+    m.reconstruir=function(){
+      m.P=[];
+      for(let s=0;s<nS;s++){const fila=[];
+        for(let a=0;a<4;a++){const lista=[];
+          if(m.esPared(s)||m.esTerminal(s)){fila.push([{p:1,s2:s,r:0,fin:true}]);continue;}
+          const q=op.resbalar,opciones=[[a,1-q],[(a+1)%4,q/2],[(a+3)%4,q/2]];
+          for(const [d,p] of opciones){if(p<=0)continue;const res=resultado(mover(s,d));
+            const ya=lista.find(x=>x.s2===res.s2&&x.r===res.r);if(ya)ya.p+=p;else lista.push(Object.assign({p},res));}
+          fila.push(lista);}
+        m.P.push(fila);}
+    };
+    m.reconstruir();
+    /* Cambia una casilla (para labs donde el lector arma la cuadrícula) o una opción, y recalcula P. */
+    m.poner=function(s,t){tipo[s]=t;if(t==='S'){for(let i=0;i<nS;i++)if(i!==s&&tipo[i]==='S')tipo[i]='.';inicio=s;m.inicio=s;}
+      m.libres=[];for(let i=0;i<nS;i++)if(!m.esPared(i)&&!m.esTerminal(i))m.libres.push(i);m.reconstruir();};
+    m.opcion=function(k,v){op[k]=v;if(k==='gamma')m.gamma=v;if(k==='maxPasos')m.maxPasos=v;m.reconstruir();};
+    /* Un paso con azar: {s2, r, fin, cayo}. */
+    m.paso=function(s,a,r){const L=m.P[s][a];let u=r(),k=0;while(k<L.length-1&&u>=L[k].p){u-=L[k].p;k++;}
+      const x=L[k];return {s2:x.s2,r:x.r,fin:x.fin,cayo:tipo[s]!=='C'&&x.s2===inicio&&x.r===op.acantilado};};
+    return m;
+  }
+
+  /* ---------- Políticas: Float64Array de nS*4 probabilidades (pi[s*4+a]) ---------- */
+  function politicaAlAzar(m){const pi=new Float64Array(m.nS*4).fill(0.25);return pi;}
+  function politicaDe(m,acciones){const pi=new Float64Array(m.nS*4);for(let s=0;s<m.nS;s++)pi[s*4+(acciones[s]??0)]=1;return pi;}
+  function accionDe(pi,s){let k=0;for(let a=1;a<4;a++)if(pi[s*4+a]>pi[s*4+k]+1e-12)k=a;return k;}
+  function elegir(pi,s,r){let u=r();for(let a=0;a<3;a++){u-=pi[s*4+a];if(u<0)return a;}return 3;}
+  /* Política codiciosa respecto de Q (nS*4). empates: 'primero' (determinista) o 'repartir'. */
+  function codiciosa(m,Q,empates){const pi=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++){let mx=-Infinity;for(let a=0;a<4;a++)mx=Math.max(mx,Q[s*4+a]);
+      const mejores=[];for(let a=0;a<4;a++)if(Q[s*4+a]>=mx-1e-9)mejores.push(a);
+      if(empates==='repartir')mejores.forEach(a=>pi[s*4+a]=1/mejores.length);else pi[s*4+mejores[0]]=1;}
+    return pi;}
+  function egreedy(m,Q,eps){const pi=codiciosa(m,Q);for(let i=0;i<pi.length;i++)pi[i]=pi[i]*(1-eps)+eps/4;return pi;}
+
+  /* ---------- Bellman ---------- */
+  function g_(m,o){return o&&o.gamma!==undefined?o.gamma:m.gamma;}
+  /* Q a partir de V: q(s,a) = Σ p·(r + γ·V(s')) */
+  function qDeV(m,V,gamma){const Q=new Float64Array(m.nS*4);
+    for(let s=0;s<m.nS;s++)for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));Q[s*4+a]=(m.esPared(s)||m.esTerminal(s))?0:q;}
+    return Q;}
+  /* Un barrido de evaluación (síncrono): V'(s) = Σ_a π(a|s) Σ p·(r + γ·V(s')). Devuelve {V, delta}. */
+  function barridoEval(m,pi,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let v=0;for(let a=0;a<4;a++){const w=pi[s*4+a];if(!w)continue;let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));v+=w*q;}
+      W[s]=v;delta=Math.max(delta,Math.abs(v-V[s]));}
+    return {V:W,delta};}
+  /* Un barrido de optimalidad: V'(s) = max_a Σ p·(r + γ·V(s')). */
+  function barridoValor(m,V,o){const gamma=g_(m,o),W=new Float64Array(m.nS);let delta=0;
+    for(const s of m.libres){let mx=-Infinity;for(let a=0;a<4;a++){let q=0;for(const t of m.P[s][a])q+=t.p*(t.r+(t.fin?0:gamma*V[t.s2]));if(q>mx)mx=q;}
+      W[s]=mx;delta=Math.max(delta,Math.abs(mx-V[s]));}
+    return {V:W,delta};}
+  /* Evaluación de política hasta que el cambio máximo baje de tol. */
+  function evaluar(m,pi,o={}){let V=o.V0?Float64Array.from(o.V0):new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoEval(m,pi,V,o);V=x.V;delta=x.delta;b++;}
+    return {V,barridos:b,delta};}
+  function iterarValor(m,o={}){let V=new Float64Array(m.nS),b=0,delta=Infinity;const tol=o.tol??1e-9,max=o.max??10000;
+    while(delta>tol&&b<max){const x=barridoValor(m,V,o);V=x.V;delta=x.delta;b++;}
+    const Q=qDeV(m,V,g_(m,o));return {V,Q,pi:codiciosa(m,Q),barridos:b};}
+  function iterarPolitica(m,o={}){let pi=o.pi0?Float64Array.from(o.pi0):politicaAlAzar(m),vueltas=0,V,historia=[];
+    for(;vueltas<100;vueltas++){V=evaluar(m,pi,o).V;const nuevo=codiciosa(m,qDeV(m,V,g_(m,o)));historia.push({V,pi});
+      let igual=true;for(const s of m.libres)if(accionDe(nuevo,s)!==accionDe(pi,s)||pi[s*4+accionDe(pi,s)]<1){igual=false;break;}
+      pi=nuevo;if(igual)break;}
+    return {V,pi,vueltas:vueltas+1,historia};}
+
+  /* ---------- Experiencia ---------- */
+  /* Un episodio desde el inicio (o desde o.desde). elegir(s) -> acción. Devuelve estados, acciones, recompensas,
+     G (suma), Gd (suma descontada con γ), pasos y final: 'premio', 'trampa' o 'tope'. */
+  function episodio(m,elegirA,r,o={}){const S=[],A=[],R=[];let s=o.desde??m.inicio,fin=false,final='tope',G=0,Gd=0,d=1;const max=o.max??m.maxPasos;
+    for(let t=0;t<max&&!fin;t++){const a=elegirA(s);const x=m.paso(s,a,r);S.push(s);A.push(a);R.push(x.r);G+=x.r;Gd+=d*x.r;d*=m.gamma;s=x.s2;fin=x.fin;
+      if(fin)final=m.tipo[s]==='P'?'premio':'trampa';}
+    S.push(s);return {S,A,R,G,Gd,pasos:A.length,final};}
+  /* Retorno medio de una política (pi) en n episodios. */
+  function retornoMedio(m,pi,r,n=1000){let G=0,Gd=0,P=0,ex=0;for(let i=0;i<n;i++){const e=episodio(m,s=>elegir(pi,s,r),r);G+=e.G;Gd+=e.Gd;P+=e.pasos;if(e.final==='premio')ex++;}
+    return {G:G/n,Gd:Gd/n,pasos:P/n,exito:ex/n};}
+
+  /* ---------- Bandido multibrazo (cap. 01) ---------- */
+  const BANDIDO=[0.25,0.40,0.55,0.50,0.30];   // máquinas A-E: probabilidad de pagar 1 ficha
+  function bandido(probs,r){probs=probs||BANDIDO;let mejor=0;probs.forEach((p,i)=>{if(p>probs[mejor])mejor=i;});
+    return {k:probs.length,probs,mejor,tirar:a=>r()<probs[a]?1:0};}
+  /* Agente de bandido. metodo: 'egreedy' (ε, promedio de la muestra), 'optimista' (codicioso con Q inicial q0 y
+     paso constante alfa) o 'ucb' (cota superior de confianza con c). */
+  function agenteBandido(k,o={}){const met=o.metodo||'egreedy',q0=o.q0??0,r=o.r||rnd(42);
+    const Q=new Float64Array(k).fill(met==='optimista'?q0:0),N=new Float64Array(k);let t=0;
+    function arg(f){let mx=-Infinity,L=[];for(let a=0;a<k;a++){const v=f(a);if(v>mx+1e-12){mx=v;L=[a];}else if(Math.abs(v-mx)<=1e-12)L.push(a);}return L[entero(r,L.length)];}
+    /* epsilon, alfa y c se pueden cambiar en vivo (ag.epsilon = 0.2). exploro: si la última elección fue al azar. */
+    return {Q,N,metodo:met,epsilon:o.epsilon??0.1,alfa:o.alfa??0.1,c:o.c??2,exploro:false,
+      elegir(){t++;this.exploro=false;
+        if(met==='ucb'){for(let a=0;a<k;a++)if(N[a]===0)return a;const c=this.c;return arg(a=>Q[a]+c*Math.sqrt(Math.log(t)/N[a]));}
+        if(met==='egreedy'&&r()<this.epsilon){this.exploro=true;return entero(r,k);}
+        return arg(a=>Q[a]);},
+      aprender(a,R){N[a]++;Q[a]+=(met==='optimista'?this.alfa:1/N[a])*(R-Q[a]);}};}
+
+  /* ---------- CartPole (Barto, Sutton y Anderson, 1983; constantes de Gymnasium CartPole-v1) ---------- */
+  function cartpole(r){const g=9.8,mc=1.0,mp=0.1,mt=mc+mp,l=0.5,pml=mp*l,F=10,tau=0.02,thMax=12*2*Math.PI/360,xMax=2.4;
+    const e={x:0,v:0,th:0,w:0,t:0,fin:false,
+      reiniciar(){this.x=(r()-.5)*.1;this.v=(r()-.5)*.1;this.th=(r()-.5)*.1;this.w=(r()-.5)*.1;this.t=0;this.fin=false;return this.obs();},
+      obs(){return [this.x,this.v,this.th,this.w];},
+      /* a: 0 empuja a la izquierda, 1 a la derecha. Recompensa 1 por paso; termina si |θ|>12° o |x|>2,4; trunca a 500. */
+      paso(a){const f=a===1?F:-F,ct=Math.cos(this.th),st=Math.sin(this.th);
+        const tmp=(f+pml*this.w*this.w*st)/mt,ta=(g*st-ct*tmp)/(l*(4/3-mp*ct*ct/mt)),xa=tmp-pml*ta*ct/mt;
+        this.x+=tau*this.v;this.v+=tau*xa;this.th+=tau*this.w;this.w+=tau*ta;this.t++;
+        const termina=Math.abs(this.x)>xMax||Math.abs(this.th)>thMax,trunca=this.t>=500;this.fin=termina||trunca;
+        return {obs:this.obs(),r:1,termina,trunca};}};
+    e.reiniciar();return e;}
+
+  /* ---------- Dibujo ---------- */
+  function color(raiz,n){return getComputedStyle(raiz).getPropertyValue(n).trim();}
+  function rgb(c){if(!c)return [128,128,128];if(c[0]==='#'){if(c.length===4)c='#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];return [1,3,5].map(i=>parseInt(c.substr(i,2),16));}
+    const m=c.match(/[\d.]+/g);return m?m.slice(0,3).map(Number):[128,128,128];}
+  function mezcla(a,b,t){const A=rgb(a),B=rgb(b);return 'rgb('+A.map((x,i)=>Math.round(x+(B[i]-x)*t)).join(',')+')';}
+  /* Prepara un canvas con devicePixelRatio. Alto = ancho * data-prop (o o.prop). Devuelve {c,w,h}. */
+  function lienzo(cv,prop){const w=Math.max(120,cv.clientWidth||cv.parentNode.clientWidth||300),p=prop??parseFloat(cv.dataset.prop||'0.6'),h=Math.round(w*p),k=window.devicePixelRatio||1;
+    cv.style.height=h+'px';cv.width=Math.round(w*k);cv.height=Math.round(h*k);const c=cv.getContext('2d');c.setTransform(k,0,0,k,0,0);return {c,w,h};}
+  function flecha(c,x,y,a,L,col,ancho){const dx=DC[a],dy=DF[a];c.strokeStyle=col;c.fillStyle=col;c.lineWidth=ancho||2;
+    const x0=x-dx*L*.45,y0=y-dy*L*.45,x1=x+dx*L*.45,y1=y+dy*L*.45;c.beginPath();c.moveTo(x0,y0);c.lineTo(x1-dx*L*.18,y1-dy*L*.18);c.stroke();
+    const px=-dy,py=dx;c.beginPath();c.moveTo(x1,y1);c.lineTo(x1-dx*L*.3+px*L*.2,y1-dy*L*.3+py*L*.2);c.lineTo(x1-dx*L*.3-px*L*.2,y1-dy*L*.3-py*L*.2);c.closePath();c.fill();}
+  /* Dibuja la cuadrícula. o: {raiz, V (mapa de calor), rango (|V| que satura el color), pi (flechas: probabilidades),
+     numeros (escribe V), ruta (lista de estados), agente (estado), resaltar (estado), Q (cuatro triángulos por casilla),
+     visitas (Float64Array: opacidad de exploración), prop}. Devuelve {lado, x0, y0, casilla(px,py) -> s o -1}. */
+  function dibujar(cv,m,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),prop=o.prop??(m.filas/m.cols);
+    const {c,w,h}=lienzo(cv,prop),lado=Math.min((w-2)/m.cols,(h-2)/m.filas),x0=(w-lado*m.cols)/2,y0=(h-lado*m.filas)/2;
+    const card=C('--card'),azul=C('--c-red'),rojo=C('--warm'),ink=C('--ink'),muted=C('--muted'),good=C('--good'),line=C('--line');
+    c.clearRect(0,0,w,h);
+    let rango=o.rango;if(!rango&&(o.V||o.Q)){rango=1e-9;const src=o.V||o.Q;for(let i=0;i<src.length;i++)rango=Math.max(rango,Math.abs(src[i]));}
+    const tinte=v=>v>=0?mezcla(card,azul,Math.min(1,v/rango)*.85):mezcla(card,rojo,Math.min(1,-v/rango)*.85);
+    const fuente=Math.max(9,Math.min(14,lado*.24));
+    for(let s=0;s<m.nS;s++){const x=x0+m.col(s)*lado,y=y0+m.fila(s)*lado,t=m.tipo[s],cx=x+lado/2,cy=y+lado/2;
+      c.fillStyle=card;
+      if(t==='#'){c.fillStyle=mezcla(card,muted,.55);c.fillRect(x,y,lado,lado);
+        c.strokeStyle=mezcla(card,muted,.8);c.lineWidth=1;c.beginPath();for(let k=1;k<4;k++){c.moveTo(x+3,y+lado*k/4);c.lineTo(x+lado-3,y+lado*k/4);}c.stroke();continue;}
+      if(t==='P'){c.fillStyle=mezcla(card,good,.28);c.fillRect(x,y,lado,lado);}
+      else if(t==='T'||t==='C'){c.fillStyle=mezcla(card,rojo,.28);c.fillRect(x,y,lado,lado);}
+      else if(o.Q){const q=k=>o.Q[s*4+k];const P=[[cx,cy],[x,y],[x+lado,y],[x+lado,y+lado],[x,y+lado]];
+        const tri=[[1,2],[2,3],[3,4],[4,1]];for(let a=0;a<4;a++){c.fillStyle=tinte(q(a));c.beginPath();c.moveTo(cx,cy);c.lineTo(...P[tri[a][0]]);c.lineTo(...P[tri[a][1]]);c.closePath();c.fill();}
+        c.strokeStyle=line;c.lineWidth=.6;c.beginPath();c.moveTo(x,y);c.lineTo(x+lado,y+lado);c.moveTo(x+lado,y);c.lineTo(x,y+lado);c.stroke();}
+      else if(o.V){c.fillStyle=tinte(o.V[s]);c.fillRect(x,y,lado,lado);}
+      else c.fillRect(x,y,lado,lado);
+      if(o.visitas&&!m.esTerminal(s)){const vmax=Math.max(1,...o.visitas);c.fillStyle=C('--c-apl');c.globalAlpha=.45*Math.sqrt(o.visitas[s]/vmax);c.fillRect(x,y,lado,lado);c.globalAlpha=1;}
+      c.textAlign='center';c.textBaseline='middle';
+      if(t==='P'||t==='T'||t==='C'){c.fillStyle=t==='P'?good:rojo;c.font='700 '+Math.round(fuente*1.05)+'px '+C('--f-display');
+        const val=t==='P'?m.op.premio:t==='T'?m.op.trampa:m.op.acantilado;
+        c.fillText(t==='P'?'Premio':t==='T'?'Trampa':'',cx,cy-(lado>44?fuente*.55:0));if(lado>44||t==='C'){c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText((val>0?'+':'')+nf(val,Number.isInteger(val)?0:1),cx,t==='C'?cy:cy+fuente*.65);}
+        continue;}
+      if(o.pi&&!o.Q){const ps=[0,1,2,3].map(a=>o.pi[s*4+a]),mx=Math.max(...ps);
+        for(let a=0;a<4;a++)if(ps[a]>0.01){const L=lado*(o.numeros?.42:.6)*(0.45+0.55*ps[a]/mx);flecha(c,cx,cy-(o.numeros?lado*.14:0),a,L,ink,ps[a]>=mx-1e-9?2.2:1.2);}}
+      if(o.numeros&&o.V){c.fillStyle=ink;c.font='600 '+Math.round(fuente*.95)+'px '+C('--f-mono');c.fillText(nf(o.V[s],1),cx,o.pi?y+lado*.78:cy);}
+      if(t==='S'&&!o.V&&!o.Q){c.fillStyle=muted;c.font='700 '+Math.round(fuente*.85)+'px '+C('--f-display');c.fillText('Inicio',cx,y+lado*.82);}
+    }
+    c.strokeStyle=line;c.lineWidth=1;for(let i=0;i<=m.cols;i++){c.beginPath();c.moveTo(x0+i*lado,y0);c.lineTo(x0+i*lado,y0+m.filas*lado);c.stroke();}
+    for(let j=0;j<=m.filas;j++){c.beginPath();c.moveTo(x0,y0+j*lado);c.lineTo(x0+m.cols*lado,y0+j*lado);c.stroke();}
+    const ini=m.inicio,xi=x0+m.col(ini)*lado,yi=y0+m.fila(ini)*lado;c.strokeStyle=C('--accent');c.setLineDash([4,3]);c.lineWidth=2;c.strokeRect(xi+2,yi+2,lado-4,lado-4);c.setLineDash([]);
+    if(o.resaltar!==undefined&&o.resaltar>=0){const xr=x0+m.col(o.resaltar)*lado,yr=y0+m.fila(o.resaltar)*lado;c.strokeStyle=C('--c-tra');c.lineWidth=3;c.strokeRect(xr+1.5,yr+1.5,lado-3,lado-3);}
+    if(o.ruta&&o.ruta.length>1){c.strokeStyle=C('--c-fis');c.lineWidth=Math.max(2,lado*.07);c.lineJoin='round';c.globalAlpha=.85;c.beginPath();
+      o.ruta.forEach((s,i)=>{const px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado;i?c.lineTo(px,py):c.moveTo(px,py);});c.stroke();c.globalAlpha=1;}
+    if(o.agente!==undefined&&o.agente>=0){const s=o.agente,px=x0+(m.col(s)+.5)*lado,py=y0+(m.fila(s)+.5)*lado,R=lado*.26;
+      c.fillStyle=C('--d-casa');c.strokeStyle=card;c.lineWidth=2;c.beginPath();c.arc(px,py,R,0,7);c.fill();c.stroke();
+      c.fillStyle=card;c.beginPath();c.arc(px-R*.38,py-R*.15,R*.16,0,7);c.arc(px+R*.38,py-R*.15,R*.16,0,7);c.fill();}
+    return {lado,x0,y0,casilla(px,py){const cc=Math.floor((px-x0)/lado),ff=Math.floor((py-y0)/lado);return (cc<0||ff<0||cc>=m.cols||ff>=m.filas)?-1:ff*m.cols+cc;}};
+  }
+  /* Curvas. series: [{y:[...], color:'--c-tra', nombre, punteada, tenue, ancho}]. o: {raiz, media (ventana de la
+     media móvil; la serie cruda se dibuja tenue), ymin, ymax, xmax, ejeX, ejeY, lineas:[{y, color, nombre}], prop}. */
+  function media(y,k){const out=new Array(y.length);let s=0;for(let i=0;i<y.length;i++){s+=y[i];if(i>=k)s-=y[i-k];out[i]=s/Math.min(i+1,k);}return out;}
+  function curva(cv,series,o={}){const raiz=o.raiz||cv,C=n=>color(raiz,n),{c,w,h}=lienzo(cv,o.prop);
+    const iz=46,de=10,ar=10,ab=26,W=w-iz-de,H=h-ar-ab;
+    let n=o.xmax||1,lo=o.ymin,hi=o.ymax;series.forEach(S=>{n=Math.max(n,S.y.length);});
+    if(lo===undefined||hi===undefined){let a=Infinity,b=-Infinity;series.forEach(S=>S.y.forEach(v=>{if(isFinite(v)){a=Math.min(a,v);b=Math.max(b,v);}}));(o.lineas||[]).forEach(L=>{a=Math.min(a,L.y);b=Math.max(b,L.y);});
+      if(!isFinite(a)){a=0;b=1;}if(a===b){a-=1;b+=1;}const pad=(b-a)*.06;if(lo===undefined)lo=a-pad;if(hi===undefined)hi=b+pad;}
+    const X=i=>iz+(n>1?i/(n-1):0)*W,Y=v=>ar+H-(Math.min(hi,Math.max(lo,v))-lo)/(hi-lo)*H;
+    c.clearRect(0,0,w,h);c.fillStyle=C('--card');c.fillRect(0,0,w,h);
+    c.strokeStyle=C('--grid');c.lineWidth=1;c.fillStyle=C('--muted');c.font='10px '+C('--f-mono');c.textAlign='right';c.textBaseline='middle';
+    for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4,y=Y(v);c.beginPath();c.moveTo(iz,y);c.lineTo(iz+W,y);c.stroke();c.fillText(nf(v,o.decimales??(Math.abs(hi-lo)<0.5?2:Math.abs(hi-lo)<5?1:0)),iz-4,y);}
+    c.textAlign='center';c.textBaseline='top';for(let k=0;k<=4;k++){const i=Math.round((n-1)*k/4);if(k&&i===Math.round((n-1)*(k-1)/4))continue;const ul=n>1&&i===n-1;c.textAlign=ul?'right':'center';c.fillText(nf(i+(o.desde1?1:0)),ul?X(i)+de-1:X(i),ar+H+5);}
+    if(o.ejeX){c.textAlign='right';c.fillText(o.ejeX,iz+W,ar+H+15);}
+    if(o.ejeY){c.save();c.translate(10,ar+H/2);c.rotate(-Math.PI/2);c.textAlign='center';c.fillText(o.ejeY,0,0);c.restore();}
+    (o.lineas||[]).forEach(L=>{c.strokeStyle=C(L.color||'--muted');c.setLineDash([5,4]);c.lineWidth=1.4;c.beginPath();c.moveTo(iz,Y(L.y));c.lineTo(iz+W,Y(L.y));c.stroke();c.setLineDash([]);
+      if(L.nombre){c.fillStyle=C(L.color||'--muted');c.textAlign='right';c.textBaseline='bottom';c.fillText(L.nombre,iz+W-4,Y(L.y)-2);}});
+    const traza=(y,col,anch,alfa,punt)=>{if(!y.length)return;c.strokeStyle=col;c.lineWidth=anch;c.globalAlpha=alfa;c.setLineDash(punt?[5,4]:[]);c.beginPath();
+      y.forEach((v,i)=>{i?c.lineTo(X(i),Y(v)):c.moveTo(X(i),Y(v));});c.stroke();c.globalAlpha=1;c.setLineDash([]);};
+    series.forEach(S=>{const col=C(S.color||'--accent');if(o.media&&S.y.length>1){if(o.crudo!==false&&!S.sinCrudo)traza(S.y,col,1,.22,false);traza(media(S.y,o.media),col,S.ancho||2.2,1,S.punteada);}else traza(S.y,col,S.ancho||2,S.tenue?.35:1,S.punteada);});
+    c.strokeStyle=C('--line');c.strokeRect(iz+.5,ar+.5,W,H);
+    return {X,Y};
+  }
+  /* Redibuja al cambiar el tema o el ancho. */
+  function tema(raiz,fn){let t;const re=()=>{clearTimeout(t);t=setTimeout(fn,60);};
+    if(window.ResizeObserver)new ResizeObserver(re).observe(raiz);
+    new MutationObserver(re).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme','class']});
+    if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',re);}
+  const quieto=()=>!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+  /* Entrenar por tramos sin congelar la página: trabajo() hace una unidad (un episodio, un paso) y devuelve false
+     cuando ya no hay más; cada cuadro trabaja o.ms milisegundos (24 por defecto) y llama a o.cuadro(). */
+  function bucle(trabajo,o={}){const ms=o.ms??24;let vivo=false,id=0;
+    function cuadro(){if(!vivo)return;const t0=performance.now();let sigue=true;
+      do{sigue=trabajo()!==false;}while(sigue&&performance.now()-t0<ms&&!o.unoPorCuadro);
+      if(o.cuadro)o.cuadro();if(!sigue){vivo=false;if(o.fin)o.fin();return;}
+      id=o.pausa?setTimeout(cuadro,o.pausa):requestAnimationFrame(cuadro);}
+    return {iniciar(){if(vivo)return;vivo=true;cuadro();},parar(){vivo=false;cancelAnimationFrame(id);clearTimeout(id);},get corriendo(){return vivo;}};}
+
+  return {rnd,gauss,entero,barajar,nf,pct,ACC,FLECHA,MAPAS,DEF,cuadricula,
+    politicaAlAzar,politicaDe,accionDe,elegir,codiciosa,egreedy,qDeV,barridoEval,barridoValor,evaluar,iterarValor,iterarPolitica,
+    episodio,retornoMedio,BANDIDO,bandido,agenteBandido,cartpole,
+    color,rgb,mezcla,lienzo,flecha,dibujar,media,curva,tema,quieto,bucle};
+})();
+  const M=MundoRL,nf=M.nf,$=s=>raiz.querySelector(s);
+  /* La pista del muelle: el robot arranca quieto en x = 0 y debe detenerse en el muelle (de 7,5 a 8,5 m, a menos de
+     0,25 m/s); si pasa de 10 m choca con la pared. Acciones: 0 acelera hacia adelante, 1 frena (o retrocede),
+     2 deja rodar. Cada paso dura 0,25 s. fric: desaceleración por fricción en m/s² (0 = el simulador sin fricción).
+     Recompensas: −0,1 por paso, +10 al detenerse en el muelle, −10 al chocar. Tope de 120 pasos. */
+  function pista(r,o={}){const dt=0.25,acel=1.0;
+    const e={x:0,v:0,t:0,fric:o.fric||0,
+      reiniciar(f){if(f!==undefined)this.fric=f;this.x=0;this.v=0;this.t=0;return this.estado();},
+      estado(){const ix=Math.max(0,Math.min(20,Math.floor(this.x/0.5)));const iv=Math.max(0,Math.min(19,Math.floor((this.v+1.5)/0.25)));return ix*20+iv;},
+      paso(a){const u=a===0?acel:a===1?-acel:0;let v=this.v+u*dt;
+        if(this.fric>0){const d=this.fric*dt;if(Math.abs(v)<=d)v=0;else v-=Math.sign(v)*d;}
+        this.x+=0.5*(this.v+v)*dt;this.v=v;this.t++;
+        if(this.x<0){this.x=0;this.v=Math.max(0,this.v);}
+        if(this.x>=10)return {s:this.estado(),r:-10,fin:true,final:'choque'};
+        if(this.x>=7.5&&this.x<=8.5&&Math.abs(this.v)<0.25)return {s:this.estado(),r:10,fin:true,final:'muelle'};
+        if(this.t>=120)return {s:this.estado(),r:-0.1,fin:true,final:'tope'};
+        return {s:this.estado(),r:-0.1,fin:false};}};
+    return e;}
+  const NSP=21*20;
+  /* Q-learning tabular (capítulo 7) sobre la posición y la velocidad discretizadas. fricEp(r): fricción de cada episodio. */
+  function entrenarPista(o){o=Object.assign({semilla:42,ep:4000,alfa:0.2,gamma:0.97,eps:0.1,fricEp:()=>0},o);
+    const r=M.rnd(o.semilla),Q=new Float64Array(NSP*3),e=pista(r);
+    const arg=s=>{let b=0;for(let a=1;a<3;a++)if(Q[s*3+a]>Q[s*3+b])b=a;return b;};
+    const ag={Q,arg,ep:0,
+      episodio(){let s=e.reiniciar(o.fricEp(r));while(true){const a=r()<o.eps?Math.floor(r()*3):arg(s);const x=e.paso(a);
+        const obj=x.fin&&x.final!=='tope'?x.r:x.r+o.gamma*Math.max(Q[x.s*3],Q[x.s*3+1],Q[x.s*3+2]);Q[s*3+a]+=o.alfa*(obj-Q[s*3+a]);s=x.s;if(x.fin)break;}ag.ep++;}};
+    return ag;}
+  /* Prueba la política codiciosa con una fricción dada: devuelve la trayectoria y cómo terminó. */
+  function probarPista(ag,fric){const e=pista(M.rnd(1),{fric});let s=e.reiniciar(fric);const X=[0],V=[0];let fin='tope';
+    while(true){const x=e.paso(ag.arg(s));X.push(e.x);V.push(e.v);s=x.s;if(x.fin){fin=x.final;break;}}return {X,V,fin,pasos:X.length-1};}
+  const EP=4000,FR=[0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8];let semilla=42,ag=null,listo=false,cuadro=-1,anim=0;
+  const simulador=()=>$('#c12l2-sim').value,fReal=()=>+$('#c12l2-f').value;
+  function fSim(){const v=simulador();return v==='azar'?0.4:+v;}
+  function nuevo(){cancelAnimationFrame(anim);const v=simulador();ag=entrenarPista({semilla,ep:EP,fricEp:v==='azar'?(r=>r()*0.8):(()=>+v)});listo=false;cuadro=-1;$('#c12l2-ver').disabled=true;}
+  const COL={muelle:'--good',choque:'--warm',tope:'--muted'};
+  function pintarPista(){const cv=$('#c12l2-p'),{c,w,h}=M.lienzo(cv),C=k=>M.color(raiz,k);c.clearRect(0,0,w,h);c.fillStyle=C('--card');c.fillRect(0,0,w,h);
+    const x0=14,esc=(w-34)/10.4,X=m=>x0+m*esc,piso=h*0.72;
+    c.fillStyle=M.mezcla(C('--card'),C('--good'),.35);c.fillRect(X(7.5),piso-h*0.5,esc,h*0.5);c.fillStyle=C('--good');c.font='700 11px '+C('--f-display');c.textAlign='center';c.textBaseline='top';c.fillText('Muelle',X(8),4);
+    c.fillStyle=C('--warm');c.fillRect(X(10),piso-h*0.6,5,h*0.6);
+    c.strokeStyle=C('--line');c.lineWidth=2;c.beginPath();c.moveTo(4,piso);c.lineTo(w-4,piso);c.stroke();
+    c.fillStyle=C('--muted');c.font='10px '+C('--f-mono');c.textBaseline='top';for(let m=0;m<=10;m+=2){c.fillRect(X(m),piso,1,4);c.fillText(m+' m',X(m),piso+5);}
+    let x=0;if(listo){const P=probarPista(ag,fReal());x=cuadro<0?P.X[P.X.length-1]:P.X[Math.min(cuadro,P.X.length-1)];}
+    const rw=Math.max(18,esc*0.7),rh=Math.max(12,h*0.26);c.fillStyle=C('--d-casa');c.fillRect(X(Math.min(x,10))-rw,piso-rh-4,rw,rh);
+    c.fillStyle=C('--ink');[0.25,0.75].forEach(k=>{c.beginPath();c.arc(X(Math.min(x,10))-rw*k,piso-3,3.5,0,7);c.fill();});}
+  function pintarCurva(){if(!listo){M.curva($('#c12l2-g'),[],{raiz,ymin:0,ymax:12,xmax:120,ejeX:'paso (0,25 s)'});return;}
+    const S=probarPista(ag,fSim()),R=probarPista(ag,fReal()),n=cuadro<0?R.X.length:Math.min(R.X.length,cuadro+1);
+    const g=M.curva($('#c12l2-g'),[{y:S.X,color:'--c-tra',ancho:2},{y:R.X.slice(0,n),color:'--c-fis',ancho:2.6}],{raiz,ymin:0,ymax:12,xmax:121,ejeX:'paso (0,25 s)',lineas:[{y:10,color:'--warm'}]});
+    const cv=$('#c12l2-g'),c=cv.getContext('2d'),C=k=>M.color(raiz,k),k=window.devicePixelRatio||1;c.save();c.setTransform(k,0,0,k,0,0);c.fillStyle=C('--good');c.globalAlpha=.16;
+    c.fillRect(g.X(0),g.Y(8.5),g.X(120)-g.X(0),g.Y(7.5)-g.Y(8.5));c.restore();}
+  function pintarTabla(){const cv=$('#c12l2-t'),{c,w,h}=M.lienzo(cv),C=k=>M.color(raiz,k);c.clearRect(0,0,w,h);c.fillStyle=C('--card');c.fillRect(0,0,w,h);
+    const n=FR.length,cw=(w-8)/n;FR.forEach((f,i)=>{const x=4+i*cw;let col='--line',txt='—';
+      if(listo){const P=probarPista(ag,f);col=COL[P.fin];txt=P.fin==='muelle'?P.pasos+' p':P.fin==='choque'?'choca':'corto';}
+      c.fillStyle=listo?M.mezcla(C('--card'),C(col),.75):C('--card');c.fillRect(x+2,18,cw-4,h-36);
+      if(Math.abs(f-fReal())<1e-9){c.strokeStyle=C('--ink');c.lineWidth=2.5;c.strokeRect(x+2,18,cw-4,h-36);}
+      c.fillStyle=C('--muted');c.font='10px '+C('--f-mono');c.textAlign='center';c.textBaseline='top';c.fillText(nf(f,1),x+cw/2,4);
+      c.fillStyle=C('--ink');c.font='600 '+(cw<44?9:11)+'px '+C('--f-mono');c.textBaseline='middle';c.fillText(txt,x+cw/2,18+(h-36)/2);});
+    c.fillStyle=C('--muted');c.font='10px '+C('--f-display');c.textAlign='center';c.textBaseline='bottom';c.fillText('fricción del piso (m/s²); «p» = pasos hasta detenerse en el muelle',w/2,h-2);}
+  function pintar(){pintarPista();pintarCurva();pintarTabla();let t;const v=simulador();
+    if(!listo)t='<span class="big">'+(ag&&ag.ep?'Episodio '+nf(ag.ep)+' de '+nf(EP):'Sin entrenar')+'</span><span>Elige el simulador y pulsa «Entrenar».</span>';
+    else{const S=probarPista(ag,fSim()),R=probarPista(ag,fReal()),ok=FR.filter(f=>probarPista(ag,f).fin==='muelle').length;
+      const dice={muelle:'se detiene en el muelle',choque:'choca con la pared',tope:'se queda corto: se detiene antes del muelle y no vuelve a arrancar'};
+      t='<span class="big">En el piso real: '+(R.fin==='muelle'?'llega en '+R.pasos+' pasos':R.fin==='choque'?'choca':'no llega')+'</span>';
+      t+='<span>'+(v==='azar'?'En un simulador de fricción media (0,4)':'En el simulador')+', la política '+dice[S.fin]+(S.fin==='muelle'?' en '+S.pasos+' pasos':'')+'. En el piso real, con fricción '+nf(fReal(),1)+', '+dice[R.fin]+'.</span>';
+      t+='<span>Funciona en '+ok+' de los 9 pisos de la tabla.</span>';
+      if(v!=='azar'&&R.fin!=='muelle')t+='<span class="warn">La política es buena en el mundo donde aprendió y mala en otro. En el simulador nunca vio lo que pasa cuando la fricción la frena (o cuando nada la frena): llega a posiciones y velocidades que nunca visitó y su tabla Q no sabe qué hacer ahí.</span>';
+      if(v==='azar'&&ok===9)t+='<span class="ok">Con la fricción al azar en cada episodio, el robot visitó muchas situaciones distintas y aprendió una política que funciona en todos los pisos: es más lento en el mejor de los casos, pero no falla en ninguno.</span>';}
+    $('#c12l2-out').innerHTML=t;}
+  const b=M.bucle(()=>{if(ag.ep>=EP)return false;ag.episodio();return true;},{ms:20,cuadro:pintar,fin:()=>{parar();listo=true;$('#c12l2-ver').disabled=false;pintar();}});
+  function parar(){b.parar();const g=$('#c12l2-go');g.setAttribute('aria-pressed','false');g.textContent='Entrenar 4.000 episodios en el simulador';}
+  function entrenar(){parar();nuevo();const g=$('#c12l2-go');g.setAttribute('aria-pressed','true');g.textContent='Entrenando…';b.iniciar();}
+  function probar(){if(!listo)return;cancelAnimationFrame(anim);if(M.quieto()){cuadro=-1;pintar();return;}const n=probarPista(ag,fReal()).X.length;cuadro=0;let ult=0;
+    const paso=ts=>{if(ts-ult>45){ult=ts;cuadro++;pintarPista();pintarCurva();}if(cuadro<n)anim=requestAnimationFrame(paso);else{cuadro=-1;pintar();}};anim=requestAnimationFrame(paso);}
+  $('#c12l2-f').addEventListener('input',()=>{$('#c12l2-fo').textContent=nf(fReal(),1)+' m/s²';cancelAnimationFrame(anim);cuadro=-1;pintar();});
+  $('#c12l2-sim').addEventListener('change',entrenar);
+  $('#c12l2-go').addEventListener('click',()=>{if(b.corriendo)return;entrenar();});
+  $('#c12l2-ver').addEventListener('click',probar);
+  $('#c12l2-sem').addEventListener('click',()=>{semilla++;entrenar();});
+  M.tema(raiz,pintar);nuevo();pintar();
+})();
+</script>
+</body>
+</html>
